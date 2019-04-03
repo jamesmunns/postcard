@@ -1,0 +1,9 @@
+[package]
+name = "postcard"
+version = "0.0.0"
+authors = ["James Munns <james.munns@ferrous-systems.com>"]
+edition = "2018"
+readme = "README.md"
+repository = "https://github.com/jamesmunns/postcard"
+
+[dependencies]
