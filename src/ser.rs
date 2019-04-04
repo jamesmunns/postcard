@@ -5,7 +5,27 @@ use serde::{ser, Serialize};
 use crate::error::{Error, Result};
 use heapless::Vec;
 
+// Should be 5 for u32, and 10 for u64
+const VARINT_MAX_SZ: usize = core::mem::size_of::<usize>() + (core::mem::size_of::<usize>() / 4);
+
+const fn new_varint_buf() -> [u8; VARINT_MAX_SZ] {
+    [0u8; VARINT_MAX_SZ]
+}
+
 // AJM!
+fn usize_to_varint(mut value: usize, out: &mut [u8; VARINT_MAX_SZ]) -> &mut [u8] {
+    for i in 0..VARINT_MAX_SZ {
+        out[i] = (value & 0x7F) as u8;
+        value >>= 7;
+        if value != 0 {
+            out[i] |= 0x80;
+        } else {
+            return &mut out[..=i]
+        }
+    }
+    debug_assert_eq!(value, 0);
+    &mut out[..]
+}
 
 pub struct Serializer<B>
 where
@@ -21,6 +41,13 @@ where
     de: &'a mut Serializer<B>,
 }
 
+pub struct SerializeSeq<'a, B>
+where
+    B: heapless::ArrayLength<u8>,
+{
+    de: &'a mut Serializer<B>,
+}
+
 // By convention, the public API of a Serde serializer is one or more `to_abc`
 // functions such as `to_vec`, `to_bytes`, or `to_writer` depending on what
 // Rust types the serializer is able to produce as output.
@@ -28,7 +55,7 @@ where
 // This basic serializer supports only `to_vec`.
 pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
-    T: Serialize,
+    T: Serialize + ?Sized,
     B: heapless::ArrayLength<u8>,
 {
     let mut serializer = Serializer {
@@ -57,7 +84,7 @@ where
     // compound data structures like sequences and maps. In this case no
     // additional state is required beyond what is already stored in the
     // Serializer struct.
-    type SerializeSeq = Self;
+    type SerializeSeq = SerializeSeq<'a, B>;
     type SerializeTuple = Self;
     type SerializeTupleStruct = Self;
     type SerializeTupleVariant = Self;
@@ -261,10 +288,11 @@ where
     // doesn't make a difference in JSON because the length is not represented
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
-    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
-        // self.output += "[";
-        // Ok(self)
-        unimplemented!()
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+        let mut sz_buf = new_varint_buf();
+        let sz = usize_to_varint(len.ok_or(Error::ToDo)?, &mut sz_buf);
+        self.output.extend_from_slice(sz).map_err(|_| Error::ToDo)?;
+        Ok(Self::SerializeSeq{ de: self })
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
@@ -355,7 +383,7 @@ where
 //
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
-impl<'a, B> ser::SerializeSeq for &'a mut Serializer<B>
+impl<'a, B> ser::SerializeSeq for SerializeSeq<'a, B>
 where
     B: heapless::ArrayLength<u8>
 {
@@ -369,18 +397,12 @@ where
     where
         T: ?Sized + Serialize,
     {
-        // if !self.output.ends_with('[') {
-        //     self.output += ",";
-        // }
-        // value.serialize(&mut **self)
-        unimplemented!()
+        value.serialize(&mut *self.de)
     }
 
     // Close the sequence.
     fn end(self) -> Result<()> {
-        // self.output += "]";
-        // Ok(())
-        unimplemented!()
+        Ok(())
     }
 }
 
@@ -614,7 +636,7 @@ mod test {
 
     #[test]
     fn ser_struct_unsigned() {
-        let output: Vec<u8, U128> = to_vec(
+        let output: Vec<u8, U15> = to_vec(
             &BasicU8S {
                 st: 0xABCD,
                 ei: 0xFE,
@@ -630,7 +652,42 @@ mod test {
         ] == output.deref());
     }
 
+    #[test]
+    fn ser_byte_slice() {
+        let input: &[u8] = &[1u8, 2, 3, 4, 5, 6, 7, 8];
+        let output: Vec<u8, U9> = to_vec(input).unwrap();
+        assert_eq!(&[
+            0x08,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+        ], output.deref());
+    }
 
+    #[test]
+    fn usize_varint_encode() {
+        let mut buf = new_varint_buf();
+        let res = usize_to_varint(
+            1usize,
+            &mut buf,
+        );
+
+        assert!(&[1] == res);
+
+        let res = usize_to_varint(
+            usize::max_value(),
+            // 0xFFFFFFFF,
+            &mut buf
+        );
+
+        // AJM TODO
+        if VARINT_MAX_SZ == 5 {
+            assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
+        } else {
+            assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF,
+                         0xFF, 0xFF, 0xFF, 0xFF,
+                         0xFF, 0x01], res);
+        }
+
+    }
 }
 
 // #[test]
