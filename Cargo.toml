@@ -9,3 +9,9 @@ description = "A (TODO), no_std, serde compatible message library for Rust"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+heapless = "0.4"
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = ["derive"]
