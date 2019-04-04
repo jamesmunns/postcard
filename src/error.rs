@@ -3,7 +3,9 @@
 use core::fmt::{Display, Formatter};
 
 #[derive(Debug)]
-pub struct Error {}
+pub enum Error {
+    ToDo
+}
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
