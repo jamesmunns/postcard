@@ -1,5 +1,3 @@
-#![allow(unused_variables, dead_code)]
-
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
@@ -70,6 +68,13 @@ where
     de: &'a mut Serializer<B>,
 }
 
+pub struct SerializeTupleVariant<'a, B>
+where
+    B: heapless::ArrayLength<u8>,
+{
+    de: &'a mut Serializer<B>,
+}
+
 
 
 // By convention, the public API of a Serde serializer is one or more `to_abc`
@@ -122,7 +127,7 @@ where
     type SerializeSeq = SerializeSeq<'a, B>;
     type SerializeTuple = SerializeTuple<'a, B>;
     type SerializeTupleStruct = SerializeTupleStruct<'a, B>;
-    type SerializeTupleVariant = Self;
+    type SerializeTupleVariant = SerializeTupleVariant<'a, B>;
     type SerializeMap = Self;
     type SerializeStruct = SerializeStruct<'a, B>;
     type SerializeStructVariant = SerializeStructVariant<'a, B>;
@@ -319,7 +324,7 @@ where
     // represent tuples more efficiently by omitting the length, since tuple
     // means that the corresponding `Deserialize implementation will know the
     // length without needing to look at the serialized data.
-    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple> {
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
         Ok(Self::SerializeTuple{ de: self })
     }
 
@@ -337,15 +342,12 @@ where
     fn serialize_tuple_variant(
         self,
         _name: &'static str,
-        _variant_index: u32,
-        variant: &'static str,
+        variant_index: u32,
+        _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        // self.output += "{";
-        // variant.serialize(&mut *self)?;
-        // self.output += ":[";
-        // Ok(self)
-        unimplemented!()
+        self.push_usize(variant_index as usize)?;
+        Ok(SerializeTupleVariant{ de: self })
     }
 
     // Maps are represented in JSON as `{ K: V, K: V, ... }`.
@@ -363,10 +365,8 @@ where
     fn serialize_struct(
         self,
         _name: &'static str,
-        len: usize,
+        _len: usize,
     ) -> Result<Self::SerializeStruct> {
-        // // self.serialize_map(Some(len))
-        // unimplemented!()
         Ok(Self::SerializeStruct{ de: self })
     }
 
@@ -470,7 +470,7 @@ where
 //
 // So the `end` method in this impl is responsible for closing both the `]` and
 // the `}`.
-impl<'a, B> ser::SerializeTupleVariant for &'a mut Serializer<B>
+impl<'a, B> ser::SerializeTupleVariant for SerializeTupleVariant<'a, B>
 where
     B: heapless::ArrayLength<u8>
 {
@@ -481,17 +481,11 @@ where
     where
         T: ?Sized + Serialize,
     {
-        // if !self.output.ends_with('[') {
-        //     self.output += ",";
-        // }
-        // value.serialize(&mut **self)
-        unimplemented!()
+        value.serialize(&mut *self.de)
     }
 
     fn end(self) -> Result<()> {
-        // self.output += "]}";
-        // Ok(())
-        unimplemented!()
+        Ok(())
     }
 }
 
@@ -518,7 +512,7 @@ where
     // This can be done by using a different Serializer to serialize the key
     // (instead of `&mut **self`) and having that other serializer only
     // implement `serialize_str` and return an error on any other data type.
-    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, _key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -532,7 +526,7 @@ where
     // It doesn't make a difference whether the colon is printed at the end of
     // `serialize_key` or at the beginning of `serialize_value`. In this case
     // the code is a bit simpler having it here.
-    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, _value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -679,7 +673,7 @@ mod test {
         assert_eq!(input.as_bytes(), &output.deref()[1..]);
 
         let mut input: String<U1024> = String::new();
-        for i in 0..256 {
+        for _ in 0..256 {
             write!(&mut input, "abcd").unwrap();
         }
         let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
@@ -717,6 +711,7 @@ mod test {
         }
     }
 
+    #[allow(dead_code)]
     #[derive(Serialize)]
     enum BasicEnum {
         Bib,
@@ -737,6 +732,7 @@ mod test {
         Bap(u8),
         Kim(EnumStruct),
         Chi{ a: u8, b: u32 },
+        Sho(u16, u8),
     }
 
     #[test]
@@ -775,6 +771,13 @@ mod test {
             0x0F,
             0xC7, 0xC7, 0xC7, 0xC7
         ], output.deref());
+
+        let output: Vec<u8, U8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
+        assert_eq!(&[
+            0x05,
+            0x69, 0x69,
+            0x07
+        ], output.deref());
     }
 
     #[test]
@@ -791,6 +794,7 @@ mod test {
     fn bytes() {
         let x: &[u8; 32] = &[0u8; 32];
         let output: Vec<u8, U128> = to_vec(x).unwrap();
+        assert_eq!(output.len(), 32);
     }
 
     #[derive(Serialize)]
@@ -814,46 +818,3 @@ mod test {
         assert_eq!(output.len(), 0);
     }
 }
-
-// #[test]
-// fn test_struct() {
-//     #[derive(Serialize)]
-//     struct Test {
-//         int: u32,
-//         seq: Vec<&'static str>,
-//     }
-
-//     let test = Test {
-//         int: 1,
-//         seq: vec!["a", "b"],
-//     };
-//     let expected = r#"{"int":1,"seq":["a","b"]}"#;
-//     assert_eq!(to_vec(&test).unwrap(), expected);
-// }
-
-// #[test]
-// fn test_enum() {
-//     #[derive(Serialize)]
-//     enum E {
-//         Unit,
-//         Newtype(u32),
-//         Tuple(u32, u32),
-//         Struct { a: u32 },
-//     }
-
-//     let u = E::Unit;
-//     let expected = r#""Unit""#;
-//     assert_eq!(to_vec(&u).unwrap(), expected);
-
-//     let n = E::Newtype(1);
-//     let expected = r#"{"Newtype":1}"#;
-//     assert_eq!(to_vec(&n).unwrap(), expected);
-
-//     let t = E::Tuple(1, 2);
-//     let expected = r#"{"Tuple":[1,2]}"#;
-//     assert_eq!(to_vec(&t).unwrap(), expected);
-
-//     let s = E::Struct { a: 1 };
-//     let expected = r#"{"Struct":{"a":1}}"#;
-//     assert_eq!(to_vec(&s).unwrap(), expected);
-// }
