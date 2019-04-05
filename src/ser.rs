@@ -171,11 +171,11 @@ where
     // get the idea. For example it would emit invalid JSON if the input string
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
-        // self.output += "\"";
-        // self.output += v;
-        // self.output += "\"";
-        // Ok(())
-        unimplemented!()
+        let mut sz_buf = new_varint_buf();
+        let sz = usize_to_varint(v.len(), &mut sz_buf);
+        self.output.extend_from_slice(sz).map_err(|_| Error::ToDo)?;
+        self.output.extend_from_slice(v.as_bytes()).map_err(|_| Error::ToDo)?;
+        Ok(())
     }
 
     // Serialize a byte array as an array of bytes. Could also use a base64
@@ -601,6 +601,8 @@ mod test {
     use heapless::consts::*;
     use super::*;
     use core::ops::Deref;
+    use heapless::String;
+    use core::fmt::Write;
 
     #[test]
     fn ser_u8() {
@@ -660,6 +662,38 @@ mod test {
             0x08,
             0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
         ], output.deref());
+
+        let mut input: Vec<u8, U1024> = Vec::new();
+        for i in 0..1024 {
+            input.push((i & 0xFF) as u8).unwrap();
+        }
+        let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+        assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
+
+        assert_eq!(output.len(), 1026);
+        for (i, val) in output.deref()[2..].iter().enumerate() {
+            assert_eq!((i & 0xFF) as u8, *val);
+        }
+    }
+
+    #[test]
+    fn ser_str() {
+        let input: &str = "hello, postcard!";
+        let output: Vec<u8, U128> = to_vec(input).unwrap();
+        assert_eq!(0x10, output.deref()[0]);
+        assert_eq!(input.as_bytes(), &output.deref()[1..]);
+
+        let mut input: String<U1024> = String::new();
+        for i in 0..256 {
+            write!(&mut input, "abcd").unwrap();
+        }
+        let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+        assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
+
+        assert_eq!(output.len(), 1026);
+        for ch in output.deref()[2..].chunks(4) {
+            assert_eq!("abcd", core::str::from_utf8(ch).unwrap());
+        }
     }
 
     #[test]
