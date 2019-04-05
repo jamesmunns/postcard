@@ -5,9 +5,9 @@ use heapless::Vec;
 use byteorder::{LittleEndian, ByteOrder};
 
 // Should be 5 for u32, and 10 for u64
-const VARINT_MAX_SZ: usize = core::mem::size_of::<usize>() + (core::mem::size_of::<usize>() / 4);
+pub const VARINT_MAX_SZ: usize = core::mem::size_of::<usize>() + (core::mem::size_of::<usize>() / 4);
 
-const fn new_varint_buf() -> [u8; VARINT_MAX_SZ] {
+pub const fn new_varint_buf() -> [u8; VARINT_MAX_SZ] {
     [0u8; VARINT_MAX_SZ]
 }
 
@@ -254,7 +254,7 @@ where
     }
 
     // Unit struct means a named value containing no data. Again, since there is
-    // no data, map this to JSON as `null`. There is no need to serialize the
+    // no daunimpta, map this to JSON as `null`. There is no need to serialize the
     // name in most formats.
     fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
         Ok(())
