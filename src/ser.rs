@@ -1,7 +1,7 @@
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
-use heapless::Vec;
+use heapless::{Vec, ArrayLength};
 use byteorder::{LittleEndian, ByteOrder};
 
 // Should be 5 for u32, and 10 for u64
@@ -29,49 +29,49 @@ fn usize_to_varint(mut value: usize, out: &mut [u8; VARINT_MAX_SZ]) -> &mut [u8]
 
 pub struct Serializer<B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     output: Vec<u8, B>
 }
 
 pub struct SerializeStruct<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
 
 pub struct SerializeSeq<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
 
 pub struct SerializeTuple<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
 
 pub struct SerializeStructVariant<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
 
 pub struct SerializeTupleStruct<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
 
 pub struct SerializeTupleVariant<'a, B>
 where
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     de: &'a mut Serializer<B>,
 }
@@ -86,7 +86,7 @@ where
 pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
-    B: heapless::ArrayLength<u8>,
+    B: ArrayLength<u8>,
 {
     let mut serializer = Serializer {
         output: Vec::new(),
@@ -97,7 +97,7 @@ where
 
 impl<'a, B> Serializer<B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     fn push_usize(&mut self, value: usize) -> Result<()> {
         let mut sz_buf = new_varint_buf();
@@ -108,7 +108,7 @@ where
 
 impl<'a, B> ser::Serializer for &'a mut Serializer<B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     // The output type produced by this `Serializer` during successful
     // serialization. Most serializers that produce text or binary output should
@@ -401,7 +401,7 @@ where
 // is called on the Serializer.
 impl<'a, B> ser::SerializeSeq for SerializeSeq<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
@@ -425,7 +425,7 @@ where
 // Same thing but for tuples.
 impl<'a, B> ser::SerializeTuple for SerializeTuple<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -445,7 +445,7 @@ where
 // Same thing but for tuple structs.
 impl<'a, B> ser::SerializeTupleStruct for SerializeTupleStruct<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -473,7 +473,7 @@ where
 // the `}`.
 impl<'a, B> ser::SerializeTupleVariant for SerializeTupleVariant<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -500,7 +500,7 @@ where
 // difference so the default behavior for `serialize_entry` is fine.
 impl<'a, B> ser::SerializeMap for &'a mut Serializer<B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -547,7 +547,7 @@ where
 // constant strings.
 impl<'a, B> ser::SerializeStruct for SerializeStruct<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -568,7 +568,7 @@ where
 // closing both of the curly braces opened by `serialize_struct_variant`.
 impl<'a, B> ser::SerializeStructVariant for SerializeStructVariant<'a, B>
 where
-    B: heapless::ArrayLength<u8>
+    B: ArrayLength<u8>
 {
     type Ok = ();
     type Error = Error;
@@ -588,11 +588,14 @@ where
 ////////////////////////////////////////////////////////////////////////////////
 #[cfg(test)]
 mod test {
-    use heapless::consts::*;
     use super::*;
+    use heapless::{
+        consts::*,
+        String,
+    };
     use core::ops::Deref;
-    use heapless::String;
     use core::fmt::Write;
+    use crate::wrapper::{HeaplessVec, HeaplessString};
 
     #[test]
     fn ser_u8() {
@@ -840,5 +843,24 @@ mod test {
     fn unit() {
         let output: Vec<u8, U1> = to_vec(&()).unwrap();
         assert_eq!(output.len(), 0);
+    }
+
+    #[test]
+    fn heapless_data() {
+        let mut input: HeaplessVec<u8, U4> = HeaplessVec::new();
+        input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
+        let output: Vec<u8, U5> = to_vec(&input).unwrap();
+        assert_eq!(&[
+            0x04,
+            0x01, 0x02, 0x03, 0x04
+        ], output.deref());
+
+        let mut input: HeaplessString<U8> = HeaplessString::new();
+        write!(&mut input, "helLO!").unwrap();
+        let output: Vec<u8, U7> = to_vec(&input).unwrap();
+        assert_eq!(&[
+            0x06,
+            b'h', b'e', b'l', b'L', b'O', b'!'
+        ], output.deref());
     }
 }

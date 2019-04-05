@@ -2,5 +2,6 @@
 
 pub mod error;
 pub mod ser;
+pub mod wrapper;
 
 pub use ser::to_vec;
