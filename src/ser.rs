@@ -5,6 +5,7 @@ use heapless::Vec;
 use byteorder::{LittleEndian, ByteOrder};
 
 // Should be 5 for u32, and 10 for u64
+// should probably be something like `ceil((size * 8) / 7)`, not this
 pub const VARINT_MAX_SZ: usize = core::mem::size_of::<usize>() + (core::mem::size_of::<usize>() / 4);
 
 pub const fn new_varint_buf() -> [u8; VARINT_MAX_SZ] {
@@ -810,6 +811,29 @@ mod test {
 
         let output: Vec<u8, U3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
         assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+    }
+
+    #[derive(Serialize)]
+    struct RefStruct<'a> {
+        bytes: &'a [u8],
+        str_s: &'a str,
+    }
+
+    #[test]
+    fn ref_struct() {
+        let message = "hElLo";
+        let bytes = [0x01, 0x10, 0x02, 0x20];
+        let output: Vec<u8, U11> = to_vec(&RefStruct {
+            bytes: &bytes,
+            str_s: message,
+        }).unwrap();
+
+        assert_eq!(&[
+            0x04,
+            0x01, 0x10, 0x02, 0x20,
+            0x05,
+            b'h', b'E', b'l', b'L', b'o',
+        ], output.deref());
     }
 
     #[test]
