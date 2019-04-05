@@ -23,3 +23,12 @@ impl serde::ser::Error for Error {
         unimplemented!()
     }
 }
+
+impl serde::de::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        unimplemented!()
+    }
+}

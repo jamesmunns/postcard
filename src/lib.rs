@@ -3,6 +3,7 @@
 mod error;
 mod ser;
 mod varint;
+mod de;
 
 pub use ser::to_vec;
 pub use varint::{

@@ -683,7 +683,7 @@ mod test {
         );
 
         // AJM TODO
-        if VarintUsize::MAX_BUF_SZ == 5 {
+        if VarintUsize::varint_usize_max() == 5 {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
         } else {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF,
