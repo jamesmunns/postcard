@@ -4,7 +4,7 @@ use core::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub enum Error {
-    ToDo
+    ToDo,
 }
 
 impl Display for Error {
@@ -18,7 +18,7 @@ pub type Result<T> = ::core::result::Result<T, Error>;
 impl serde::ser::Error for Error {
     fn custom<T>(msg: T) -> Self
     where
-        T: Display
+        T: Display,
     {
         unimplemented!()
     }
