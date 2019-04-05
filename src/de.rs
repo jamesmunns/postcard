@@ -5,11 +5,12 @@
     unused_mut
 )]
 
+use crate::varint::VarintUsize;
 use crate::error::{Error, Result};
 
 use serde::Deserialize;
 use serde::de::{
-    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess, SeqAccess,
+    self, DeserializeSeed, EnumAccess, IntoDeserializer, MapAccess,
     VariantAccess, Visitor,
 };
 
@@ -18,7 +19,7 @@ use serde::de::{
 pub struct Deserializer<'de> {
     // This string starts with the input data and characters are truncated off
     // the beginning as data is parsed.
-    input: &'de str,
+    input: &'de [u8],
 }
 
 impl<'de> Deserializer<'de> {
@@ -26,9 +27,8 @@ impl<'de> Deserializer<'de> {
     // That way basic use cases are satisfied by something like
     // `serde_json::from_str(...)` while advanced use cases that require a
     // deserializer can make one with `serde_json::Deserializer::from_str(...)`.
-    pub fn from_str(input: &'de str) -> Self {
-        // Deserializer { input }
-        unimplemented!()
+    pub fn from_bytes(input: &'de [u8]) -> Self {
+        Deserializer { input }
     }
 }
 
@@ -37,24 +37,53 @@ impl<'de> Deserializer<'de> {
 // depending on what Rust types the deserializer is able to consume as input.
 //
 // This basic deserializer supports only `from_str`.
-pub fn from_str<'a, T>(s: &'a str) -> Result<T>
+pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
-    // let mut deserializer = Deserializer::from_str(s);
-    // let t = T::deserialize(&mut deserializer)?;
+    let mut deserializer = Deserializer::from_bytes(s);
+    let t = T::deserialize(&mut deserializer)?;
     // if deserializer.input.is_empty() {
-    //     Ok(t)
+        Ok(t)
     // } else {
     //     Err(Error::TrailingCharacters)
     // }
-    unimplemented!()
 }
 
 // SERDE IS NOT A PARSING LIBRARY. This impl block defines a few basic parsing
 // functions from scratch. More complicated formats may wish to use a dedicated
 // parsing library to help implement their Serde deserializer.
 impl<'de> Deserializer<'de> {
+    fn try_take_n(&mut self, ct: usize) -> Result<&[u8]> {
+        if self.input.len() >= ct {
+            let (a, b) = self.input.split_at(ct);
+            self.input = b;
+            Ok(a)
+        } else {
+            Err(Error::ToDo)
+        }
+    }
+
+    // AJM - this is a hack, I will probably need to figure
+    // out how to impl Deserialize for a varint.
+    fn try_take_varint(&mut self) -> Result<usize> {
+        println!("{:?}", self.input);
+        for i in 0..VarintUsize::varint_usize_max() {
+            let val = self.input.get(i).ok_or(Error::ToDo)?;
+            if (val & 0x80) == 0 {
+                let (a, b) = self.input.split_at(i + 1);
+                self.input = b;
+                let mut out = 0usize;
+                for byte in a.iter().rev() {
+                    out <<= 7;
+                    out |= (byte & 0x7F) as usize;
+                }
+                return Ok(out);
+            }
+        }
+
+        Err(Error::ToDo)
+    }
     // // Look at the first character in the input without consuming it.
     // fn peek_char(&mut self) -> Result<char> {
     //     self.input.chars().next().ok_or(Error::Eof)
@@ -138,6 +167,28 @@ impl<'de> Deserializer<'de> {
     // }
 }
 
+struct SeqAccess<'a, 'b: 'a> {
+    deserializer: &'a mut Deserializer<'b>,
+    len: usize,
+}
+
+impl<'a, 'b: 'a> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b> {
+    type Error = Error;
+
+     fn next_element_seed<V: DeserializeSeed<'b>>(&mut self, seed: V) -> Result<Option<V::Value>> {
+        if self.len > 0 {
+            self.len -= 1;
+            Ok(Some(DeserializeSeed::deserialize(seed, &mut *self.deserializer)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+     fn size_hint(&self) -> Option<usize> {
+         Some(self.len)
+     }
+}
+
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
@@ -189,64 +240,70 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_i8(self.parse_signed()?)
-        unimplemented!()
+        let mut buf = [0u8; 1];
+        buf[..].copy_from_slice(self.try_take_n(1)?);
+        visitor.visit_i8(i8::from_le_bytes(buf))
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_i16(self.parse_signed()?)
-        unimplemented!()
+        let mut buf = [0u8; 2];
+        buf[..].copy_from_slice(self.try_take_n(2)?);
+        visitor.visit_i16(i16::from_le_bytes(buf))
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_i32(self.parse_signed()?)
-        unimplemented!()
+        let mut buf = [0u8; 4];
+        buf[..].copy_from_slice(self.try_take_n(4)?);
+        visitor.visit_i32(i32::from_le_bytes(buf))
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_i64(self.parse_signed()?)
-        unimplemented!()
+        let mut buf = [0u8; 8];
+        buf[..].copy_from_slice(self.try_take_n(8)?);
+        visitor.visit_i64(i64::from_le_bytes(buf))
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_u8(self.parse_unsigned()?)
-        unimplemented!()
+        visitor.visit_u8(self.try_take_n(1)?[0])
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_u16(self.parse_unsigned()?)
-        unimplemented!()
+        let mut buf = [0u8; 2];
+        buf[..].copy_from_slice(self.try_take_n(2)?);
+        visitor.visit_u16(u16::from_le_bytes(buf))
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_u32(self.parse_unsigned()?)
-        unimplemented!()
+        let mut buf = [0u8; 4];
+        buf[..].copy_from_slice(self.try_take_n(4)?);
+        visitor.visit_u32(u32::from_le_bytes(buf))
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // visitor.visit_u64(self.parse_unsigned()?)
-        unimplemented!()
+        let mut buf = [0u8; 8];
+        buf[..].copy_from_slice(self.try_take_n(8)?);
+        visitor.visit_u64(u64::from_le_bytes(buf))
     }
 
     // Float parsing is stupidly hard.
@@ -379,20 +436,13 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        // // Parse the opening bracket of the sequence.
-        // if self.next_char()? == '[' {
-        //     // Give the visitor access to each element of the sequence.
-        //     let value = visitor.visit_seq(CommaSeparated::new(&mut self))?;
-        //     // Parse the closing bracket of the sequence.
-        //     if self.next_char()? == ']' {
-        //         Ok(value)
-        //     } else {
-        //         Err(Error::ExpectedArrayEnd)
-        //     }
-        // } else {
-        //     Err(Error::ExpectedArray)
-        // }
-        unimplemented!()
+        let len = self.try_take_varint()?;
+
+        println!("{:?}", len);
+        visitor.visit_seq(SeqAccess {
+            deserializer: self,
+            len: len,
+        })
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
@@ -401,12 +451,12 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     // As indicated by the length parameter, the `Deserialize` implementation
     // for a tuple in the Serde data model is required to know the length of the
     // tuple before even looking at the input data.
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // self.deserialize_seq(visitor)
-        unimplemented!()
+        println!("{}", ::core::mem::size_of::<V>());
+        visitor.visit_seq(SeqAccess { deserializer: self, len: len })
     }
 
     // Tuple structs look just like sequences in JSON.
@@ -454,15 +504,15 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     // the fields cannot be known ahead of time is probably a map.
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        name: &'static str,
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // self.deserialize_map(visitor)
-        unimplemented!()
+        println!("{}, {:?}", name, fields);
+        self.deserialize_tuple(fields.len(), visitor)
     }
 
     fn deserialize_enum<V>(
@@ -538,30 +588,6 @@ impl<'a, 'de> CommaSeparated<'a, 'de> {
         //     de,
         //     first: true,
         // }
-        unimplemented!()
-    }
-}
-
-// `SeqAccess` is provided to the `Visitor` to give it the ability to iterate
-// through elements of the sequence.
-impl<'de, 'a> SeqAccess<'de> for CommaSeparated<'a, 'de> {
-    type Error = Error;
-
-    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
-    where
-        T: DeserializeSeed<'de>,
-    {
-        // // Check if there are no more elements.
-        // if self.de.peek_char()? == ']' {
-        //     return Ok(None);
-        // }
-        // // Comma is required before every element except the first.
-        // if !self.first && self.de.next_char()? != ',' {
-        //     return Err(Error::ExpectedArrayComma);
-        // }
-        // self.first = false;
-        // // Deserialize an array element.
-        // seed.deserialize(&mut *self.de).map(Some)
         unimplemented!()
     }
 }
@@ -691,7 +717,319 @@ impl<'de, 'a> VariantAccess<'de> for Enum<'a, 'de> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[test]
-fn test_struct() {
+#[cfg(test)]
+mod test {
+    use crate::ser::to_vec;
+    use super::*;
+    use heapless::{
+        consts::*,
+        String,
+        Vec,
+    };
+    use core::ops::Deref;
+    use core::fmt::Write;
+    use serde::{Deserialize, Serialize};
 
+    #[test]
+    fn ser_u8() {
+        let output: Vec<u8, U1> = to_vec(&0x05u8).unwrap();
+        assert!(&[5] == output.deref());
+
+        let out: u8 = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 0x05);
+    }
+
+    #[test]
+    fn ser_u16() {
+        let output: Vec<u8, U2> = to_vec(&0xA5C7u16).unwrap();
+        assert!(&[0xC7, 0xA5] == output.deref());
+
+        let out: u16 = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 0xA5C7);
+    }
+
+    #[test]
+    fn ser_u32() {
+        let output: Vec<u8, U4> = to_vec(&0xCDAB3412u32).unwrap();
+        assert!(&[0x12, 0x34, 0xAB, 0xCD] == output.deref());
+
+        let out: u32 = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 0xCDAB3412u32);
+    }
+
+    #[test]
+    fn ser_u64() {
+        let output: Vec<u8, U8> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
+        assert!(&[0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12] == output.deref());
+
+        let out: u64 = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 0x1234_5678_90AB_CDEFu64);
+    }
+
+    #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+    struct BasicU8S {
+        st: u16,
+        ei: u8,
+        sf: u64,
+        tt: u32,
+    }
+
+    #[test]
+    fn ser_struct_unsigned() {
+        let data = BasicU8S {
+            st: 0xABCD,
+            ei: 0xFE,
+            sf: 0x1234_4321_ABCD_DCBA,
+            tt: 0xACAC_ACAC
+        };
+
+        let output: Vec<u8, U15> = to_vec(
+            &data).unwrap();
+
+        assert!(&[
+            0xCD, 0xAB,
+            0xFE,
+            0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
+            0xAC, 0xAC, 0xAC, 0xAC
+        ] == output.deref());
+
+        let out: BasicU8S = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, data);
+    }
+
+    #[test]
+    fn ser_byte_slice() {
+        let input: &[u8] = &[1u8, 2, 3, 4, 5, 6, 7, 8];
+        let output: Vec<u8, U9> = to_vec(input).unwrap();
+        assert_eq!(&[
+            0x08,
+            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
+        ], output.deref());
+
+        let out: Vec<u8, U128> = from_bytes(output.deref()).unwrap();
+        assert_eq!(input, out.deref());
+
+        // let mut input: Vec<u8, U1024> = Vec::new();
+        // for i in 0..1024 {
+        //     input.push((i & 0xFF) as u8).unwrap();
+        // }
+        // let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+        // assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
+
+        // assert_eq!(output.len(), 1026);
+        // for (i, val) in output.deref()[2..].iter().enumerate() {
+        //     assert_eq!((i & 0xFF) as u8, *val);
+        // }
+    }
+
+    // #[test]
+    // fn ser_str() {
+    //     let input: &str = "hello, postcard!";
+    //     let output: Vec<u8, U17> = to_vec(input).unwrap();
+    //     assert_eq!(0x10, output.deref()[0]);
+    //     assert_eq!(input.as_bytes(), &output.deref()[1..]);
+
+    //     let mut input: String<U1024> = String::new();
+    //     for _ in 0..256 {
+    //         write!(&mut input, "abcd").unwrap();
+    //     }
+    //     let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+    //     assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
+
+    //     assert_eq!(output.len(), 1026);
+    //     for ch in output.deref()[2..].chunks(4) {
+    //         assert_eq!("abcd", core::str::from_utf8(ch).unwrap());
+    //     }
+    // }
+
+    // #[test]
+    // fn usize_varint_encode() {
+    //     let mut buf = VarintUsize::new_buf();
+    //     let res = VarintUsize(1).to_buf(
+    //         &mut buf,
+    //     );
+
+    //     assert!(&[1] == res);
+
+    //     let res = VarintUsize(usize::max_value()).to_buf(
+    //         &mut buf
+    //     );
+
+    //     // AJM TODO
+    //     if VarintUsize::varint_usize_max() == 5 {
+    //         assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
+    //     } else {
+    //         assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF,
+    //                      0xFF, 0xFF, 0xFF, 0xFF,
+    //                      0xFF, 0x01], res);
+    //     }
+    // }
+
+    // #[allow(dead_code)]
+    // #[derive(Serialize)]
+    // enum BasicEnum {
+    //     Bib,
+    //     Bim,
+    //     Bap
+    // }
+
+    // #[derive(Serialize)]
+    // struct EnumStruct {
+    //     eight: u8,
+    //     sixt: u16,
+    // }
+
+    // #[derive(Serialize)]
+    // enum DataEnum {
+    //     Bib(u16),
+    //     Bim(u64),
+    //     Bap(u8),
+    //     Kim(EnumStruct),
+    //     Chi{ a: u8, b: u32 },
+    //     Sho(u16, u8),
+    // }
+
+    // #[test]
+    // fn enums() {
+    //     let output: Vec<u8, U1> = to_vec(&BasicEnum::Bim).unwrap();
+    //     assert_eq!(&[0x01], output.deref());
+
+    //     let output: Vec<u8, U9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+    //     assert_eq!(&[
+    //         0x01,
+    //         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    //     ], output.deref());
+
+    //     let output: Vec<u8, U3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+    //     assert_eq!(&[
+    //         0x00,
+    //         0xFF, 0xFF
+    //     ], output.deref());
+
+    //     let output: Vec<u8, U2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
+    //     assert_eq!(&[
+    //         0x02,
+    //         0xFF
+    //     ], output.deref());
+
+    //     let output: Vec<u8, U8> = to_vec(&DataEnum::Kim(EnumStruct { eight: 0xF0, sixt: 0xACAC })).unwrap();
+    //     assert_eq!(&[
+    //         0x03,
+    //         0xF0,
+    //         0xAC, 0xAC,
+    //     ], output.deref());
+
+    //     let output: Vec<u8, U8> = to_vec(&DataEnum::Chi{ a: 0x0F, b: 0xC7C7C7C7 }).unwrap();
+    //     assert_eq!(&[
+    //         0x04,
+    //         0x0F,
+    //         0xC7, 0xC7, 0xC7, 0xC7
+    //     ], output.deref());
+
+    //     let output: Vec<u8, U8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
+    //     assert_eq!(&[
+    //         0x05,
+    //         0x69, 0x69,
+    //         0x07
+    //     ], output.deref());
+    // }
+
+    // #[test]
+    // fn tuples() {
+    //     let output: Vec<u8, U128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
+    //     assert_eq!(&[
+    //         1u8,
+    //         0x0A, 0x00, 0x00, 0x00,
+    //         0x06,
+    //         b'H', b'e', b'l', b'l', b'o', b'!'], output.deref())
+    // }
+
+    // #[test]
+    // fn bytes() {
+    //     let x: &[u8; 32] = &[0u8; 32];
+    //     let output: Vec<u8, U128> = to_vec(x).unwrap();
+    //     assert_eq!(output.len(), 32);
+    // }
+
+    // #[derive(Serialize)]
+    // pub struct NewTypeStruct(u32);
+
+    // #[derive(Serialize)]
+    // pub struct TupleStruct((u8, u16));
+
+    // #[derive(Serialize)]
+    // struct ManyVarints {
+    //     a: VarintUsize,
+    //     b: VarintUsize,
+    //     c: VarintUsize,
+    // }
+
+    // #[test]
+    // fn structs() {
+    //     let output: Vec<u8, U4> = to_vec(&NewTypeStruct(5)).unwrap();
+    //     assert_eq!(&[0x05, 0x00, 0x00, 0x00], output.deref());
+
+    //     let output: Vec<u8, U3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
+    //     assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+
+    //     let output: Vec<u8, U128> = to_vec(&ManyVarints {
+    //         a: VarintUsize(0x01),
+    //         b: VarintUsize(0xFFFF_FFFF),
+    //         c: VarintUsize(0x07CD),
+    //     }).unwrap();
+
+    //     assert_eq!(&[
+    //         0x01,
+    //         0xFF, 0xFF, 0xFF, 0xFF, 0x0F,
+    //         0xCD, 0x0F,
+    //     ], output.deref());
+    // }
+
+    // #[derive(Serialize)]
+    // struct RefStruct<'a> {
+    //     bytes: &'a [u8],
+    //     str_s: &'a str,
+    // }
+
+    // #[test]
+    // fn ref_struct() {
+    //     let message = "hElLo";
+    //     let bytes = [0x01, 0x10, 0x02, 0x20];
+    //     let output: Vec<u8, U11> = to_vec(&RefStruct {
+    //         bytes: &bytes,
+    //         str_s: message,
+    //     }).unwrap();
+
+    //     assert_eq!(&[
+    //         0x04,
+    //         0x01, 0x10, 0x02, 0x20,
+    //         0x05,
+    //         b'h', b'E', b'l', b'L', b'o',
+    //     ], output.deref());
+    // }
+
+    // #[test]
+    // fn unit() {
+    //     let output: Vec<u8, U1> = to_vec(&()).unwrap();
+    //     assert_eq!(output.len(), 0);
+    // }
+
+    // #[test]
+    // fn heapless_data() {
+    //     let mut input: Vec<u8, U4> = Vec::new();
+    //     input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
+    //     let output: Vec<u8, U5> = to_vec(&input).unwrap();
+    //     assert_eq!(&[
+    //         0x04,
+    //         0x01, 0x02, 0x03, 0x04
+    //     ], output.deref());
+
+    //     let mut input: String<U8> = String::new();
+    //     write!(&mut input, "helLO!").unwrap();
+    //     let output: Vec<u8, U7> = to_vec(&input).unwrap();
+    //     assert_eq!(&[
+    //         0x06,
+    //         b'h', b'e', b'l', b'L', b'O', b'!'
+    //     ], output.deref());
+    // }
 }

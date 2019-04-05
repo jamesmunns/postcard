@@ -1,7 +1,8 @@
-use serde::{Serialize, Serializer};
+use serde::{Serialize, Serializer, Deserialize, Deserializer};
 
 /// A wrapper type that exists as a `usize` at rest, but is serialized
 /// to or deserialized from a varint.
+#[derive(Debug)]
 pub struct VarintUsize(pub usize);
 
 impl Serialize for VarintUsize
@@ -16,8 +17,27 @@ impl Serialize for VarintUsize
     }
 }
 
+// impl<'de> Visitor<'de> for VarintVisitor {
+//     type Value = usize;
+
+//     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//         unimplemented!()
+//     }
+
+//     fn visit_bytes
+// }
+
+impl<'de> Deserialize<'de> for VarintUsize {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        unimplemented!()
+    }
+}
+
 /// Type alias for the largest buffer needed to store
-/// a `usize` varint as bytes
+/// a `usize` v<'de>arint as bytes
 ///
 /// NOTE: This size is different depending on your target
 /// platform! For 32 bit platforms, this will be [u8; 5].
