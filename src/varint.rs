@@ -18,7 +18,7 @@ impl Serialize for VarintUsize
 
 /// Type alias for the largest buffer needed to store
 /// a `usize` varint as bytes
-type VarintBuf = [u8; VarintUsize::MAX_BUF_SZ];
+pub type VarintBuf = [u8; VarintUsize::MAX_BUF_SZ];
 
 impl VarintUsize {
     // Should be 5 for u32, and 10 for u64

@@ -56,11 +56,25 @@ where
 
 
 
-// By convention, the public API of a Serde serializer is one or more `to_abc`
-// functions such as `to_vec`, `to_bytes`, or `to_writer` depending on what
-// Rust types the serializer is able to produce as output.
-//
-// This basic serializer supports only `to_vec`.
+/// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
+/// enough space to hold the entire serialized message, or an error will be returned.
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_vec;
+/// use heapless::{Vec, consts::*};
+/// use core::ops::Deref;
+///
+/// let input: &str = "hello, postcard!";
+/// let output: Vec<u8, U17> = to_vec(input).unwrap();
+///
+/// // Length is serialized as a [`postcard::VarintUsize`]
+/// assert_eq!(0x10, output.deref()[0]);
+///
+/// // otherwise, bytes/UTF-8 is serialized as-is
+/// assert_eq!(input.as_bytes(), &output.deref()[1..]);
+/// ```
 pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
@@ -638,7 +652,7 @@ mod test {
     #[test]
     fn ser_str() {
         let input: &str = "hello, postcard!";
-        let output: Vec<u8, U128> = to_vec(input).unwrap();
+        let output: Vec<u8, U17> = to_vec(input).unwrap();
         assert_eq!(0x10, output.deref()[0]);
         assert_eq!(input.as_bytes(), &output.deref()[1..]);
 
