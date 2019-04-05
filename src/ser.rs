@@ -1,31 +1,9 @@
+use crate::varint::VarintUsize;
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
 use heapless::{Vec, ArrayLength};
 use byteorder::{LittleEndian, ByteOrder};
-
-// Should be 5 for u32, and 10 for u64
-// should probably be something like `ceil((size * 8) / 7)`, not this
-pub const VARINT_MAX_SZ: usize = core::mem::size_of::<usize>() + (core::mem::size_of::<usize>() / 4);
-
-pub const fn new_varint_buf() -> [u8; VARINT_MAX_SZ] {
-    [0u8; VARINT_MAX_SZ]
-}
-
-// AJM!
-fn usize_to_varint(mut value: usize, out: &mut [u8; VARINT_MAX_SZ]) -> &mut [u8] {
-    for i in 0..VARINT_MAX_SZ {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
-            return &mut out[..=i]
-        }
-    }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
-}
 
 pub struct Serializer<B>
 where
@@ -93,17 +71,6 @@ where
     };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)
-}
-
-impl<'a, B> Serializer<B>
-where
-    B: ArrayLength<u8>
-{
-    fn push_usize(&mut self, value: usize) -> Result<()> {
-        let mut sz_buf = new_varint_buf();
-        let sz = usize_to_varint(value, &mut sz_buf);
-        self.output.extend_from_slice(sz).map_err(|_| Error::ToDo)
-    }
 }
 
 impl<'a, B> ser::Serializer for &'a mut Serializer<B>
@@ -218,7 +185,7 @@ where
     // get the idea. For example it would emit invalid JSON if the input string
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
-        self.push_usize(v.len())?;
+        VarintUsize(v.len()).serialize(&mut *self)?;
         self.output.extend_from_slice(v.as_bytes()).map_err(|_| Error::ToDo)?;
         Ok(())
     }
@@ -271,7 +238,7 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<()> {
-        self.push_usize(variant_index as usize)
+        VarintUsize(variant_index as usize).serialize(&mut *self)
     }
 
     // As is done here, serializers are encouraged to treat newtype structs as
@@ -302,7 +269,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.push_usize(variant_index as usize)?;
+        VarintUsize(variant_index as usize).serialize(&mut *self)?;
         value.serialize(&mut *self)
     }
 
@@ -317,7 +284,7 @@ where
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.push_usize(len.ok_or(Error::ToDo)?)?;
+        VarintUsize(len.ok_or(Error::ToDo)?).serialize(&mut *self)?;
         Ok(Self::SerializeSeq{ de: self })
     }
 
@@ -347,7 +314,7 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        self.push_usize(variant_index as usize)?;
+        VarintUsize(variant_index as usize).serialize(&mut *self)?;
         Ok(SerializeTupleVariant{ de: self })
     }
 
@@ -380,7 +347,7 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        self.push_usize(variant_index as usize)?;
+        VarintUsize(variant_index as usize).serialize(&mut *self)?;
         Ok(Self::SerializeStructVariant { de: self })
     }
 
@@ -595,7 +562,6 @@ mod test {
     };
     use core::ops::Deref;
     use core::fmt::Write;
-    use crate::wrapper::{HeaplessVec, HeaplessString};
 
     #[test]
     fn ser_u8() {
@@ -691,22 +657,19 @@ mod test {
 
     #[test]
     fn usize_varint_encode() {
-        let mut buf = new_varint_buf();
-        let res = usize_to_varint(
-            1usize,
+        let mut buf = VarintUsize::new_buf();
+        let res = VarintUsize(1).to_buf(
             &mut buf,
         );
 
         assert!(&[1] == res);
 
-        let res = usize_to_varint(
-            usize::max_value(),
-            // 0xFFFFFFFF,
+        let res = VarintUsize(usize::max_value()).to_buf(
             &mut buf
         );
 
         // AJM TODO
-        if VARINT_MAX_SZ == 5 {
+        if VarintUsize::MAX_BUF_SZ == 5 {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
         } else {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF,
@@ -807,6 +770,13 @@ mod test {
     #[derive(Serialize)]
     pub struct TupleStruct((u8, u16));
 
+    #[derive(Serialize)]
+    struct ManyVarints {
+        a: VarintUsize,
+        b: VarintUsize,
+        c: VarintUsize,
+    }
+
     #[test]
     fn structs() {
         let output: Vec<u8, U4> = to_vec(&NewTypeStruct(5)).unwrap();
@@ -814,6 +784,18 @@ mod test {
 
         let output: Vec<u8, U3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
         assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+
+        let output: Vec<u8, U128> = to_vec(&ManyVarints {
+            a: VarintUsize(0x01),
+            b: VarintUsize(0xFFFF_FFFF),
+            c: VarintUsize(0x07CD),
+        }).unwrap();
+
+        assert_eq!(&[
+            0x01,
+            0xFF, 0xFF, 0xFF, 0xFF, 0x0F,
+            0xCD, 0x0F,
+        ], output.deref());
     }
 
     #[derive(Serialize)]
@@ -847,7 +829,7 @@ mod test {
 
     #[test]
     fn heapless_data() {
-        let mut input: HeaplessVec<u8, U4> = HeaplessVec::new();
+        let mut input: Vec<u8, U4> = Vec::new();
         input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
         let output: Vec<u8, U5> = to_vec(&input).unwrap();
         assert_eq!(&[
@@ -855,7 +837,7 @@ mod test {
             0x01, 0x02, 0x03, 0x04
         ], output.deref());
 
-        let mut input: HeaplessString<U8> = HeaplessString::new();
+        let mut input: String<U8> = String::new();
         write!(&mut input, "helLO!").unwrap();
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
         assert_eq!(&[

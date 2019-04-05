@@ -2,6 +2,9 @@
 
 pub mod error;
 pub mod ser;
-pub mod wrapper;
+pub mod varint;
 
 pub use ser::to_vec;
+pub use varint::{
+    VarintUsize,
+};
