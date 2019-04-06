@@ -6,7 +6,4 @@ mod varint;
 mod de;
 
 pub use ser::to_vec;
-pub use varint::{
-    VarintUsize,
-    VarintBuf,
-};
+pub use de::from_bytes;

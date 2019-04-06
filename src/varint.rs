@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer, Deserialize, Deserializer};
+use serde::{Serialize, Serializer};
 
 /// A wrapper type that exists as a `usize` at rest, but is serialized
 /// to or deserialized from a varint.
@@ -18,7 +18,7 @@ impl Serialize for VarintUsize
 }
 
 /// Type alias for the largest buffer needed to store
-/// a `usize` v<'de>arint as bytes
+/// a `usize` varint as bytes
 ///
 /// NOTE: This size is different depending on your target
 /// platform! For 32 bit platforms, this will be [u8; 5].
