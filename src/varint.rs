@@ -17,25 +17,6 @@ impl Serialize for VarintUsize
     }
 }
 
-// impl<'de> Visitor<'de> for VarintVisitor {
-//     type Value = usize;
-
-//     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-//         unimplemented!()
-//     }
-
-//     fn visit_bytes
-// }
-
-impl<'de> Deserialize<'de> for VarintUsize {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>
-    {
-        unimplemented!()
-    }
-}
-
 /// Type alias for the largest buffer needed to store
 /// a `usize` v<'de>arint as bytes
 ///
