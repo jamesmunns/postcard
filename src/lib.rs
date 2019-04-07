@@ -1,9 +1,9 @@
 // #![cfg_attr(not(test), no_std)]
 
+mod de;
 mod error;
 mod ser;
 mod varint;
-mod de;
 
-pub use ser::to_vec;
 pub use de::from_bytes;
+pub use ser::to_vec;

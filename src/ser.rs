@@ -2,14 +2,14 @@ use crate::varint::VarintUsize;
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
-use heapless::{Vec, ArrayLength};
-use byteorder::{LittleEndian, ByteOrder};
+use byteorder::{ByteOrder, LittleEndian};
+use heapless::{ArrayLength, Vec};
 
 pub struct Serializer<B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
-    output: Vec<u8, B>
+    output: Vec<u8, B>,
 }
 
 pub struct SerializeStruct<'a, B>
@@ -54,8 +54,6 @@ where
     de: &'a mut Serializer<B>,
 }
 
-
-
 /// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
 /// enough space to hold the entire serialized message, or an error will be returned.
 ///
@@ -80,16 +78,14 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    let mut serializer = Serializer {
-        output: Vec::new(),
-    };
+    let mut serializer = Serializer { output: Vec::new() };
     value.serialize(&mut serializer)?;
     Ok(serializer.output)
 }
 
 impl<'a, B> ser::Serializer for &'a mut Serializer<B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     // The output type produced by this `Serializer` during successful
     // serialization. Most serializers that produce text or binary output should
@@ -174,17 +170,13 @@ where
     fn serialize_f32(self, v: f32) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f32>()];
         LittleEndian::write_f32(&mut buf, v);
-        self.output
-            .extend_from_slice(&buf)
-            .map_err(|_| Error::ToDo)
+        self.output.extend_from_slice(&buf).map_err(|_| Error::ToDo)
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f64>()];
         LittleEndian::write_f64(&mut buf, v);
-        self.output
-            .extend_from_slice(&buf)
-            .map_err(|_| Error::ToDo)
+        self.output.extend_from_slice(&buf).map_err(|_| Error::ToDo)
     }
 
     // Serialize a char as a single-character string. Other formats may
@@ -200,7 +192,9 @@ where
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
         VarintUsize(v.len()).serialize(&mut *self)?;
-        self.output.extend_from_slice(v.as_bytes()).map_err(|_| Error::ToDo)?;
+        self.output
+            .extend_from_slice(v.as_bytes())
+            .map_err(|_| Error::ToDo)?;
         Ok(())
     }
 
@@ -257,11 +251,7 @@ where
 
     // As is done here, serializers are encouraged to treat newtype structs as
     // insignificant wrappers around the data they contain.
-    fn serialize_newtype_struct<T>(
-        self,
-        _name: &'static str,
-        value: &T,
-    ) -> Result<()>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -299,7 +289,7 @@ where
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         VarintUsize(len.ok_or(Error::ToDo)?).serialize(&mut *self)?;
-        Ok(Self::SerializeSeq{ de: self })
+        Ok(Self::SerializeSeq { de: self })
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
@@ -307,7 +297,7 @@ where
     // means that the corresponding `Deserialize implementation will know the
     // length without needing to look at the serialized data.
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Ok(Self::SerializeTuple{ de: self })
+        Ok(Self::SerializeTuple { de: self })
     }
 
     // Tuple structs look just like sequences in JSON.
@@ -316,7 +306,7 @@ where
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        Ok(SerializeTupleStruct{ de: self })
+        Ok(SerializeTupleStruct { de: self })
     }
 
     // Tuple variants are represented in JSON as `{ NAME: [DATA...] }`. Again
@@ -329,7 +319,7 @@ where
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
         VarintUsize(variant_index as usize).serialize(&mut *self)?;
-        Ok(SerializeTupleVariant{ de: self })
+        Ok(SerializeTupleVariant { de: self })
     }
 
     // Maps are represented in JSON as `{ K: V, K: V, ... }`.
@@ -344,12 +334,8 @@ where
     // omit the field names when serializing structs because the corresponding
     // Deserialize implementation is required to know what the keys are without
     // looking at the serialized data.
-    fn serialize_struct(
-        self,
-        _name: &'static str,
-        _len: usize,
-    ) -> Result<Self::SerializeStruct> {
-        Ok(Self::SerializeStruct{ de: self })
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Ok(Self::SerializeStruct { de: self })
     }
 
     // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }`.
@@ -382,7 +368,7 @@ where
 // is called on the Serializer.
 impl<'a, B> ser::SerializeSeq for SerializeSeq<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
@@ -406,7 +392,7 @@ where
 // Same thing but for tuples.
 impl<'a, B> ser::SerializeTuple for SerializeTuple<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -426,7 +412,7 @@ where
 // Same thing but for tuple structs.
 impl<'a, B> ser::SerializeTupleStruct for SerializeTupleStruct<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -454,7 +440,7 @@ where
 // the `}`.
 impl<'a, B> ser::SerializeTupleVariant for SerializeTupleVariant<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -481,7 +467,7 @@ where
 // difference so the default behavior for `serialize_entry` is fine.
 impl<'a, B> ser::SerializeMap for &'a mut Serializer<B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -528,7 +514,7 @@ where
 // constant strings.
 impl<'a, B> ser::SerializeStruct for SerializeStruct<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -549,7 +535,7 @@ where
 // closing both of the curly braces opened by `serialize_struct_variant`.
 impl<'a, B> ser::SerializeStructVariant for SerializeStructVariant<'a, B>
 where
-    B: ArrayLength<u8>
+    B: ArrayLength<u8>,
 {
     type Ok = ();
     type Error = Error;
@@ -570,12 +556,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use heapless::{
-        consts::*,
-        String,
-    };
-    use core::ops::Deref;
     use core::fmt::Write;
+    use core::ops::Deref;
+    use heapless::{consts::*, String};
 
     #[test]
     fn ser_u8() {
@@ -611,30 +594,30 @@ mod test {
 
     #[test]
     fn ser_struct_unsigned() {
-        let output: Vec<u8, U15> = to_vec(
-            &BasicU8S {
-                st: 0xABCD,
-                ei: 0xFE,
-                sf: 0x1234_4321_ABCD_DCBA,
-                tt: 0xACAC_ACAC
-            }).unwrap();
+        let output: Vec<u8, U15> = to_vec(&BasicU8S {
+            st: 0xABCD,
+            ei: 0xFE,
+            sf: 0x1234_4321_ABCD_DCBA,
+            tt: 0xACAC_ACAC,
+        })
+        .unwrap();
 
-        assert!(&[
-            0xCD, 0xAB,
-            0xFE,
-            0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-            0xAC, 0xAC, 0xAC, 0xAC
-        ] == output.deref());
+        assert!(
+            &[
+                0xCD, 0xAB, 0xFE, 0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12, 0xAC, 0xAC, 0xAC,
+                0xAC
+            ] == output.deref()
+        );
     }
 
     #[test]
     fn ser_byte_slice() {
         let input: &[u8] = &[1u8, 2, 3, 4, 5, 6, 7, 8];
         let output: Vec<u8, U9> = to_vec(input).unwrap();
-        assert_eq!(&[
-            0x08,
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08
-        ], output.deref());
+        assert_eq!(
+            &[0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
+            output.deref()
+        );
 
         let mut input: Vec<u8, U1024> = Vec::new();
         for i in 0..1024 {
@@ -672,23 +655,20 @@ mod test {
     #[test]
     fn usize_varint_encode() {
         let mut buf = VarintUsize::new_buf();
-        let res = VarintUsize(1).to_buf(
-            &mut buf,
-        );
+        let res = VarintUsize(1).to_buf(&mut buf);
 
         assert!(&[1] == res);
 
-        let res = VarintUsize(usize::max_value()).to_buf(
-            &mut buf
-        );
+        let res = VarintUsize(usize::max_value()).to_buf(&mut buf);
 
         // AJM TODO
         if VarintUsize::varint_usize_max() == 5 {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
         } else {
-            assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF,
-                         0xFF, 0xFF, 0xFF, 0xFF,
-                         0xFF, 0x01], res);
+            assert_eq!(
+                &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+                res
+            );
         }
     }
 
@@ -697,7 +677,7 @@ mod test {
     enum BasicEnum {
         Bib,
         Bim,
-        Bap
+        Bap,
     }
 
     #[derive(Serialize)]
@@ -712,7 +692,7 @@ mod test {
         Bim(u64),
         Bap(u8),
         Kim(EnumStruct),
-        Chi{ a: u8, b: u32 },
+        Chi { a: u8, b: u32 },
         Sho(u16, u8),
     }
 
@@ -722,53 +702,42 @@ mod test {
         assert_eq!(&[0x01], output.deref());
 
         let output: Vec<u8, U9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
-        assert_eq!(&[
-            0x01,
-            0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-        ], output.deref());
+        assert_eq!(
+            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
+            output.deref()
+        );
 
         let output: Vec<u8, U3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
-        assert_eq!(&[
-            0x00,
-            0xFF, 0xFF
-        ], output.deref());
+        assert_eq!(&[0x00, 0xFF, 0xFF], output.deref());
 
         let output: Vec<u8, U2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
-        assert_eq!(&[
-            0x02,
-            0xFF
-        ], output.deref());
+        assert_eq!(&[0x02, 0xFF], output.deref());
 
-        let output: Vec<u8, U8> = to_vec(&DataEnum::Kim(EnumStruct { eight: 0xF0, sixt: 0xACAC })).unwrap();
-        assert_eq!(&[
-            0x03,
-            0xF0,
-            0xAC, 0xAC,
-        ], output.deref());
+        let output: Vec<u8, U8> = to_vec(&DataEnum::Kim(EnumStruct {
+            eight: 0xF0,
+            sixt: 0xACAC,
+        }))
+        .unwrap();
+        assert_eq!(&[0x03, 0xF0, 0xAC, 0xAC,], output.deref());
 
-        let output: Vec<u8, U8> = to_vec(&DataEnum::Chi{ a: 0x0F, b: 0xC7C7C7C7 }).unwrap();
-        assert_eq!(&[
-            0x04,
-            0x0F,
-            0xC7, 0xC7, 0xC7, 0xC7
-        ], output.deref());
+        let output: Vec<u8, U8> = to_vec(&DataEnum::Chi {
+            a: 0x0F,
+            b: 0xC7C7C7C7,
+        })
+        .unwrap();
+        assert_eq!(&[0x04, 0x0F, 0xC7, 0xC7, 0xC7, 0xC7], output.deref());
 
         let output: Vec<u8, U8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
-        assert_eq!(&[
-            0x05,
-            0x69, 0x69,
-            0x07
-        ], output.deref());
+        assert_eq!(&[0x05, 0x69, 0x69, 0x07], output.deref());
     }
 
     #[test]
     fn tuples() {
         let output: Vec<u8, U128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
-        assert_eq!(&[
-            1u8,
-            0x0A, 0x00, 0x00, 0x00,
-            0x06,
-            b'H', b'e', b'l', b'l', b'o', b'!'], output.deref())
+        assert_eq!(
+            &[1u8, 0x0A, 0x00, 0x00, 0x00, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
+            output.deref()
+        )
     }
 
     #[test]
@@ -803,13 +772,13 @@ mod test {
             a: VarintUsize(0x01),
             b: VarintUsize(0xFFFF_FFFF),
             c: VarintUsize(0x07CD),
-        }).unwrap();
+        })
+        .unwrap();
 
-        assert_eq!(&[
-            0x01,
-            0xFF, 0xFF, 0xFF, 0xFF, 0x0F,
-            0xCD, 0x0F,
-        ], output.deref());
+        assert_eq!(
+            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0xCD, 0x0F,],
+            output.deref()
+        );
     }
 
     #[derive(Serialize)]
@@ -825,14 +794,13 @@ mod test {
         let output: Vec<u8, U11> = to_vec(&RefStruct {
             bytes: &bytes,
             str_s: message,
-        }).unwrap();
+        })
+        .unwrap();
 
-        assert_eq!(&[
-            0x04,
-            0x01, 0x10, 0x02, 0x20,
-            0x05,
-            b'h', b'E', b'l', b'L', b'o',
-        ], output.deref());
+        assert_eq!(
+            &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
+            output.deref()
+        );
     }
 
     #[test]
@@ -846,17 +814,11 @@ mod test {
         let mut input: Vec<u8, U4> = Vec::new();
         input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
         let output: Vec<u8, U5> = to_vec(&input).unwrap();
-        assert_eq!(&[
-            0x04,
-            0x01, 0x02, 0x03, 0x04
-        ], output.deref());
+        assert_eq!(&[0x04, 0x01, 0x02, 0x03, 0x04], output.deref());
 
         let mut input: String<U8> = String::new();
         write!(&mut input, "helLO!").unwrap();
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
-        assert_eq!(&[
-            0x06,
-            b'h', b'e', b'l', b'L', b'O', b'!'
-        ], output.deref());
+        assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
     }
 }

@@ -5,8 +5,7 @@ use serde::{Serialize, Serializer};
 #[derive(Debug)]
 pub struct VarintUsize(pub usize);
 
-impl Serialize for VarintUsize
-{
+impl Serialize for VarintUsize {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -34,7 +33,7 @@ impl VarintUsize {
             if value != 0 {
                 out[i] |= 0x80;
             } else {
-                return &mut out[..=i]
+                return &mut out[..=i];
             }
         }
         debug_assert_eq!(value, 0);
@@ -61,4 +60,3 @@ impl VarintUsize {
         roundup_bits / BITS_PER_VARINT_BYTE
     }
 }
-
