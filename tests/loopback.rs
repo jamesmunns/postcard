@@ -203,3 +203,16 @@ where
     }
 }
 
+fn test_one_doesnt_work<'a, 'de, T>(data: T, ser_rep: &'a [u8])
+where
+    T: Serialize + Deserialize<'de> + Eq + PartialEq + Debug,
+{
+    let serialized: Vec<u8, U2048> = to_vec(&data).unwrap();
+    assert_eq!(serialized.len(), ser_rep.len());
+    assert_eq!(serialized.deref(), ser_rep);
+    {
+        let byte_slice: &[u8] = serialized.deref();
+        let deserialized: T = from_bytes(byte_slice).unwrap();
+        assert_eq!(data, deserialized);
+    }
+}
