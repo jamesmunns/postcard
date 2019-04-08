@@ -7,3 +7,4 @@ mod varint;
 
 pub use de::from_bytes;
 pub use ser::to_vec;
+pub use error::{Error, Result};
