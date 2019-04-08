@@ -128,13 +128,13 @@ where
     fn serialize_i16(self, v: i16) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     // Not particularly efficient but this is example code anyway. A more
@@ -142,41 +142,41 @@ where
     fn serialize_i64(self, v: i64) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.output.push(v).map_err(|_| Error::ToDo)
+        self.output.push(v).map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
         self.output
             .extend_from_slice(&v.to_le_bytes())
-            .map_err(|_| Error::ToDo)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f32(self, v: f32) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f32>()];
         LittleEndian::write_f32(&mut buf, v);
-        self.output.extend_from_slice(&buf).map_err(|_| Error::ToDo)
+        self.output.extend_from_slice(&buf).map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f64>()];
         LittleEndian::write_f64(&mut buf, v);
-        self.output.extend_from_slice(&buf).map_err(|_| Error::ToDo)
+        self.output.extend_from_slice(&buf).map_err(|_| Error::SerializeBufferFull)
     }
 
     // Serialize a char as a single-character string. Other formats may
@@ -194,7 +194,7 @@ where
         VarintUsize(v.len()).serialize(&mut *self)?;
         self.output
             .extend_from_slice(v.as_bytes())
-            .map_err(|_| Error::ToDo)?;
+            .map_err(|_| Error::SerializeBufferFull)?;
         Ok(())
     }
 
@@ -202,7 +202,7 @@ where
     // string here. Binary formats will typically represent byte arrays more
     // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        self.output.extend_from_slice(v).map_err(|_| Error::ToDo)
+        self.output.extend_from_slice(v).map_err(|_| Error::SerializeBufferFull)
     }
 
     // An absent optional is represented as the JSON `null`.
@@ -288,7 +288,7 @@ where
     // explicitly in the serialized form. Some serializers may only be able to
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        VarintUsize(len.ok_or(Error::ToDo)?).serialize(&mut *self)?;
+        VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?).serialize(&mut *self)?;
         Ok(Self::SerializeSeq { de: self })
     }
 

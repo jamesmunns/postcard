@@ -51,7 +51,7 @@ impl<'de> Deserializer<'de> {
             self.input = b;
             Ok(a)
         } else {
-            Err(Error::ToDo)
+            Err(Error::DeserializeUnexpectedEnd)
         }
     }
 
@@ -60,7 +60,7 @@ impl<'de> Deserializer<'de> {
     fn try_take_varint(&mut self) -> Result<usize> {
         // println!("{:?}", self.input);
         for i in 0..VarintUsize::varint_usize_max() {
-            let val = self.input.get(i).ok_or(Error::ToDo)?;
+            let val = self.input.get(i).ok_or(Error::DeserializeUnexpectedEnd)?;
             if (val & 0x80) == 0 {
                 let (a, b) = self.input.split_at(i + 1);
                 self.input = b;
@@ -73,7 +73,7 @@ impl<'de> Deserializer<'de> {
             }
         }
 
-        Err(Error::ToDo)
+        Err(Error::DeserializeBadVarint)
     }
 }
 
@@ -113,7 +113,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         // We wont ever support this.
-        Err(Error::ToDo)
+        Err(Error::WontImplement)
     }
 
     // Uses the `parse_bool` parsing function defined above to read the JSON
@@ -137,7 +137,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let val = match self.try_take_n(1)?[0] {
             0 => false,
             1 => true,
-            _ => return Err(Error::ToDo),
+            _ => return Err(Error::DeserializeBadBool),
         };
         visitor.visit_bool(val)
     }
@@ -242,7 +242,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let bytes = self.try_take_n(4)?;
         buf.copy_from_slice(bytes);
         let integer = u32::from_le_bytes(buf);
-        visitor.visit_char(core::char::from_u32(integer).ok_or(Error::ToDo)?)
+        visitor.visit_char(core::char::from_u32(integer).ok_or(Error::DeserializeBadChar)?)
     }
 
     // Refer to the "Understanding deserializer lifetimes" page for information
@@ -253,7 +253,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     {
         let sz = self.try_take_varint()?;
         let bytes: &'de [u8] = self.try_take_n(sz)?;
-        let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::ToDo)?;
+        let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
         visitor.visit_borrowed_str(str_sl)
     }
@@ -300,7 +300,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         match self.try_take_n(1)?[0] {
             0 => visitor.visit_none(),
             1 => visitor.visit_some(self),
-            _ => return Err(Error::ToDo),
+            _ => return Err(Error::DeserializeBadOption),
         }
     }
 
@@ -455,7 +455,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         // Will not support
-        Err(Error::ToDo)
+        Err(Error::WontImplement)
     }
 }
 
@@ -490,7 +490,7 @@ impl<'de, 'a> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de> {
     fn variant_seed<V: DeserializeSeed<'de>>(self, seed: V) -> Result<(V::Value, Self)> {
         let varint = self.try_take_varint()?;
         if varint > 0xFFFF_FFFF {
-            return Err(Error::ToDo);
+            return Err(Error::DeserializeBadEnum);
         }
         let v = DeserializeSeed::deserialize(seed, (varint as u32).into_deserializer())?;
         Ok((v, self))
