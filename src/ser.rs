@@ -1,15 +1,53 @@
 use crate::varint::VarintUsize;
 use serde::{ser, Serialize};
-
 use crate::error::{Error, Result};
 use byteorder::{ByteOrder, LittleEndian};
 use heapless::{ArrayLength, Vec};
+use core::marker::PhantomData;
 
-pub struct Serializer<B>
+pub struct Serializer<B, F>
+where
+    B: ArrayLength<u8>,
+    F: SerFlavor<B>
+{
+    output: F,
+    _pd: PhantomData<B>
+}
+
+pub trait SerFlavor<B: ArrayLength<u8>> {
+    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()>;
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8>;
+    fn release(self) -> Vec<u8, B>;
+}
+
+pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
+
+impl<'a, B> SerFlavor<B> for Vanilla<B>
 where
     B: ArrayLength<u8>,
 {
-    output: Vec<u8, B>,
+    #[inline(always)]
+    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+        self.0.extend_from_slice(data)
+    }
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
+        self.0.push(data)
+    }
+
+    fn release(self) -> Vec<u8, B> {
+        self.0
+    }
+}
+
+
+pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
+where
+    T: Serialize + ?Sized,
+    B: ArrayLength<u8>,
+{
+    to_vec_flavor(value, Vanilla(Vec::new()))
 }
 
 /// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
@@ -31,19 +69,24 @@ where
 /// // otherwise, bytes/UTF-8 is serialized as-is
 /// assert_eq!(input.as_bytes(), &output.deref()[1..]);
 /// ```
-pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
+pub fn to_vec_flavor<B, T, F>(value: &T, flavor: F) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
-    let mut serializer = Serializer { output: Vec::new() };
+    let mut serializer = Serializer {
+        output: flavor,
+        _pd: PhantomData,
+    };
     value.serialize(&mut serializer)?;
-    Ok(serializer.output)
+    Ok(serializer.output.release())
 }
 
-impl<'a, B> ser::Serializer for &'a mut Serializer<B>
+impl<'a, B, F> ser::Serializer for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     // The output type produced by this `Serializer` during successful
     // serialization. Most serializers that produce text or binary output should
@@ -84,57 +127,51 @@ where
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     // Not particularly efficient but this is example code anyway. A more
     // performant approach would be to use the `itoa` crate.
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.output.push(v).map_err(|_| Error::SerializeBufferFull)
+        self.output.try_push(v).map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
-        self.output
-            .extend_from_slice(&v.to_le_bytes())
+        self.output.try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f32(self, v: f32) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f32>()];
         LittleEndian::write_f32(&mut buf, v);
-        self.output.extend_from_slice(&buf).map_err(|_| Error::SerializeBufferFull)
+        self.output.try_extend(&buf).map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f64>()];
         LittleEndian::write_f64(&mut buf, v);
-        self.output.extend_from_slice(&buf).map_err(|_| Error::SerializeBufferFull)
+        self.output.try_extend(&buf).map_err(|_| Error::SerializeBufferFull)
     }
 
     // Serialize a char as a single-character string. Other formats may
@@ -150,8 +187,7 @@ where
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
         VarintUsize(v.len()).serialize(&mut *self)?;
-        self.output
-            .extend_from_slice(v.as_bytes())
+        self.output.try_extend(v.as_bytes())
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(())
     }
@@ -160,7 +196,7 @@ where
     // string here. Binary formats will typically represent byte arrays more
     // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        self.output.extend_from_slice(v).map_err(|_| Error::SerializeBufferFull)
+        self.output.try_extend(v).map_err(|_| Error::SerializeBufferFull)
     }
 
     // An absent optional is represented as the JSON `null`.
@@ -324,9 +360,10 @@ where
 //
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
-impl<'a, B> ser::SerializeSeq for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeSeq for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
@@ -348,9 +385,10 @@ where
 }
 
 // Same thing but for tuples.
-impl<'a, B> ser::SerializeTuple for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeTuple for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
@@ -368,9 +406,10 @@ where
 }
 
 // Same thing but for tuple structs.
-impl<'a, B> ser::SerializeTupleStruct for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeTupleStruct for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
@@ -396,9 +435,10 @@ where
 //
 // So the `end` method in this impl is responsible for closing both the `]` and
 // the `}`.
-impl<'a, B> ser::SerializeTupleVariant for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeTupleVariant for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
@@ -423,9 +463,10 @@ where
 // `serialize_entry` method allows serializers to optimize for the case where
 // key and value are both available simultaneously. In JSON it doesn't make a
 // difference so the default behavior for `serialize_entry` is fine.
-impl<'a, B> ser::SerializeMap for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeMap for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
@@ -470,9 +511,10 @@ where
 
 // Structs are like maps in which the keys are constrained to be compile-time
 // constant strings.
-impl<'a, B> ser::SerializeStruct for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeStruct for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
@@ -491,9 +533,10 @@ where
 
 // Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 // closing both of the curly braces opened by `serialize_struct_variant`.
-impl<'a, B> ser::SerializeStructVariant for &'a mut Serializer<B>
+impl<'a, B, F> ser::SerializeStructVariant for &'a mut Serializer<B, F>
 where
     B: ArrayLength<u8>,
+    F: SerFlavor<B>,
 {
     type Ok = ();
     type Error = Error;
