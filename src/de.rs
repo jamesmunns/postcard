@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::varint::VarintUsize;
 use byteorder::{ByteOrder, LittleEndian};
+use cobs::decode_in_place;
 
 use serde::de::{
     self,
@@ -10,6 +11,14 @@ use serde::de::{
     // EnumAccess, MapAccess, VariantAccess
 };
 use serde::Deserialize;
+
+pub fn from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<T>
+where
+    T: Deserialize<'a>,
+{
+    let sz = decode_in_place(s).map_err(|_| Error::DeserializeBadEncoding)?;
+    from_bytes::<T>(&s[..sz])
+}
 
 pub struct Deserializer<'de> {
     // This string starts with the input data and characters are truncated off
@@ -887,6 +896,24 @@ mod test {
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
         let out: String<U8> = from_bytes(output.deref()).unwrap();
+        assert_eq!(input, out);
+    }
+
+    #[test]
+    fn cobs_test() {
+        let message = "hElLo";
+        let bytes = [0x01, 0x00, 0x02, 0x20];
+        let input = RefStruct {
+            bytes: &bytes,
+            str_s: message,
+        };
+
+        let output: Vec<u8, U11> = to_vec(&input).unwrap();
+
+        let mut encode_buf = [0u8; 32];
+        let sz = cobs::encode(output.deref(), &mut encode_buf);
+        let out = from_bytes_cobs::<RefStruct>(&mut encode_buf[..sz]).unwrap();
+
         assert_eq!(input, out);
     }
 }
