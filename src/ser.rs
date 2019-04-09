@@ -12,48 +12,6 @@ where
     output: Vec<u8, B>,
 }
 
-pub struct SerializeStruct<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
-pub struct SerializeSeq<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
-pub struct SerializeTuple<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
-pub struct SerializeStructVariant<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
-pub struct SerializeTupleStruct<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
-pub struct SerializeTupleVariant<'a, B>
-where
-    B: ArrayLength<u8>,
-{
-    de: &'a mut Serializer<B>,
-}
-
 /// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
 /// enough space to hold the entire serialized message, or an error will be returned.
 ///
@@ -102,13 +60,13 @@ where
     // compound data structures like sequences and maps. In this case no
     // additional state is required beyond what is already stored in the
     // Serializer struct.
-    type SerializeSeq = SerializeSeq<'a, B>;
-    type SerializeTuple = SerializeTuple<'a, B>;
-    type SerializeTupleStruct = SerializeTupleStruct<'a, B>;
-    type SerializeTupleVariant = SerializeTupleVariant<'a, B>;
+    type SerializeSeq = Self;
+    type SerializeTuple = Self;
+    type SerializeTupleStruct = Self;
+    type SerializeTupleVariant = Self;
     type SerializeMap = Self;
-    type SerializeStruct = SerializeStruct<'a, B>;
-    type SerializeStructVariant = SerializeStructVariant<'a, B>;
+    type SerializeStruct = Self;
+    type SerializeStructVariant = Self;
 
     // Here we go with the simple methods. The following 12 methods receive one
     // of the primitive types of the data model and map it to JSON by appending
@@ -184,7 +142,7 @@ where
     fn serialize_char(self, v: char) -> Result<()> {
         let mut buf = [0u8; 4];
         let strsl = v.encode_utf8(&mut buf);
-        strsl.serialize(&mut *self)
+        strsl.serialize(self)
     }
 
     // This only works for strings that don't require escape sequences but you
@@ -220,7 +178,7 @@ where
         T: ?Sized + Serialize,
     {
         self.serialize_u8(1)?;
-        value.serialize(&mut *self)
+        value.serialize(self)
     }
 
     // In Serde, unit means an anonymous value containing no data. Map this to
@@ -246,7 +204,7 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<()> {
-        VarintUsize(variant_index as usize).serialize(&mut *self)
+        VarintUsize(variant_index as usize).serialize(self)
     }
 
     // As is done here, serializers are encouraged to treat newtype structs as
@@ -274,7 +232,7 @@ where
         T: ?Sized + Serialize,
     {
         VarintUsize(variant_index as usize).serialize(&mut *self)?;
-        value.serialize(&mut *self)
+        value.serialize(self)
     }
 
     // Now we get to the serialization of compound types.
@@ -289,7 +247,7 @@ where
     // support sequences for which the length is known up front.
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?).serialize(&mut *self)?;
-        Ok(Self::SerializeSeq { de: self })
+        Ok(self)
     }
 
     // Tuples look just like sequences in JSON. Some formats may be able to
@@ -297,7 +255,7 @@ where
     // means that the corresponding `Deserialize implementation will know the
     // length without needing to look at the serialized data.
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
-        Ok(Self::SerializeTuple { de: self })
+        Ok(self)
     }
 
     // Tuple structs look just like sequences in JSON.
@@ -306,7 +264,7 @@ where
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        Ok(SerializeTupleStruct { de: self })
+        Ok(self)
     }
 
     // Tuple variants are represented in JSON as `{ NAME: [DATA...] }`. Again
@@ -319,7 +277,7 @@ where
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
         VarintUsize(variant_index as usize).serialize(&mut *self)?;
-        Ok(SerializeTupleVariant { de: self })
+        Ok(self)
     }
 
     // Maps are represented in JSON as `{ K: V, K: V, ... }`.
@@ -335,7 +293,7 @@ where
     // Deserialize implementation is required to know what the keys are without
     // looking at the serialized data.
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        Ok(Self::SerializeStruct { de: self })
+        Ok(self)
     }
 
     // Struct variants are represented in JSON as `{ NAME: { K: V, ... } }`.
@@ -348,7 +306,7 @@ where
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
         VarintUsize(variant_index as usize).serialize(&mut *self)?;
-        Ok(Self::SerializeStructVariant { de: self })
+        Ok(self)
     }
 
     fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
@@ -366,7 +324,7 @@ where
 //
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
-impl<'a, B> ser::SerializeSeq for SerializeSeq<'a, B>
+impl<'a, B> ser::SerializeSeq for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -380,7 +338,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     // Close the sequence.
@@ -390,7 +348,7 @@ where
 }
 
 // Same thing but for tuples.
-impl<'a, B> ser::SerializeTuple for SerializeTuple<'a, B>
+impl<'a, B> ser::SerializeTuple for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -401,7 +359,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
@@ -410,7 +368,7 @@ where
 }
 
 // Same thing but for tuple structs.
-impl<'a, B> ser::SerializeTupleStruct for SerializeTupleStruct<'a, B>
+impl<'a, B> ser::SerializeTupleStruct for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -421,7 +379,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
@@ -438,7 +396,7 @@ where
 //
 // So the `end` method in this impl is responsible for closing both the `]` and
 // the `}`.
-impl<'a, B> ser::SerializeTupleVariant for SerializeTupleVariant<'a, B>
+impl<'a, B> ser::SerializeTupleVariant for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -449,7 +407,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
@@ -512,7 +470,7 @@ where
 
 // Structs are like maps in which the keys are constrained to be compile-time
 // constant strings.
-impl<'a, B> ser::SerializeStruct for SerializeStruct<'a, B>
+impl<'a, B> ser::SerializeStruct for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -523,7 +481,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
@@ -533,7 +491,7 @@ where
 
 // Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 // closing both of the curly braces opened by `serialize_struct_variant`.
-impl<'a, B> ser::SerializeStructVariant for SerializeStructVariant<'a, B>
+impl<'a, B> ser::SerializeStructVariant for &'a mut Serializer<B>
 where
     B: ArrayLength<u8>,
 {
@@ -544,7 +502,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut *self.de)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
