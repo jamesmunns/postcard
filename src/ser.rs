@@ -27,6 +27,12 @@ pub trait SerFlavor<B: ArrayLength<u8>> {
 
 pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
 
+impl<B: ArrayLength<u8>> Default for Vanilla<B> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
 impl<'a, B> SerFlavor<B> for Vanilla<B>
 where
     B: ArrayLength<u8>,
@@ -52,6 +58,20 @@ where
 {
     vec: Vec<u8, B>,
     cobs: EncoderState,
+}
+
+impl<B: ArrayLength<u8>> Default for Cobs<B> {
+    fn default() -> Self {
+        let mut v = Vec::new();
+
+        // I mean, don't make an array with zero elements
+        v.push(0).unwrap();
+
+        Self {
+            vec: v,
+            cobs: EncoderState::default()
+        }
+    }
 }
 
 impl<'a, B> SerFlavor<B> for Cobs<B>
@@ -89,17 +109,9 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    let mut x = Vec::new();
-
-    // I mean, don't make an array with zero elements
-    x.push(0).unwrap();
-
     to_vec_flavor(
         value,
-        Cobs {
-            vec: x,
-            cobs: EncoderState::default(),
-        },
+        Cobs::default(),
     )
 }
 
@@ -108,7 +120,7 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_vec_flavor(value, Vanilla(Vec::new()))
+    to_vec_flavor(value, Vanilla::default())
 }
 
 /// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
