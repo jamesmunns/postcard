@@ -26,3 +26,4 @@ default-features = false
 [dependencies.cobs]
 git = "https://github.com/ferrous-systems/cobs.rs"
 rev = "running-enc-dec"
+default-features = false
