@@ -285,7 +285,6 @@ where
     // string here. Binary formats will typically represent byte arrays more
     // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        std::println!("{:?}", v);
         self.output
             .try_extend(v)
             .map_err(|_| Error::SerializeBufferFull)
