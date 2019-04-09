@@ -1,23 +1,28 @@
-use crate::varint::VarintUsize;
-use serde::{ser, Serialize};
 use crate::error::{Error, Result};
+use crate::varint::VarintUsize;
 use byteorder::{ByteOrder, LittleEndian};
-use heapless::{ArrayLength, Vec};
+use cobs::{EncoderState, PushResult};
 use core::marker::PhantomData;
+use heapless::{ArrayLength, Vec};
+use serde::{ser, Serialize};
 
 pub struct Serializer<B, F>
 where
     B: ArrayLength<u8>,
-    F: SerFlavor<B>
+    F: SerFlavor<B>,
 {
     output: F,
-    _pd: PhantomData<B>
+    _pd: PhantomData<B>,
 }
 
 pub trait SerFlavor<B: ArrayLength<u8>> {
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()>;
+    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+        data.iter()
+            .try_for_each(|d| self.try_push(*d))
+            .map_err(|_| ())
+    }
     fn try_push(&mut self, data: u8) -> core::result::Result<(), u8>;
-    fn release(self) -> Vec<u8, B>;
+    fn release(self) -> core::result::Result<Vec<u8, B>, ()>;
 }
 
 pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
@@ -36,11 +41,67 @@ where
         self.0.push(data)
     }
 
-    fn release(self) -> Vec<u8, B> {
-        self.0
+    fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
+        Ok(self.0)
     }
 }
 
+pub struct Cobs<B>
+where
+    B: ArrayLength<u8>,
+{
+    vec: Vec<u8, B>,
+    cobs: EncoderState,
+}
+
+impl<'a, B> SerFlavor<B> for Cobs<B>
+where
+    B: ArrayLength<u8>,
+{
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
+        use PushResult::*;
+        match self.cobs.push(data) {
+            AddSingle(n) => self.vec.push(n),
+            ModifyFromStartAndSkip((idx, mval)) => {
+                self.vec[idx] = mval;
+                self.vec.push(0)?;
+                Ok(())
+            }
+            ModifyFromStartAndPushAndSkip((idx, mval, nval)) => {
+                self.vec[idx] = mval;
+                self.vec.push(nval)?;
+                self.vec.push(0)
+            }
+        }
+    }
+
+    fn release(mut self) -> core::result::Result<Vec<u8, B>, ()> {
+        let (idx, mval) = self.cobs.finalize();
+        self.vec[idx] = mval;
+        self.vec.push(0).map_err(|_| ())?;
+        Ok(self.vec)
+    }
+}
+
+pub fn to_vec_cobs<B, T>(value: &T) -> Result<Vec<u8, B>>
+where
+    T: Serialize + ?Sized,
+    B: ArrayLength<u8>,
+{
+    let mut x = Vec::new();
+
+    // I mean, don't make an array with zero elements
+    x.push(0).unwrap();
+
+    to_vec_flavor(
+        value,
+        Cobs {
+            vec: x,
+            cobs: EncoderState::default(),
+        },
+    )
+}
 
 pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
@@ -80,7 +141,10 @@ where
         _pd: PhantomData,
     };
     value.serialize(&mut serializer)?;
-    Ok(serializer.output.release())
+    serializer
+        .output
+        .release()
+        .map_err(|_| Error::SerializeBufferFull)
 }
 
 impl<'a, B, F> ser::Serializer for &'a mut Serializer<B, F>
@@ -127,51 +191,63 @@ where
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     // Not particularly efficient but this is example code anyway. A more
     // performant approach would be to use the `itoa` crate.
     fn serialize_i64(self, v: i64) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u8(self, v: u8) -> Result<()> {
-        self.output.try_push(v).map_err(|_| Error::SerializeBufferFull)
+        self.output
+            .try_push(v)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u16(self, v: u16) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
-        self.output.try_extend(&v.to_le_bytes())
+        self.output
+            .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f32(self, v: f32) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f32>()];
         LittleEndian::write_f32(&mut buf, v);
-        self.output.try_extend(&buf).map_err(|_| Error::SerializeBufferFull)
+        self.output
+            .try_extend(&buf)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
         let mut buf = [0u8; core::mem::size_of::<f64>()];
         LittleEndian::write_f64(&mut buf, v);
-        self.output.try_extend(&buf).map_err(|_| Error::SerializeBufferFull)
+        self.output
+            .try_extend(&buf)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     // Serialize a char as a single-character string. Other formats may
@@ -187,7 +263,8 @@ where
     // contains a '"' character.
     fn serialize_str(self, v: &str) -> Result<()> {
         VarintUsize(v.len()).serialize(&mut *self)?;
-        self.output.try_extend(v.as_bytes())
+        self.output
+            .try_extend(v.as_bytes())
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(())
     }
@@ -196,7 +273,10 @@ where
     // string here. Binary formats will typically represent byte arrays more
     // compactly.
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
-        self.output.try_extend(v).map_err(|_| Error::SerializeBufferFull)
+        std::println!("{:?}", v);
+        self.output
+            .try_extend(v)
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     // An absent optional is represented as the JSON `null`.
@@ -558,8 +638,9 @@ where
 mod test {
     use super::*;
     use core::fmt::Write;
-    use core::ops::Deref;
+    use core::ops::{Deref, DerefMut};
     use heapless::{consts::*, String};
+    use serde::Deserialize;
 
     #[test]
     fn ser_u8() {
@@ -782,7 +863,7 @@ mod test {
         );
     }
 
-    #[derive(Serialize)]
+    #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
     struct RefStruct<'a> {
         bytes: &'a [u8],
         str_s: &'a str,
@@ -821,5 +902,25 @@ mod test {
         write!(&mut input, "helLO!").unwrap();
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
+    }
+
+    #[test]
+    fn cobs_test() {
+        let message = "hElLo";
+        let bytes = [0x01, 0x00, 0x02, 0x20];
+        let input = RefStruct {
+            bytes: &bytes,
+            str_s: message,
+        };
+
+        let mut output: Vec<u8, U13> = to_vec_cobs(&input).unwrap();
+
+        println!("{:?}", output);
+
+        let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
+
+        let x = crate::from_bytes::<RefStruct>(&output.deref_mut()[..sz]).unwrap();
+
+        assert_eq!(input, x);
     }
 }
