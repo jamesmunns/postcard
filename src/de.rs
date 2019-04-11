@@ -20,6 +20,15 @@ where
     from_bytes::<T>(&s[..sz])
 }
 
+pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
+where
+    T: Deserialize<'a>,
+{
+    let sz = decode_in_place(s).map_err(|_| Error::DeserializeBadEncoding)?;
+    let (used, unused) = s.split_at_mut(sz);
+    Ok((from_bytes::<T>(used)?, unused))
+}
+
 pub struct Deserializer<'de> {
     // This string starts with the input data and characters are truncated off
     // the beginning as data is parsed.
@@ -48,6 +57,20 @@ where
     let mut deserializer = Deserializer::from_bytes(s);
     let t = T::deserialize(&mut deserializer)?;
     Ok(t)
+}
+
+// By convention, the public API of a Serde deserializer is one or more
+// `from_xyz` methods such as `from_str`, `from_bytes`, or `from_reader`
+// depending on what Rust types the deserializer is able to consume as input.
+//
+// This basic deserializer supports only `from_str`.
+pub fn take_from_bytes<'a, T>(s: &'a [u8]) -> Result<(T, &'a [u8])>
+where
+    T: Deserialize<'a>,
+{
+    let mut deserializer = Deserializer::from_bytes(s);
+    let t = T::deserialize(&mut deserializer)?;
+    Ok((t, deserializer.input))
 }
 
 // SERDE IS NOT A PARSING LIBRARY. This impl block defines a few basic parsing
@@ -403,7 +426,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         // } else {
         //     Err(Error::ExpectedMap)
         // }
-        unimplemented!()
+        Err(Error::NotYetImplemented)
     }
 
     // Structs look just like maps in JSON.
@@ -444,8 +467,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        // self.deserialize_str(visitor)
-        unimplemented!()
+        // Will not support
+        Err(Error::WontImplement)
     }
 
     // Like `deserialize_any` but indicates to the `Deserializer` that it makes

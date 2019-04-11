@@ -5,6 +5,11 @@ mod error;
 mod ser;
 mod varint;
 
-pub use de::{from_bytes, from_bytes_cobs};
+pub use de::{
+    from_bytes,
+    from_bytes_cobs,
+    take_from_bytes,
+    take_from_bytes_cobs,
+};
 pub use error::{Error, Result};
 pub use ser::{to_vec, to_vec_cobs};

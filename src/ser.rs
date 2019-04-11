@@ -411,7 +411,7 @@ where
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
         // self.output += "{";
         // Ok(self)
-        unimplemented!()
+        Err(Error::NotYetImplemented)
     }
 
     // Structs look just like maps in JSON. In particular, JSON requires that we
@@ -578,7 +578,7 @@ where
         //     self.output += ",";
         // }
         // key.serialize(&mut **self)
-        unimplemented!()
+        Err(Error::NotYetImplemented)
     }
 
     // It doesn't make a difference whether the colon is printed at the end of
@@ -590,13 +590,14 @@ where
     {
         // self.output += ":";
         // value.serialize(&mut **self)
-        unimplemented!()
+        Err(Error::NotYetImplemented)
+
     }
 
     fn end(self) -> Result<()> {
         // self.output += "}";
         // Ok(())
-        unimplemented!()
+        Err(Error::NotYetImplemented)
     }
 }
 

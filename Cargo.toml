@@ -24,6 +24,6 @@ version = "1.3"
 default-features = false
 
 [dependencies.cobs]
-git = "https://github.com/ferrous-systems/cobs.rs"
-rev = "running-enc-dec"
+package = "postcard-cobs"
+version = "0.1.5-pre"
 default-features = false
