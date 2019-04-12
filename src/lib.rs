@@ -16,4 +16,5 @@ pub use ser::{
     to_vec,
     to_vec_cobs,
     to_slice,
+    to_slice_cobs,
 };

@@ -1,9 +1,11 @@
+use core::ops::Index;
 use crate::error::{Error, Result};
 use crate::varint::VarintUsize;
 use byteorder::{ByteOrder, LittleEndian};
 use cobs::{EncoderState, PushResult};
 use heapless::{ArrayLength, Vec};
 use serde::{ser, Serialize};
+use core::ops::IndexMut;
 
 pub struct Serializer<F>
 where
@@ -20,7 +22,7 @@ pub trait SerFlavor {
             .try_for_each(|d| self.try_push(*d))
             .map_err(|_| ())
     }
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8>;
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
     fn release(self) -> core::result::Result<Self::Output, ()>;
 }
 
@@ -28,6 +30,8 @@ pub struct Slice<'a> {
     buf: &'a mut [u8],
     idx: usize,
 }
+
+
 
 impl<'a> SerFlavor for Slice<'a> {
     type Output = Self;
@@ -49,9 +53,9 @@ impl<'a> SerFlavor for Slice<'a> {
     }
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         if self.idx >= self.buf.len() {
-            return Err(0);
+            return Err(());
         }
 
         self.buf[self.idx] = data;
@@ -66,6 +70,34 @@ impl<'a> SerFlavor for Slice<'a> {
 }
 
 pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
+
+impl<B: ArrayLength<u8>> Index<usize> for Vanilla<B> {
+    type Output = u8;
+
+    fn index(&self, idx: usize) -> &u8 {
+        &self.0[idx]
+    }
+}
+
+impl<B: ArrayLength<u8>> IndexMut<usize> for Vanilla<B> {
+    fn index_mut(&mut self, idx: usize) -> &mut u8 {
+        &mut self.0[idx]
+    }
+}
+
+impl<'a> Index<usize> for Slice<'a> {
+    type Output = u8;
+
+    fn index(&self, idx: usize) -> &u8 {
+        &self.buf[idx]
+    }
+}
+
+impl<'a> IndexMut<usize> for Slice<'a> {
+    fn index_mut(&mut self, idx: usize) -> &mut u8 {
+        &mut self.buf[idx]
+    }
+}
 
 impl<B: ArrayLength<u8>> Default for Vanilla<B> {
     fn default() -> Self {
@@ -85,8 +117,8 @@ where
     }
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
-        self.0.push(data)
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+        self.0.push(data).map_err(|_| ())
     }
 
     fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
@@ -96,46 +128,44 @@ where
 
 pub struct Cobs<B>
 where
-    B: ArrayLength<u8>,
+    B: SerFlavor + IndexMut<usize, Output = u8>,
 {
-    vec: Vec<u8, B>,
+    vec: B,
     cobs: EncoderState,
 }
 
-impl<B: ArrayLength<u8>> Default for Cobs<B> {
-    fn default() -> Self {
-        let mut v: Vec<u8, B> = Vec::new();
-
-        // I mean, don't make an array with zero elements
-        v.push(0).unwrap();
-
+impl<B> Cobs<B>
+where
+    B: SerFlavor + IndexMut<usize, Output = u8>,
+{
+    fn new(mut bee: B) -> Self {
+        bee.try_push(0).unwrap();
         Self {
-            vec: v,
-            cobs: EncoderState::default()
+            vec: bee,
+            cobs: EncoderState::default(),
         }
     }
 }
 
 impl<'a, B> SerFlavor for Cobs<B>
 where
-    B: ArrayLength<u8>,
+    B: SerFlavor + IndexMut<usize, Output = u8>,
 {
-    type Output = Vec<u8, B>;
+    type Output = <B as SerFlavor>::Output;
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         use PushResult::*;
         match self.cobs.push(data) {
-            AddSingle(n) => self.vec.push(n),
+            AddSingle(n) => self.vec.try_push(n),
             ModifyFromStartAndSkip((idx, mval)) => {
                 self.vec[idx] = mval;
-                self.vec.push(0)?;
-                Ok(())
+                self.vec.try_push(0)
             }
             ModifyFromStartAndPushAndSkip((idx, mval, nval)) => {
                 self.vec[idx] = mval;
-                self.vec.push(nval)?;
-                self.vec.push(0)
+                self.vec.try_push(nval)?;
+                self.vec.try_push(0)
             }
         }
     }
@@ -143,9 +173,21 @@ where
     fn release(mut self) -> core::result::Result<Self::Output, ()> {
         let (idx, mval) = self.cobs.finalize();
         self.vec[idx] = mval;
-        self.vec.push(0).map_err(|_| ())?;
-        Ok(self.vec)
+        self.vec.try_push(0)?;
+        self.vec.release()
     }
+}
+
+pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
+where
+    T: Serialize + ?Sized,
+{
+    let res = to_flavor::<T, Cobs<Slice<'a>>, Slice<'a>>(
+        value,
+        Cobs::new(Slice { buf, idx: 0 }),
+    )?;
+
+    Ok(res.buf.split_at_mut(res.idx))
 }
 
 pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
@@ -165,9 +207,9 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_flavor::<T, Cobs<B>, Vec<u8, B>>(
+    to_flavor::<T, Cobs<Vanilla<_>>, Vec<u8, B>>(
         value,
-        Cobs::default(),
+        Cobs::new(Vanilla::default()),
     )
 }
 
@@ -179,25 +221,7 @@ where
     to_flavor::<T, Vanilla<B>, Vec<u8, B>>(value, Vanilla::default())
 }
 
-/// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
-/// enough space to hold the entire serialized message, or an error will be returned.
-///
-/// ## Example
-///
-/// ```rust
-/// use postcard::to_vec;
-/// use heapless::{Vec, consts::*};
-/// use core::ops::Deref;
-///
-/// let input: &str = "hello, postcard!";
-/// let output: Vec<u8, U17> = to_vec(input).unwrap();
-///
-/// // Length isOutput serialized as a [`postcard::VarintUsize`]
-/// assert_eq!(0x10, output.deref()[0]);
-///
-/// // otherwise, bytes/UTF-8 is serialized as-is
-/// assert_eq!(input.as_bytes(), &output.deref()[1..]);
-/// ```
+
 fn to_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
 where
     T: Serialize + ?Sized,
