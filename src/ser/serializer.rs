@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
-use crate::ser::flavor::SerFlavor;
+use crate::ser::flavors::SerFlavor;
 use crate::varint::VarintUsize;
 
 /// A `serde` compatible serializer, generic over "Flavors" of serializing plugins.

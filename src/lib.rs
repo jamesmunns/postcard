@@ -1,5 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 
+
+
+
 mod de;
 mod error;
 mod ser;
@@ -13,12 +16,7 @@ pub use de::{
 };
 pub use error::{Error, Result};
 pub use ser::{
-    flavor::{
-        SerFlavor,
-        HVec,
-        Cobs,
-        Slice,
-    },
+    flavors,
     serializer::{
         Serializer,
     },

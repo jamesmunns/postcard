@@ -3,7 +3,7 @@ use serde::Serialize;
 
 use crate::error::{Error, Result};
 
-use crate::ser::flavor::{
+use crate::ser::flavors::{
     Cobs,
     HVec,
     Slice,
@@ -15,7 +15,7 @@ use crate::ser::serializer::{
 };
 
 pub(crate) mod serializer;
-pub(crate) mod flavor;
+pub mod flavors;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel `0x00` byte is included
@@ -32,29 +32,27 @@ pub(crate) mod flavor;
 /// use postcard::to_slice_cobs;
 /// let mut buf = [0u8; 32];
 ///
-/// let (used, _unused) = to_slice_cobs(&false, &mut buf).unwrap();
+/// let used = to_slice_cobs(&false, &mut buf).unwrap();
 /// assert_eq!(used, &[0x01, 0x01, 0x00]);
 ///
-/// let (used, _unused) = to_slice_cobs("1", &mut buf).unwrap();
+/// let used = to_slice_cobs("1", &mut buf).unwrap();
 /// assert_eq!(used, &[0x03, 0x01, b'1', 0x00]);
 ///
-/// let (used, _unused) = to_slice_cobs("Hi!", &mut buf).unwrap();
+/// let used = to_slice_cobs("Hi!", &mut buf).unwrap();
 /// assert_eq!(used, &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 ///
 /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let (used, unused) = to_slice_cobs(data, &mut buf).unwrap();
+/// let used = to_slice_cobs(data, &mut buf).unwrap();
 /// assert_eq!(used, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
-pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
+pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u8]>
 where
     T: Serialize + ?Sized,
 {
-    let res = serialize_with_flavor::<T, Cobs<Slice<'a>>, Slice<'a>>(
+    serialize_with_flavor::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
         value,
         Cobs::new(Slice { buf, idx: 0 }),
-    )?;
-
-    Ok(res.buf.split_at_mut(res.idx))
+    )
 }
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
@@ -71,31 +69,29 @@ where
 /// use postcard::to_slice;
 /// let mut buf = [0u8; 32];
 ///
-/// let (used, _unused) = to_slice(&true, &mut buf).unwrap();
+/// let used = to_slice(&true, &mut buf).unwrap();
 /// assert_eq!(used, &[0x01]);
 ///
-/// let (used, _unused) = to_slice("Hi!", &mut buf).unwrap();
+/// let used = to_slice("Hi!", &mut buf).unwrap();
 /// assert_eq!(used, &[0x03, b'H', b'i', b'!']);
 ///
 /// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
 /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let (used, unused) = to_slice(data, &mut buf).unwrap();
+/// let used = to_slice(data, &mut buf).unwrap();
 /// assert_eq!(used, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 ///
 /// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let (used, unused) = to_slice(data, &mut buf).unwrap();
+/// let used = to_slice(data, &mut buf).unwrap();
 /// assert_eq!(used, &[0x01, 0x00, 0x20, 0x30]);
 /// ```
-pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
+pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u8]>
 where
     T: Serialize + ?Sized
 {
-    let res = serialize_with_flavor::<T, Slice<'a>, Slice<'a>>(
+    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(
         value,
         Slice { buf, idx: 0 }
-    )?;
-
-    Ok(res.buf.split_at_mut(res.idx))
+    )
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -168,7 +164,10 @@ where
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
-
+// TODO: Note that Flavors are most useful when something is required
+// to operate over each byte. As a counterexample, adding a UDP header
+// around a datatype might not be the best use, as instead serialization
+// can be done first. Streaming compression might be a good choice.
 pub fn serialize_with_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
 where
     T: Serialize + ?Sized,
