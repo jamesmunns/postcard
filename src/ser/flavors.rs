@@ -292,6 +292,8 @@ impl<B> Cobs<B>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
 {
+    /// Create a new Cobs modifier Flavor. If there is insufficient space
+    /// to push the leading header byte, the method will return an Error
     pub fn try_new(mut bee: B) -> Result<Self> {
         bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
         Ok(Self {

@@ -6,11 +6,14 @@ use serde::de::{
     Visitor,
     // EnumAccess, MapAccess, VariantAccess
 };
-use serde::Deserialize;
 
 use crate::error::{Error, Result};
 use crate::varint::VarintUsize;
 
+/// A structure for deserializing a postcard message. For now, Deserializer does not
+/// implement the same Flavor interface as the serializer does, as messages are typically
+/// easier to deserialize in place. This may change in the future for consistency, or
+/// to support items that cannot be deserialized in-place, such as compressed message types
 pub struct Deserializer<'de> {
     // This string starts with the input data and characters are truncated off
     // the beginning as data is parsed.
@@ -18,18 +21,10 @@ pub struct Deserializer<'de> {
 }
 
 impl<'de> Deserializer<'de> {
+    /// Obtain a Deserializer from a slice of bytes
     pub fn from_bytes(input: &'de [u8]) -> Self {
         Deserializer { input }
     }
-}
-
-pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T>
-where
-    T: Deserialize<'a>,
-{
-    let mut deserializer = Deserializer::from_bytes(s);
-    let t = T::deserialize(&mut deserializer)?;
-    Ok(t)
 }
 
 impl<'de> Deserializer<'de> {

@@ -17,6 +17,8 @@ pub struct Serializer<F>
 where
     F: SerFlavor,
 {
+    /// This is the Flavor(s) that will be used to modify or store any bytes generated
+    /// by serialization
     pub output: F,
 }
 

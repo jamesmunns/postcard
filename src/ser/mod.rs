@@ -151,10 +151,32 @@ where
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
-// TODO: Note that Flavors are most useful when something is required
-// to operate over each byte. As a counterexample, adding a UDP header
-// around a datatype might not be the best use, as instead serialization
-// can be done first. Streaming compression might be a good choice.
+/// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
+///
+/// * `T`: This is the type that is being serialized
+/// * `F`: This is the Flavor (combination) that is used during serialization
+/// * `O`: This is the resulting storage type that is returned containing the serialized data
+///
+/// For more information about how Flavors work, please see the
+/// [`flavors` module documentation](./flavors/index.html).
+///
+/// ```rust
+/// use postcard::{
+///     serialize_with_flavor,
+///     flavors::{Cobs, Slice},
+/// };
+///
+/// let mut buf = [0u8; 32];
+///
+/// let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+/// let buffer = &mut [0u8; 32];
+/// let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+///     data,
+///     Cobs::try_new(Slice::new(buffer)).unwrap(),
+/// ).unwrap();
+///
+/// assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
+/// ```
 pub fn serialize_with_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
 where
     T: Serialize + ?Sized,
