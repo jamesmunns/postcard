@@ -13,8 +13,22 @@ pub use de::{
 };
 pub use error::{Error, Result};
 pub use ser::{
+    flavor::{
+        SerFlavor,
+        HVec,
+        Cobs,
+        Slice,
+    },
+    serializer::{
+        Serializer,
+    },
+
+    serialize_with_flavor,
     to_vec,
     to_vec_cobs,
     to_slice,
     to_slice_cobs,
+};
+pub use de::{
+    Deserializer,
 };

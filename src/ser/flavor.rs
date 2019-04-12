@@ -20,8 +20,6 @@ pub struct Slice<'a> {
     pub(crate) idx: usize,
 }
 
-
-
 impl<'a> SerFlavor for Slice<'a> {
     type Output = Self;
 
@@ -58,9 +56,9 @@ impl<'a> SerFlavor for Slice<'a> {
     }
 }
 
-pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
+pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
 
-impl<B: ArrayLength<u8>> Index<usize> for Vanilla<B> {
+impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
     type Output = u8;
 
     fn index(&self, idx: usize) -> &u8 {
@@ -68,7 +66,7 @@ impl<B: ArrayLength<u8>> Index<usize> for Vanilla<B> {
     }
 }
 
-impl<B: ArrayLength<u8>> IndexMut<usize> for Vanilla<B> {
+impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
         &mut self.0[idx]
     }
@@ -88,13 +86,13 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
-impl<B: ArrayLength<u8>> Default for Vanilla<B> {
+impl<B: ArrayLength<u8>> Default for HVec<B> {
     fn default() -> Self {
         Self(Vec::new())
     }
 }
 
-impl<'a, B> SerFlavor for Vanilla<B>
+impl<'a, B> SerFlavor for HVec<B>
 where
     B: ArrayLength<u8>,
 {

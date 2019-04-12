@@ -1,13 +1,11 @@
-use crate::error::{Error, Result};
 use heapless::{ArrayLength, Vec};
 use serde::Serialize;
 
-pub mod serializer;
-pub mod flavor;
+use crate::error::{Error, Result};
 
 use crate::ser::flavor::{
     Cobs,
-    Vanilla,
+    HVec,
     Slice,
     SerFlavor,
 };
@@ -16,11 +14,42 @@ use crate::ser::serializer::{
     Serializer
 };
 
+pub(crate) mod serializer;
+pub(crate) mod flavor;
+
+/// Serialize a `T` to the given slice, with the resulting slice containing
+/// data in a serialized then COBS encoded format. The terminating sentinel `0x00` byte is included
+/// in the output buffer.
+///
+/// When successful, this function returns the slices containing:
+///
+/// 1. A slice that contains the serialized and encoded message
+/// 2. A slice that contains the unused portion of the given buffer
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_slice_cobs;
+/// let mut buf = [0u8; 32];
+///
+/// let (used, _unused) = to_slice_cobs(&false, &mut buf).unwrap();
+/// assert_eq!(used, &[0x01, 0x01, 0x00]);
+///
+/// let (used, _unused) = to_slice_cobs("1", &mut buf).unwrap();
+/// assert_eq!(used, &[0x03, 0x01, b'1', 0x00]);
+///
+/// let (used, _unused) = to_slice_cobs("Hi!", &mut buf).unwrap();
+/// assert_eq!(used, &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
+///
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let (used, unused) = to_slice_cobs(data, &mut buf).unwrap();
+/// assert_eq!(used, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
+/// ```
 pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
 where
     T: Serialize + ?Sized,
 {
-    let res = to_flavor::<T, Cobs<Slice<'a>>, Slice<'a>>(
+    let res = serialize_with_flavor::<T, Cobs<Slice<'a>>, Slice<'a>>(
         value,
         Cobs::new(Slice { buf, idx: 0 }),
     )?;
@@ -28,11 +57,40 @@ where
     Ok(res.buf.split_at_mut(res.idx))
 }
 
+/// Serialize a `T` to the given slice, with the resulting slice containing
+/// data in a serialized format.
+///
+/// When successful, this function returns the slices containing:
+///
+/// 1. A slice that contains the serialized message
+/// 2. A slice that contains the unused portion of the given buffer
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_slice;
+/// let mut buf = [0u8; 32];
+///
+/// let (used, _unused) = to_slice(&true, &mut buf).unwrap();
+/// assert_eq!(used, &[0x01]);
+///
+/// let (used, _unused) = to_slice("Hi!", &mut buf).unwrap();
+/// assert_eq!(used, &[0x03, b'H', b'i', b'!']);
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let (used, unused) = to_slice(data, &mut buf).unwrap();
+/// assert_eq!(used, &[0x04, 0x01, 0x00, 0x20, 0x30]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let (used, unused) = to_slice(data, &mut buf).unwrap();
+/// assert_eq!(used, &[0x01, 0x00, 0x20, 0x30]);
+/// ```
 pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
 where
     T: Serialize + ?Sized
 {
-    let res = to_flavor::<T, Slice<'a>, Slice<'a>>(
+    let res = serialize_with_flavor::<T, Slice<'a>, Slice<'a>>(
         value,
         Slice { buf, idx: 0 }
     )?;
@@ -40,27 +98,78 @@ where
     Ok(res.buf.split_at_mut(res.idx))
 }
 
+/// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// data in a serialized then COBS encoded format. The terminating sentinel
+/// `0x00` byte is included in the output `Vec`.
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_vec_cobs;
+/// use heapless::{Vec, consts::*};
+/// use core::ops::Deref;
+///
+/// let ser: Vec<u8, U32> = to_vec_cobs(&false).unwrap();
+/// assert_eq!(ser.deref(), &[0x01, 0x01, 0x00]);
+///
+/// let ser: Vec<u8, U32> = to_vec_cobs("Hi!").unwrap();
+/// assert_eq!(ser.deref(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8, U32> = to_vec_cobs(data).unwrap();
+/// assert_eq!(ser.deref(), &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8, U32> = to_vec_cobs(data).unwrap();
+/// assert_eq!(ser.deref(), &[0x02, 0x01, 0x03, 0x20, 0x30, 0x00]);
+/// ```
 pub fn to_vec_cobs<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_flavor::<T, Cobs<Vanilla<_>>, Vec<u8, B>>(
+    serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(
         value,
-        Cobs::new(Vanilla::default()),
+        Cobs::new(HVec::default()),
     )
 }
 
+/// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// data in a serialized format.
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_vec;
+/// use heapless::{Vec, consts::*};
+/// use core::ops::Deref;
+///
+/// let ser: Vec<u8, U32> = to_vec(&true).unwrap();
+/// assert_eq!(ser.deref(), &[0x01]);
+///
+/// let ser: Vec<u8, U32> = to_vec("Hi!").unwrap();
+/// assert_eq!(ser.deref(), &[0x03, b'H', b'i', b'!']);
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8, U32> = to_vec(data).unwrap();
+/// assert_eq!(ser.deref(), &[0x04, 0x01, 0x00, 0x20, 0x30]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8, U32> = to_vec(data).unwrap();
+/// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30]);
+/// ```
 pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_flavor::<T, Vanilla<B>, Vec<u8, B>>(value, Vanilla::default())
+    serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
 
-fn to_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
+pub fn serialize_with_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
 where
     T: Serialize + ?Sized,
     F: SerFlavor<Output = O>,
@@ -356,8 +465,6 @@ mod test {
         };
 
         let mut output: Vec<u8, U13> = to_vec_cobs(&input).unwrap();
-
-        println!("{:?}", output);
 
         let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
 
