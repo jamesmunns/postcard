@@ -12,4 +12,7 @@ pub use de::{
     take_from_bytes_cobs,
 };
 pub use error::{Error, Result};
-pub use ser::{to_vec, to_vec_cobs};
+pub use ser::{
+    to_vec,
+    to_vec_cobs
+};
