@@ -2,27 +2,67 @@ use crate::error::{Error, Result};
 use crate::varint::VarintUsize;
 use byteorder::{ByteOrder, LittleEndian};
 use cobs::{EncoderState, PushResult};
-use core::marker::PhantomData;
 use heapless::{ArrayLength, Vec};
 use serde::{ser, Serialize};
 
-pub struct Serializer<B, F>
+pub struct Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     output: F,
-    _pd: PhantomData<B>,
 }
 
-pub trait SerFlavor<B: ArrayLength<u8>> {
+pub trait SerFlavor {
+    type Output;
+
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
             .map_err(|_| ())
     }
     fn try_push(&mut self, data: u8) -> core::result::Result<(), u8>;
-    fn release(self) -> core::result::Result<Vec<u8, B>, ()>;
+    fn release(self) -> core::result::Result<Self::Output, ()>;
+}
+
+pub struct Slice<'a> {
+    buf: &'a mut [u8],
+    idx: usize,
+}
+
+impl<'a> SerFlavor for Slice<'a> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+        let len = data.len();
+
+        if (len + self.idx) > self.buf.len() {
+            return Err(());
+        }
+
+        self.buf[self.idx..self.idx + len]
+            .copy_from_slice(data);
+
+        self.idx += len;
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
+        if self.idx >= self.buf.len() {
+            return Err(0);
+        }
+
+        self.buf[self.idx] = data;
+        self.idx += 1;
+
+        Ok(())
+    }
+
+    fn release(self) -> core::result::Result<Self::Output, ()> {
+        Ok(self)
+    }
 }
 
 pub struct Vanilla<B: ArrayLength<u8>>(Vec<u8, B>);
@@ -33,10 +73,12 @@ impl<B: ArrayLength<u8>> Default for Vanilla<B> {
     }
 }
 
-impl<'a, B> SerFlavor<B> for Vanilla<B>
+impl<'a, B> SerFlavor for Vanilla<B>
 where
     B: ArrayLength<u8>,
 {
+    type Output = Vec<u8, B>;
+
     #[inline(always)]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         self.0.extend_from_slice(data)
@@ -62,7 +104,7 @@ where
 
 impl<B: ArrayLength<u8>> Default for Cobs<B> {
     fn default() -> Self {
-        let mut v = Vec::new();
+        let mut v: Vec<u8, B> = Vec::new();
 
         // I mean, don't make an array with zero elements
         v.push(0).unwrap();
@@ -74,10 +116,12 @@ impl<B: ArrayLength<u8>> Default for Cobs<B> {
     }
 }
 
-impl<'a, B> SerFlavor<B> for Cobs<B>
+impl<'a, B> SerFlavor for Cobs<B>
 where
     B: ArrayLength<u8>,
 {
+    type Output = Vec<u8, B>;
+
     #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), u8> {
         use PushResult::*;
@@ -96,7 +140,7 @@ where
         }
     }
 
-    fn release(mut self) -> core::result::Result<Vec<u8, B>, ()> {
+    fn release(mut self) -> core::result::Result<Self::Output, ()> {
         let (idx, mval) = self.cobs.finalize();
         self.vec[idx] = mval;
         self.vec.push(0).map_err(|_| ())?;
@@ -104,12 +148,24 @@ where
     }
 }
 
+pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<(&'a mut [u8], &'a mut [u8])>
+where
+    T: Serialize + ?Sized
+{
+    let res = to_flavor::<T, Slice<'a>, Slice<'a>>(
+        value,
+        Slice { buf, idx: 0 }
+    )?;
+
+    Ok(res.buf.split_at_mut(res.idx))
+}
+
 pub fn to_vec_cobs<B, T>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_vec_flavor(
+    to_flavor::<T, Cobs<B>, Vec<u8, B>>(
         value,
         Cobs::default(),
     )
@@ -120,7 +176,7 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    to_vec_flavor(value, Vanilla::default())
+    to_flavor::<T, Vanilla<B>, Vec<u8, B>>(value, Vanilla::default())
 }
 
 /// Serialize a data structure to a `heapless::Vec`. The `Vec` must contain
@@ -136,21 +192,19 @@ where
 /// let input: &str = "hello, postcard!";
 /// let output: Vec<u8, U17> = to_vec(input).unwrap();
 ///
-/// // Length is serialized as a [`postcard::VarintUsize`]
+/// // Length isOutput serialized as a [`postcard::VarintUsize`]
 /// assert_eq!(0x10, output.deref()[0]);
 ///
 /// // otherwise, bytes/UTF-8 is serialized as-is
 /// assert_eq!(input.as_bytes(), &output.deref()[1..]);
 /// ```
-pub fn to_vec_flavor<B, T, F>(value: &T, flavor: F) -> Result<Vec<u8, B>>
+fn to_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
 where
     T: Serialize + ?Sized,
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor<Output = O>,
 {
     let mut serializer = Serializer {
         output: flavor,
-        _pd: PhantomData,
     };
     value.serialize(&mut serializer)?;
     serializer
@@ -159,13 +213,12 @@ where
         .map_err(|_| Error::SerializeBufferFull)
 }
 
-impl<'a, B, F> ser::Serializer for &'a mut Serializer<B, F>
+impl<'a, F> ser::Serializer for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     // The output type produced by this `Serializer` during successful
-    // serialization. Most serializers that produce text or binary output should
+    // serializationOutput. Most serializers that produce text or binary output should
     // set `Ok = ()` and serialize into an `io::Write` or buffer contained
     // within the `Serializer` instance, as happens here. Serializers that build
     // in-memory data structures may be simplified by using `Ok` to propagate
@@ -451,10 +504,9 @@ where
 //
 // This impl is SerializeSeq so these methods are called after `serialize_seq`
 // is called on the Serializer.
-impl<'a, B, F> ser::SerializeSeq for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeSeq for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
@@ -476,10 +528,9 @@ where
 }
 
 // Same thing but for tuples.
-impl<'a, B, F> ser::SerializeTuple for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeTuple for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;
@@ -497,10 +548,9 @@ where
 }
 
 // Same thing but for tuple structs.
-impl<'a, B, F> ser::SerializeTupleStruct for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeTupleStruct for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;
@@ -526,10 +576,9 @@ where
 //
 // So the `end` method in this impl is responsible for closing both the `]` and
 // the `}`.
-impl<'a, B, F> ser::SerializeTupleVariant for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeTupleVariant for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;
@@ -554,10 +603,9 @@ where
 // `serialize_entry` method allows serializers to optimize for the case where
 // key and value are both available simultaneously. In JSON it doesn't make a
 // difference so the default behavior for `serialize_entry` is fine.
-impl<'a, B, F> ser::SerializeMap for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeMap for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;
@@ -603,10 +651,9 @@ where
 
 // Structs are like maps in which the keys are constrained to be compile-time
 // constant strings.
-impl<'a, B, F> ser::SerializeStruct for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeStruct for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;
@@ -625,10 +672,9 @@ where
 
 // Similar to `SerializeTupleVariant`, here the `end` method is responsible for
 // closing both of the curly braces opened by `serialize_struct_variant`.
-impl<'a, B, F> ser::SerializeStructVariant for &'a mut Serializer<B, F>
+impl<'a, F> ser::SerializeStructVariant for &'a mut Serializer<F>
 where
-    B: ArrayLength<u8>,
-    F: SerFlavor<B>,
+    F: SerFlavor,
 {
     type Ok = ();
     type Error = Error;

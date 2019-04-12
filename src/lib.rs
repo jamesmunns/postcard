@@ -14,5 +14,6 @@ pub use de::{
 pub use error::{Error, Result};
 pub use ser::{
     to_vec,
-    to_vec_cobs
+    to_vec_cobs,
+    to_slice,
 };
