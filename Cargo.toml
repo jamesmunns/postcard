@@ -16,6 +16,7 @@ keywords = [
     "cobs",
     "framing",
 ]
+documentation = "https://docs.rs/postcard/"
 
 [dependencies]
 

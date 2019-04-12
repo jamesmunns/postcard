@@ -5,6 +5,9 @@ Postcard is a `#![no_std]` focused serializer and deserializer for Serde.
 Postcard aims to be convenient for developers in constrained environments, while
 allowing for flexibility to customize behavior as needed.
 
+* [Documentation](https://docs.rs/postcard/)
+* [Crates.io](https://crates.io/crates/postcard)
+
 ## Design Goals
 
 1. Design primarily for `#![no_std]` usage, in embedded or other constrained contexts
