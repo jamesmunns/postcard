@@ -1,7 +1,4 @@
-#![cfg_attr(not(test), no_std)]
-
-
-
+#![cfg_attr(not(any(test, feature = "use-std")), no_std)]
 
 mod de;
 mod error;
@@ -9,7 +6,7 @@ mod ser;
 mod varint;
 
 pub use de::{
-    from_bytes,
+    deserializer::from_bytes,
     from_bytes_cobs,
     take_from_bytes,
     take_from_bytes_cobs,
@@ -28,5 +25,5 @@ pub use ser::{
     to_slice_cobs,
 };
 pub use de::{
-    Deserializer,
+    deserializer::Deserializer,
 };

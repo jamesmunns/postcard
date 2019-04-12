@@ -20,6 +20,9 @@
 //! the user from having to specify generic parameters, setting correct initialization values, or handling the output of
 //! the flavor correctly. See `postcard::to_vec()` for an example of this.
 //!
+//! It is recommended to use the [`serialize_with_flavor()`](../fn.serialize_with_flavor.html) method for serialization. See it's documentation for information
+//! regarding usage and generic type parameters.
+//!
 //! ## Examples
 //!
 //! ### Using a single flavor
@@ -39,40 +42,95 @@
 //! let buffer = &mut [0u8; 32];
 //! let res = serialize_with_flavor::<[u8], Slice, &mut [u8]>(
 //!     data,
-//!     Slice { buf: buffer, idx: 0 }
+//!     Slice::new(buffer)
 //! ).unwrap();
 //!
 //! assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 //! ```
 //!
 //! ### Using combined flavors
+//!
+//! In the second example, we mix `Slice` with `Cobs`, to cobs encode the output while
+//! the data is serialized. Notice how `Slice` (the storage flavor) is the innermost flavor used.
+//!
+//! ```rust
+//! use postcard::{
+//!     serialize_with_flavor,
+//!     flavors::{Cobs, Slice},
+//! };
+//!
+//! let mut buf = [0u8; 32];
+//!
+//! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+//! let buffer = &mut [0u8; 32];
+//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+//!     data,
+//!     Cobs::try_new(Slice::new(buffer)).unwrap(),
+//! ).unwrap();
+//!
+//! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
+//! ```
 
 use core::ops::Index;
 use cobs::{EncoderState, PushResult};
 use heapless::{ArrayLength, Vec};
 use core::ops::IndexMut;
+use crate::error::{Error, Result};
 
+/// The SerFlavor trait acts as a combinator/middleware interface that can be used to pass bytes
+/// through storage or modification flavors. See the module level documentation for more information
+/// and examples.
 pub trait SerFlavor {
+    /// The `Output` type is what this flavor "resolves" to when the serialization is complete.
+    /// For storage flavors, this is typically a concrete type. For modification flavors, this is
+    /// typically a generic parameter for the storage flavor they are wrapped around.
     type Output;
 
+    /// The try_extend() trait method can be implemented when there is a more efficient way of processing
+    /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
+    /// at a time.
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
             .map_err(|_| ())
     }
+
+    /// The try_push() trait method can be used to push a single byte to be modified and/or stored
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
+
+    /// The release() trait method finalizes the modification or storage operation, and resolved into
+    /// the type defined by `SerFlavor::Output` associated type.
     fn release(self) -> core::result::Result<Self::Output, ()>;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Storage Flavors
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////
+// Slice
+////////////////////////////////////////
+
+/// The `Slice` flavor is a storage flavor, storing the serialized (or otherwise modified) bytes into a plain
+/// `[u8]` slice. The `Slice` flavor resolves into a sub-slice of the original slice buffer.
 pub struct Slice<'a> {
-    pub buf: &'a mut [u8],
-    pub idx: usize,
+    buf: &'a mut [u8],
+    idx: usize,
+}
+
+impl<'a> Slice<'a> {
+    /// Create a new `Slice` flavor from a given backing buffer
+    pub fn new(buf: &'a mut [u8]) -> Self {
+        Slice {
+            buf,
+            idx: 0
+        }
+    }
 }
 
 impl<'a> SerFlavor for Slice<'a> {
     type Output = &'a mut [u8];
 
-    #[inline(always)]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         let len = data.len();
 
@@ -88,7 +146,6 @@ impl<'a> SerFlavor for Slice<'a> {
         Ok(())
     }
 
-    #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         if self.idx >= self.buf.len() {
             return Err(());
@@ -106,22 +163,6 @@ impl<'a> SerFlavor for Slice<'a> {
     }
 }
 
-pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
-
-impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
-    type Output = u8;
-
-    fn index(&self, idx: usize) -> &u8 {
-        &self.0[idx]
-    }
-}
-
-impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
-    fn index_mut(&mut self, idx: usize) -> &mut u8 {
-        &mut self.0[idx]
-    }
-}
-
 impl<'a> Index<usize> for Slice<'a> {
     type Output = u8;
 
@@ -136,11 +177,13 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
-impl<B: ArrayLength<u8>> Default for HVec<B> {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
+////////////////////////////////////////
+// HVec
+////////////////////////////////////////
+
+/// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
+/// allocated data structure, with a fixed maximum size and variable amount of contents
+pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
 
 impl<'a, B> SerFlavor for HVec<B>
 where
@@ -163,6 +206,85 @@ where
     }
 }
 
+impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
+    type Output = u8;
+
+    fn index(&self, idx: usize) -> &u8 {
+        &self.0[idx]
+    }
+}
+
+impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
+    fn index_mut(&mut self, idx: usize) -> &mut u8 {
+        &mut self.0[idx]
+    }
+}
+
+impl<B: ArrayLength<u8>> Default for HVec<B> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
+/// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
+///
+/// This type is only available when the (non-default) `use-std` feature is active
+#[cfg(feature = "use-std")]
+pub struct StdVec(std::vec::Vec<u8>);
+
+#[cfg(feature = "use-std")]
+impl SerFlavor for StdVec
+{
+    type Output = std::vec::Vec<u8>;
+
+    #[inline(always)]
+    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+        self.0.extend_from_slice(data);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+        self.0.push(data);
+        Ok(())
+    }
+
+    fn release(self) -> core::result::Result<Self::Output, ()> {
+        Ok(self.0)
+    }
+}
+
+#[cfg(feature = "use-std")]
+impl Index<usize> for StdVec {
+    type Output = u8;
+
+    fn index(&self, idx: usize) -> &u8 {
+        &self.0[idx]
+    }
+}
+
+#[cfg(feature = "use-std")]
+impl IndexMut<usize> for StdVec {
+    fn index_mut(&mut self, idx: usize) -> &mut u8 {
+        &mut self.0[idx]
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Modification Flavors
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////
+// COBS
+////////////////////////////////////////
+
+/// The `Cobs` flavor implements [Consistent Overhead Byte Stuffing] on
+/// the serialized data. The output of this flavor includes the termination/sentinel
+/// byte of `0x00`.
+///
+/// This protocol is useful when sending data over a serial interface without framing such as a UART
+///
+/// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 pub struct Cobs<B>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
@@ -175,12 +297,12 @@ impl<B> Cobs<B>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
 {
-    pub(crate) fn new(mut bee: B) -> Self {
-        bee.try_push(0).unwrap();
-        Self {
+    pub fn try_new(mut bee: B) -> Result<Self> {
+        bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
+        Ok(Self {
             flav: bee,
             cobs: EncoderState::default(),
-        }
+        })
     }
 }
 

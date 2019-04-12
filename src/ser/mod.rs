@@ -51,7 +51,7 @@ where
 {
     serialize_with_flavor::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
         value,
-        Cobs::new(Slice { buf, idx: 0 }),
+        Cobs::try_new(Slice::new(buf))?,
     )
 }
 
@@ -90,7 +90,7 @@ where
 {
     serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(
         value,
-        Slice { buf, idx: 0 }
+        Slice::new(buf)
     )
 }
 
@@ -127,7 +127,7 @@ where
 {
     serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(
         value,
-        Cobs::new(HVec::default()),
+        Cobs::try_new(HVec::default())?,
     )
 }
 
