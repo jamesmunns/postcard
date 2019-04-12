@@ -1,4 +1,4 @@
-//! # Flavors
+//! # Flavors - Plugins for `postcard`
 //!
 //! "Flavors" in `postcard` are used as modifiers to the serialization
 //! process. Flavors typically modify one or both of the following:
