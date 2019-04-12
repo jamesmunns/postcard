@@ -42,9 +42,7 @@ impl Display for Error {
                 DeserializeBadUtf8 => "Tried to parse invalid utf-8",
                 DeserializeBadOption => "Found an Option discriminant that wasn't 0 or 1",
                 DeserializeBadEnum => "Found an enum discriminant that was > u32::max_value()",
-                DeserializeBadEncoding => {
-                    "The original data was not well encoded"
-                }
+                DeserializeBadEncoding => "The original data was not well encoded",
                 SerdeSerCustom => "Serde Serialization Error",
                 SerdeDeCustom => "Serde Deserialization Error",
             }

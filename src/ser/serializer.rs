@@ -332,7 +332,6 @@ where
         T: ?Sized + Serialize,
     {
         Err(Error::NotYetImplemented)
-
     }
 
     fn end(self) -> Result<()> {

@@ -71,11 +71,11 @@
 //! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 //! ```
 
-use core::ops::Index;
-use cobs::{EncoderState, PushResult};
-use heapless::{ArrayLength, Vec};
-use core::ops::IndexMut;
 use crate::error::{Error, Result};
+use cobs::{EncoderState, PushResult};
+use core::ops::Index;
+use core::ops::IndexMut;
+use heapless::{ArrayLength, Vec};
 
 /// The SerFlavor trait acts as a combinator/middleware interface that can be used to pass bytes
 /// through storage or modification flavors. See the module level documentation for more information
@@ -121,10 +121,7 @@ pub struct Slice<'a> {
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
-        Slice {
-            buf,
-            idx: 0
-        }
+        Slice { buf, idx: 0 }
     }
 }
 
@@ -138,8 +135,7 @@ impl<'a> SerFlavor for Slice<'a> {
             return Err(());
         }
 
-        self.buf[self.idx..self.idx + len]
-            .copy_from_slice(data);
+        self.buf[self.idx..self.idx + len].copy_from_slice(data);
 
         self.idx += len;
 
@@ -233,8 +229,7 @@ impl<B: ArrayLength<u8>> Default for HVec<B> {
 pub struct StdVec(std::vec::Vec<u8>);
 
 #[cfg(feature = "use-std")]
-impl SerFlavor for StdVec
-{
+impl SerFlavor for StdVec {
     type Output = std::vec::Vec<u8>;
 
     #[inline(always)]

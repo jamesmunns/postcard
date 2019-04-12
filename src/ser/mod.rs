@@ -3,19 +3,12 @@ use serde::Serialize;
 
 use crate::error::{Error, Result};
 
-use crate::ser::flavors::{
-    Cobs,
-    HVec,
-    Slice,
-    SerFlavor,
-};
+use crate::ser::flavors::{Cobs, HVec, SerFlavor, Slice};
 
-use crate::ser::serializer::{
-    Serializer
-};
+use crate::ser::serializer::Serializer;
 
-pub(crate) mod serializer;
 pub mod flavors;
+pub(crate) mod serializer;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel `0x00` byte is included
@@ -86,12 +79,9 @@ where
 /// ```
 pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u8]>
 where
-    T: Serialize + ?Sized
+    T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(
-        value,
-        Slice::new(buf)
-    )
+    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -125,10 +115,7 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(
-        value,
-        Cobs::try_new(HVec::default())?,
-    )
+    serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -173,9 +160,7 @@ where
     T: Serialize + ?Sized,
     F: SerFlavor<Output = O>,
 {
-    let mut serializer = Serializer {
-        output: flavor,
-    };
+    let mut serializer = Serializer { output: flavor };
     value.serialize(&mut serializer)?;
     serializer
         .output
@@ -186,11 +171,11 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::varint::VarintUsize;
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
     use heapless::{consts::*, String};
     use serde::Deserialize;
-    use crate::varint::VarintUsize;
 
     #[test]
     fn ser_u8() {
