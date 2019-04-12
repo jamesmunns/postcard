@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"
 readme = "README.md"
@@ -40,3 +40,6 @@ default-features = false
 [features]
 use-std = []
 defaults = []
+
+[package.metadata.docs.rs]
+all-features = true
