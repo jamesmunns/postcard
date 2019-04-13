@@ -1,0 +1,14 @@
+[build]
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+
+### gdb gui runner
+# runner = 'gdbgui -g arm-none-eabi-gdb --gdb-args="-command=debug.gdb"'
+
+### gdb cli runner
+runner = 'arm-none-eabi-gdb -command=debug.gdb'
+
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+]

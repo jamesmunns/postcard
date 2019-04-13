@@ -187,12 +187,10 @@ where
 {
     type Output = Vec<u8, B>;
 
-    #[inline(always)]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         self.0.extend_from_slice(data)
     }
 
-    #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         self.0.push(data).map_err(|_| ())
     }
@@ -232,13 +230,11 @@ pub struct StdVec(std::vec::Vec<u8>);
 impl SerFlavor for StdVec {
     type Output = std::vec::Vec<u8>;
 
-    #[inline(always)]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         self.0.extend_from_slice(data);
         Ok(())
     }
 
-    #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         self.0.push(data);
         Ok(())
@@ -309,7 +305,6 @@ where
 {
     type Output = <B as SerFlavor>::Output;
 
-    #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         use PushResult::*;
         match self.cobs.push(data) {

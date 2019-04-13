@@ -1,0 +1,42 @@
+[package]
+name = "embedded-training"
+version = "0.1.0"
+authors = ["James Munns <james.munns@ferrous-systems.com>"]
+edition = "2018"
+
+[dependencies]
+panic-ramdump   = "0.1.0"
+cortex-m-rt = "0.6.5"
+nb = "0.1"
+heapless = "0.4"
+
+[dependencies.ssmarshal]
+version = "1.0"
+default-features = false
+
+[profile.release]
+opt-level = 3
+debug = true
+lto = true
+incremental = false
+codegen-units = 1
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+features = ["derive"]
+
+[dependencies.dwm1001]
+version = "0.1"
+features = ["rt", "dev"]
+
+[dependencies.postcard]
+path = "../../../"
+
+[dependencies.serde-json-core]
+git = "https://github.com/japaric/serde-json-core"
+rev = "master"
+
+[patch.crates-io.dw1000]
+git = "https://github.com/braun-robotics/rust-dw1000"
+rev = "036dc67b3147417c49318b840f4d769f8045967e"
