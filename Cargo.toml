@@ -18,10 +18,13 @@ keywords = [
 ]
 documentation = "https://docs.rs/postcard/"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 
 [dependencies.heapless]
-version = "0.4"
+version = "0.5"
 features = ["serde"]
 
 [dependencies.serde]
@@ -41,6 +44,3 @@ default-features = false
 [features]
 use-std = []
 defaults = []
-
-[package.metadata.docs.rs]
-all-features = true
