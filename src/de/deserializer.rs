@@ -247,7 +247,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         match self.try_take_n(1)?[0] {
             0 => visitor.visit_none(),
             1 => visitor.visit_some(self),
-            _ => return Err(Error::DeserializeBadOption),
+            _ => Err(Error::DeserializeBadOption),
         }
     }
 
@@ -284,7 +284,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 
         visitor.visit_seq(SeqAccess {
             deserializer: self,
-            len: len,
+            len,
         })
     }
 
@@ -294,7 +294,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     {
         visitor.visit_seq(SeqAccess {
             deserializer: self,
-            len: len,
+            len,
         })
     }
 
