@@ -85,3 +85,5 @@ impl serde::de::Error for Error {
         Error::SerdeDeCustom
     }
 }
+
+impl serde::ser::StdError for Error {}
