@@ -185,10 +185,10 @@ where
 /// use postcard::to_stdvec_cobs;
 ///
 /// let ser: Vec<u8> = to_stdvec_cobs(&true).unwrap();
-/// assert_eq!(ser.as_slice(), &[0x01]);
+/// assert_eq!(ser.as_slice(), &[0x02, 0x01, 0x00]);
 ///
 /// let ser: Vec<u8> = to_stdvec_cobs("Hi!").unwrap();
-/// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
+/// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
 pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
