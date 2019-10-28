@@ -115,7 +115,6 @@
 //! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 //! dual licensed as above, without any additional terms or conditions.
 
-
 #![cfg_attr(not(any(test, feature = "use-std")), no_std)]
 #![warn(missing_docs)]
 
@@ -128,6 +127,11 @@ pub use de::deserializer::Deserializer;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
 pub use ser::{
-    flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs, to_vec,
-    to_vec_cobs,
+    flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs,
+    to_vec, to_vec_cobs,
+};
+
+#[cfg(feature = "use-std")]
+pub use ser::{
+    to_stdvec, to_stdvec_cobs
 };

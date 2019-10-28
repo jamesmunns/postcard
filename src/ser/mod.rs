@@ -5,6 +5,9 @@ use crate::error::{Error, Result};
 
 use crate::ser::flavors::{Cobs, HVec, SerFlavor, Slice};
 
+#[cfg(feature = "use-std")]
+use crate::ser::flavors::StdVec;
+
 use crate::ser::serializer::Serializer;
 
 pub mod flavors;
@@ -149,6 +152,53 @@ where
     B: ArrayLength<u8>,
 {
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
+}
+
+/// Serialize a `T` to a `std::vec::Vec<u8>
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_stdvec;
+///
+/// let ser: Vec<u8> = to_stdvec(&true).unwrap();
+/// assert_eq!(ser.as_slice(), &[0x01]);
+///
+/// let ser: Vec<u8> = to_stdvec("Hi!").unwrap();
+/// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
+/// ```
+#[cfg(feature = "use-std")]
+pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    serialize_with_flavor::<T, StdVec, std::vec::Vec<u8>>(value, StdVec(std::vec::Vec::new()))
+}
+
+/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`
+///
+/// The terminating sentinel `0x00` byte is included in the output.
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_stdvec_cobs;
+///
+/// let ser: Vec<u8> = to_stdvec_cobs(&true).unwrap();
+/// assert_eq!(ser.as_slice(), &[0x02, 0x01, 0x00]);
+///
+/// let ser: Vec<u8> = to_stdvec_cobs("Hi!").unwrap();
+/// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
+/// ```
+#[cfg(feature = "use-std")]
+pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    serialize_with_flavor::<T, Cobs<StdVec>, std::vec::Vec<u8>>(
+        value,
+        Cobs::try_new(StdVec(std::vec::Vec::new()))?,
+    )
 }
 
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
