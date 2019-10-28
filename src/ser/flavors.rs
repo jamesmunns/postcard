@@ -226,7 +226,7 @@ impl<B: ArrayLength<u8>> Default for HVec<B> {
 ///
 /// This type is only available when the (non-default) `use-std` feature is active
 #[cfg(feature = "use-std")]
-pub struct StdVec(std::vec::Vec<u8>);
+pub struct StdVec(pub std::vec::Vec<u8>);
 
 #[cfg(feature = "use-std")]
 impl SerFlavor for StdVec {
