@@ -167,6 +167,7 @@ where
 /// let ser: Vec<u8> = to_stdvec("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
+#[cfg(feature = "use-std")]
 pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
