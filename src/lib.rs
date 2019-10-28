@@ -26,9 +26,9 @@
 //! 127 variants will encode its discriminant as a single byte (rather than a `u32`).
 //!
 //! Varints in `postcard` have a maximum value of the usize for that platform. In practice, this
-//! means that 64-bit targets should not send messages with slices containing `(2 << 32) -1` items
+//! means that 64-bit targets should not send messages with slices containing `(1 << 32) - 1` items
 //! to 32-bit targets, which is uncommon in practice. Enum discriminants already have a fixed
-//! maximum value of `(2 << 32) - 1` as currently defined in Rust. Varints larger than the current platform's
+//! maximum value of `(1 << 32) - 1` as currently defined in Rust. Varints larger than the current platform's
 //! `usize` will cause the deserialization process to return an `Err`.
 //!
 //! [Varint]: https://developers.google.com/protocol-buffers/docs/encoding
