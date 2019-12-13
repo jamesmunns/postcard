@@ -32,10 +32,6 @@ version = "1.0.100"
 default-features = false
 features = ["derive"]
 
-[dependencies.byteorder]
-version = "1.3"
-default-features = false
-
 [dependencies.cobs]
 package = "postcard-cobs"
 version = "0.1.5-pre"
