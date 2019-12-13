@@ -1,4 +1,3 @@
-use byteorder::{ByteOrder, LittleEndian};
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
@@ -93,16 +92,14 @@ where
     }
 
     fn serialize_f32(self, v: f32) -> Result<()> {
-        let mut buf = [0u8; core::mem::size_of::<f32>()];
-        LittleEndian::write_f32(&mut buf, v);
+        let buf = v.to_bits().to_le_bytes();
         self.output
             .try_extend(&buf)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_f64(self, v: f64) -> Result<()> {
-        let mut buf = [0u8; core::mem::size_of::<f64>()];
-        LittleEndian::write_f64(&mut buf, v);
+        let buf = v.to_bits().to_le_bytes();
         self.output
             .try_extend(&buf)
             .map_err(|_| Error::SerializeBufferFull)

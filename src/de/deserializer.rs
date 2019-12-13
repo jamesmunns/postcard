@@ -1,4 +1,3 @@
-use byteorder::{ByteOrder, LittleEndian};
 use serde::de::{
     self,
     DeserializeSeed,
@@ -182,7 +181,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let bytes = self.try_take_n(4)?;
-        visitor.visit_f32(LittleEndian::read_f32(bytes))
+        let mut buf = [0u8; 4];
+        buf.copy_from_slice(bytes);
+        visitor.visit_f32(f32::from_bits(u32::from_le_bytes(buf)))
     }
 
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
@@ -190,7 +191,9 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let bytes = self.try_take_n(8)?;
-        visitor.visit_f64(LittleEndian::read_f64(bytes))
+        let mut buf = [0u8; 8];
+        buf.copy_from_slice(bytes);
+        visitor.visit_f64(f64::from_bits(u64::from_le_bytes(buf)))
     }
 
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
