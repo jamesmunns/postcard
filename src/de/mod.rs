@@ -51,8 +51,9 @@ where
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(feature = "heapless")]
 #[cfg(test)]
-mod test {
+mod test_heapless {
     use super::*;
     use crate::ser::to_vec;
     use core::fmt::Write;

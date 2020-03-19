@@ -3,8 +3,14 @@
 use core::fmt::Debug;
 use core::fmt::Write;
 use core::ops::Deref;
+
+#[cfg(feature = "heapless")]
 use heapless::{consts::*, String, Vec};
-use postcard::{from_bytes, to_vec};
+
+#[cfg(feature = "heapless")]
+use postcard::to_vec;
+
+use postcard::from_bytes;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +58,7 @@ struct RefStruct<'a> {
     str_s: &'a str,
 }
 
+#[cfg(feature = "heapless")]
 #[test]
 fn loopback() {
     // Basic types
@@ -163,6 +170,7 @@ fn loopback() {
     test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
 }
 
+#[cfg(feature = "heapless")]
 fn test_one<'a, 'de, T>(data: T, ser_rep: &'a [u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,

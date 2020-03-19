@@ -37,7 +37,10 @@
 //!
 //! Postcard can serialize and deserialize messages similar to other `serde` formats.
 //!
+//! Using the default `heapless` feature to serialize to a `heapless::Vec<u8>`:
+//!
 //! ```rust
+//! # #[cfg(feature = "heapless")] {
 //! use core::ops::Deref;
 //! use serde::{Serialize, Deserialize};
 //! use postcard::{from_bytes, to_vec};
@@ -68,6 +71,44 @@
 //!         str_s: message,
 //!     }
 //! );
+//! # }
+//! ```
+//!
+//! Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
+//! ```rust
+//! # #[cfg(feature = "alloc")] {
+//! use core::ops::Deref;
+//! use serde::{Serialize, Deserialize};
+//! use postcard::{from_bytes, to_allocvec};
+//! extern crate alloc;
+//! use alloc::vec::Vec;
+//!
+//! #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+//! struct RefStruct<'a> {
+//!     bytes: &'a [u8],
+//!     str_s: &'a str,
+//! }
+//! let message = "hElLo";
+//! let bytes = [0x01, 0x10, 0x02, 0x20];
+//! let output: Vec<u8> = to_allocvec(&RefStruct {
+//!     bytes: &bytes,
+//!     str_s: message,
+//! }).unwrap();
+//!
+//! assert_eq!(
+//!     &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
+//!     output.deref()
+//! );
+//!
+//! let out: RefStruct = from_bytes(output.deref()).unwrap();
+//! assert_eq!(
+//!     out,
+//!     RefStruct {
+//!         bytes: &bytes,
+//!         str_s: message,
+//!     }
+//! );
+//! # }
 //! ```
 //!
 //! ## Example - Flavors
@@ -127,9 +168,14 @@ pub use de::deserializer::Deserializer;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
 pub use ser::{
-    flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs, to_vec,
-    to_vec_cobs,
+    flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs,
 };
+
+#[cfg(feature = "heapless")]
+pub use ser::{to_vec, to_vec_cobs};
 
 #[cfg(feature = "use-std")]
 pub use ser::{to_stdvec, to_stdvec_cobs};
+
+#[cfg(feature = "alloc")]
+pub use ser::{to_allocvec, to_allocvec_cobs};

@@ -75,7 +75,15 @@ use crate::error::{Error, Result};
 use cobs::{EncoderState, PushResult};
 use core::ops::Index;
 use core::ops::IndexMut;
-use heapless::{ArrayLength, Vec};
+
+#[cfg(feature = "heapless")]
+pub use heapless_vec::*;
+
+#[cfg(feature = "use-std")]
+pub use std_vec::*;
+
+#[cfg(feature = "alloc")]
+pub use alloc_vec::*;
 
 /// The SerFlavor trait acts as a combinator/middleware interface that can be used to pass bytes
 /// through storage or modification flavors. See the module level documentation for more information
@@ -173,95 +181,156 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
-////////////////////////////////////////
-// HVec
-////////////////////////////////////////
+#[cfg(feature = "heapless")]
+mod heapless_vec {
+    use heapless::{ArrayLength, Vec};
+    use super::SerFlavor;
+    use super::Index;
+    use super::IndexMut;
 
-/// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
-/// allocated data structure, with a fixed maximum size and variable amount of contents
-pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
+    ////////////////////////////////////////
+    // HVec
+    ////////////////////////////////////////
 
-impl<'a, B> SerFlavor for HVec<B>
-where
-    B: ArrayLength<u8>,
-{
-    type Output = Vec<u8, B>;
+    /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
+    /// allocated data structure, with a fixed maximum size and variable amount of contents.
+    pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
 
-    #[inline(always)]
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-        self.0.extend_from_slice(data)
+    impl<'a, B> SerFlavor for HVec<B>
+    where
+        B: ArrayLength<u8>,
+    {
+        type Output = Vec<u8, B>;
+
+        #[inline(always)]
+        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+            self.0.extend_from_slice(data)
+        }
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+            self.0.push(data).map_err(|_| ())
+        }
+
+        fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
+            Ok(self.0)
+        }
     }
 
-    #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-        self.0.push(data).map_err(|_| ())
+    impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
+        type Output = u8;
+
+        fn index(&self, idx: usize) -> &u8 {
+            &self.0[idx]
+        }
     }
 
-    fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
-        Ok(self.0)
-    }
-}
-
-impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
-    type Output = u8;
-
-    fn index(&self, idx: usize) -> &u8 {
-        &self.0[idx]
-    }
-}
-
-impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
-    fn index_mut(&mut self, idx: usize) -> &mut u8 {
-        &mut self.0[idx]
-    }
-}
-
-impl<B: ArrayLength<u8>> Default for HVec<B> {
-    fn default() -> Self {
-        Self(Vec::new())
-    }
-}
-
-/// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
-///
-/// This type is only available when the (non-default) `use-std` feature is active
-#[cfg(feature = "use-std")]
-pub struct StdVec(pub std::vec::Vec<u8>);
-
-#[cfg(feature = "use-std")]
-impl SerFlavor for StdVec {
-    type Output = std::vec::Vec<u8>;
-
-    #[inline(always)]
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-        self.0.extend_from_slice(data);
-        Ok(())
+    impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
+        fn index_mut(&mut self, idx: usize) -> &mut u8 {
+            &mut self.0[idx]
+        }
     }
 
-    #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-        self.0.push(data);
-        Ok(())
-    }
-
-    fn release(self) -> core::result::Result<Self::Output, ()> {
-        Ok(self.0)
+    impl<B: ArrayLength<u8>> Default for HVec<B> {
+        fn default() -> Self {
+            Self(Vec::new())
+        }
     }
 }
 
 #[cfg(feature = "use-std")]
-impl Index<usize> for StdVec {
-    type Output = u8;
+mod std_vec {
+    extern crate std;
+    use std::vec::Vec;
+    use super::SerFlavor;
+    use super::Index;
+    use super::IndexMut;
 
-    fn index(&self, idx: usize) -> &u8 {
-        &self.0[idx]
+    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
+    ///
+    /// This type is only available when the (non-default) `use-std` feature is active
+    pub struct StdVec(pub Vec<u8>);
+
+    impl SerFlavor for StdVec {
+        type Output = Vec<u8>;
+
+        #[inline(always)]
+        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+            self.0.extend_from_slice(data);
+            Ok(())
+        }
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+            self.0.push(data);
+            Ok(())
+        }
+
+        fn release(self) -> core::result::Result<Self::Output, ()> {
+            Ok(self.0)
+        }
+    }
+
+    impl Index<usize> for StdVec {
+        type Output = u8;
+
+        fn index(&self, idx: usize) -> &u8 {
+            &self.0[idx]
+        }
+    }
+
+    impl IndexMut<usize> for StdVec {
+        fn index_mut(&mut self, idx: usize) -> &mut u8 {
+            &mut self.0[idx]
+        }
     }
 }
 
-#[cfg(feature = "use-std")]
-impl IndexMut<usize> for StdVec {
-    fn index_mut(&mut self, idx: usize) -> &mut u8 {
-        &mut self.0[idx]
+#[cfg(feature = "alloc")]
+mod alloc_vec {
+    extern crate alloc;
+    use alloc::vec::Vec;
+    use super::SerFlavor;
+    use super::Index;
+    use super::IndexMut;
+
+    /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
+    ///
+    /// This type is only available when the (non-default) `alloc` feature is active
+    pub struct AllocVec(pub Vec<u8>);
+
+    impl SerFlavor for AllocVec {
+        type Output = Vec<u8>;
+
+        #[inline(always)]
+        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+            self.0.extend_from_slice(data);
+            Ok(())
+        }
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+            self.0.push(data);
+            Ok(())
+        }
+
+        fn release(self) -> core::result::Result<Self::Output, ()> {
+            Ok(self.0)
+        }
+    }
+
+    impl Index<usize> for AllocVec {
+        type Output = u8;
+
+        fn index(&self, idx: usize) -> &u8 {
+            &self.0[idx]
+        }
+    }
+
+    impl IndexMut<usize> for AllocVec {
+        fn index_mut(&mut self, idx: usize) -> &mut u8 {
+            &mut self.0[idx]
+        }
     }
 }
 
