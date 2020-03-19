@@ -39,6 +39,7 @@ maximum value of `(1 << 32) - 1` as currently defined in Rust. Varints larger th
 ## Example - Serialization/Deserialization
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
+Using the default `heapless` feature to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
@@ -54,6 +55,41 @@ struct RefStruct<'a> {
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
 let output: Vec<u8, U11> = to_vec(&RefStruct {
+    bytes: &bytes,
+    str_s: message,
+}).unwrap();
+
+assert_eq!(
+    &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
+    output.deref()
+);
+
+let out: RefStruct = from_bytes(output.deref()).unwrap();
+assert_eq!(
+    out,
+    RefStruct {
+        bytes: &bytes,
+        str_s: message,
+    }
+);
+```
+
+Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
+```rust
+use core::ops::Deref;
+use serde::{Serialize, Deserialize};
+use postcard::{from_bytes, to_allocvec};
+extern crate alloc;
+use alloc::vec::Vec;
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+struct RefStruct<'a> {
+    bytes: &'a [u8],
+    str_s: &'a str,
+}
+let message = "hElLo";
+let bytes = [0x01, 0x10, 0x02, 0x20];
+let output: Vec<u8> = to_allocvec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
