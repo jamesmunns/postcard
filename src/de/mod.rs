@@ -285,6 +285,9 @@ mod test {
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     pub struct TupleStruct((u8, u16));
+    
+    #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+    pub struct DualTupleStruct(u8, u16);
 
     #[test]
     fn structs() {
@@ -297,6 +300,11 @@ mod test {
         assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
         let out: TupleStruct = from_bytes(output.deref()).unwrap();
         assert_eq!(out, TupleStruct((0xA0, 0x1234)));
+        
+        let output: Vec<u8, U3> = to_vec(&DualTupleStruct(0xA0, 0x1234)).unwrap();
+        assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+        let out: DualTupleStruct = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, DualTupleStruct(0xA0, 0x1234));
     }
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
