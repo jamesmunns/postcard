@@ -41,6 +41,10 @@ where
     type SerializeStruct = Self;
     type SerializeStructVariant = Self;
 
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
     fn serialize_bool(self, v: bool) -> Result<()> {
         self.serialize_u8(if v { 1 } else { 0 })
     }
