@@ -84,6 +84,10 @@ impl<'a, 'b: 'a> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b> {
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
+    fn is_human_readable(&self) -> bool {
+        false
+    }
+
     // Postcard does not support structures not known at compile time
     fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value>
     where
