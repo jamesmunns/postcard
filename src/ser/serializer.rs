@@ -207,10 +207,9 @@ where
         Ok(self)
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
-        // self.output += "{";
-        // Ok(self)
-        Err(Error::NotYetImplemented)
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
+        VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?).serialize(&mut *self)?;
+        Ok(self)
     }
 
     fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
@@ -323,22 +322,22 @@ where
     type Ok = ();
     type Error = Error;
 
-    fn serialize_key<T>(&mut self, _key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        Err(Error::NotYetImplemented)
+        key.serialize(&mut **self)
     }
 
-    fn serialize_value<T>(&mut self, _value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        Err(Error::NotYetImplemented)
+        value.serialize(&mut **self)
     }
 
     fn end(self) -> Result<()> {
-        Err(Error::NotYetImplemented)
+      Ok(())
     }
 }
 

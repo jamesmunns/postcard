@@ -81,6 +81,35 @@ impl<'a, 'b: 'a> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b> {
     }
 }
 
+struct MapAccess<'a, 'b: 'a> {
+    deserializer: &'a mut Deserializer<'b>,
+    len: usize,
+}
+
+impl<'a, 'b: 'a> serde::de::MapAccess<'b> for MapAccess<'a, 'b> {
+    type Error = Error;
+
+    fn next_key_seed<K: DeserializeSeed<'b>>(&mut self, seed: K) -> Result<Option<K::Value>> {
+        if self.len > 0 {
+            self.len -= 1;
+            Ok(Some(DeserializeSeed::deserialize(
+                seed,
+                &mut *self.deserializer,
+            )?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn next_value_seed<V: DeserializeSeed<'b>>(&mut self, seed: V) -> Result<V::Value> {
+        DeserializeSeed::deserialize(seed, &mut *self.deserializer)
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        Some(self.len)
+    }
+}
+
 impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     type Error = Error;
 
@@ -317,13 +346,16 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         self.deserialize_tuple(len, visitor)
     }
 
-    fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value>
+    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        // I plan to implement this, but haven't yet. Open an issue if you'd
-        // like it done sooner :)
-        Err(Error::NotYetImplemented)
+        let len = self.try_take_varint()?;
+
+        visitor.visit_map(MapAccess {
+            deserializer: self,
+            len,
+        })
     }
 
     fn deserialize_struct<V>(
@@ -405,42 +437,3 @@ impl<'de, 'a> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de> {
         Ok((v, self))
     }
 }
-
-// // `MapAccess` is provided to the `Visitor` to give it the ability to iterate
-// // through entries of the map.
-// impl<'de, 'a> MapAccess<'de> for CommaSeparated<'a, 'de> {
-//     type Error = Error;
-
-//     fn next_key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>>
-//     where
-//         K: DeserializeSeed<'de>,
-//     {
-//         // // Check if there are no more entries.
-//         // if self.de.peek_char()? == '}' {
-//         //     return Ok(None);
-//         // }
-//         // // Comma is required before every entry except the first.
-//         // if !self.first && self.de.next_char()? != ',' {
-//         //     return Err(Error::ExpectedMapComma);
-//         // }
-//         // self.first = false;
-//         // // Deserialize a map key.
-//         // seed.deserialize(&mut *self.de).map(Some)
-//         unimplemented!()
-//     }
-
-//     fn next_value_seed<V>(&mut self, _seed: V) -> Result<V::Value>
-//     where
-//         V: DeserializeSeed<'de>,
-//     {
-//         // // It doesn't make a difference whether the colon is parsed at the end
-//         // // of `next_key_seed` or at the beginning of `next_value_seed`. In this
-//         // // case the code is a bit simpler having it here.
-//         // if self.de.next_char()? != ':' {
-//         //     return Err(Error::ExpectedMapColon);
-//         // }
-//         // // Deserialize a map value.
-//         // seed.deserialize(&mut *self.de)
-//         unimplemented!()
-//     }
-// }
