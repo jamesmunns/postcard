@@ -273,7 +273,7 @@ mod mu {
         pub fn new_from_generic_array<B: ArrayLength<u8>>(
             buf: &'a mut MaybeUninit<GenericArray<u8, B>>,
         ) -> Self {
-            // Array of MaybeUninit <-> MaybeUninit Array transformation
+            // NOTE(unsafe): MaybeUninit<Array> -> [MaybeUninit] transformation
             Mu {
                 buf: unsafe {
                     slice::from_raw_parts_mut(
@@ -296,6 +296,7 @@ mod mu {
                 return Err(());
             }
 
+            // NOTE(unsafe): Copy slice, length is checked above
             unsafe {
                 ptr::copy_nonoverlapping(data.as_ptr(), self.buf.as_mut_ptr() as *mut _, len);
             }
@@ -310,6 +311,7 @@ mod mu {
                 return Err(());
             }
 
+            // NOTE(unsafe): Write value, length is checked above
             unsafe {
                 ptr::write(self.buf.as_mut_ptr().add(self.idx) as *mut _, data);
             }
@@ -319,6 +321,8 @@ mod mu {
         }
 
         fn release(self) -> core::result::Result<Self::Output, ()> {
+            // NOTE(unsafe): Get a slice to the initialized storage, length is based on index which
+            // is checked by the try_* methods
             let slice =
                 unsafe { slice::from_raw_parts_mut(self.buf.as_mut_ptr() as *mut _, self.idx) };
             Ok(slice)
@@ -333,6 +337,7 @@ mod mu {
                 panic!("Accessing uninitialized memory");
             }
 
+            // NOTE(unsafe): Access an index, safe based on check above
             unsafe { &*(self.buf.as_ptr().add(idx) as *mut _) }
         }
     }
@@ -343,6 +348,7 @@ mod mu {
                 panic!("Accessing uninitialized memory");
             }
 
+            // NOTE(unsafe): Access an index, safe based on check above
             unsafe { &mut *(self.buf.as_mut_ptr().add(idx) as *mut _) }
         }
     }
