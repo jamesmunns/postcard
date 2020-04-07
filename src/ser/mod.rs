@@ -1,6 +1,6 @@
-use serde::Serialize;
 use crate::error::{Error, Result};
 use crate::ser::flavors::{Cobs, SerFlavor, Slice};
+use serde::Serialize;
 
 #[cfg(feature = "heapless")]
 use crate::ser::flavors::HVec;
@@ -230,7 +230,10 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec(alloc::vec::Vec::new()))
+    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
+        value,
+        AllocVec(alloc::vec::Vec::new()),
+    )
 }
 
 /// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
@@ -302,6 +305,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::flavors::Mu;
     use crate::varint::VarintUsize;
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
@@ -586,5 +590,43 @@ mod test {
         let x = crate::from_bytes::<RefStruct>(&output.deref_mut()[..sz]).unwrap();
 
         assert_eq!(input, x);
+    }
+
+    #[test]
+    fn mu_test() {
+        use core::mem::MaybeUninit;
+
+        let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+        let buffer = &mut [MaybeUninit::<u8>::uninit(); 32];
+        let res = serialize_with_flavor(data, Mu::new(buffer)).unwrap();
+
+        assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
+    }
+
+    #[test]
+    fn mu_test_cobs() {
+        use core::mem::MaybeUninit;
+
+        let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+        let buffer = &mut [MaybeUninit::<u8>::uninit(); 32];
+        let res = serialize_with_flavor(data, Cobs::try_new(Mu::new(buffer)).unwrap()).unwrap();
+
+        assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
+    }
+
+    #[test]
+    fn mu_test_cobs_2() {
+        use core::mem::MaybeUninit;
+        use generic_array::{typenum::consts::U32, GenericArray};
+
+        let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+        let buffer = &mut MaybeUninit::<GenericArray<u8, U32>>::uninit();
+        let res = serialize_with_flavor(
+            data,
+            Cobs::try_new(Mu::new_from_generic_array(buffer)).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
     }
 }

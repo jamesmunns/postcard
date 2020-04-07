@@ -28,6 +28,10 @@ version = "0.5"
 features = ["serde"]
 optional = true
 
+[dependencies.generic-array]
+version = "0.13"
+optional = true
+
 [dependencies.serde]
 version = "1.0.100"
 default-features = false
@@ -40,5 +44,5 @@ default-features = false
 
 [features]
 use-std = []
-default = ["heapless"]
+default = ["heapless", "generic-array"]
 alloc = ["serde/alloc"]

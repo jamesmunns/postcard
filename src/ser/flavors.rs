@@ -85,6 +85,8 @@ pub use std_vec::*;
 #[cfg(feature = "alloc")]
 pub use alloc_vec::*;
 
+pub use mu::*;
+
 /// The SerFlavor trait acts as a combinator/middleware interface that can be used to pass bytes
 /// through storage or modification flavors. See the module level documentation for more information
 /// and examples.
@@ -183,10 +185,10 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 
 #[cfg(feature = "heapless")]
 mod heapless_vec {
-    use heapless::{ArrayLength, Vec};
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use heapless::{ArrayLength, Vec};
 
     ////////////////////////////////////////
     // HVec
@@ -238,13 +240,121 @@ mod heapless_vec {
     }
 }
 
+mod mu {
+    use super::Index;
+    use super::IndexMut;
+    use super::SerFlavor;
+    use core::{
+        mem::{self, MaybeUninit},
+        ptr, slice,
+    };
+
+    #[cfg(feature = "generic-array")]
+    use generic_array::{ArrayLength, GenericArray};
+
+    /// The `Mu` flavor is a storage flavor, storing the serialized (or otherwise modified) bytes
+    /// into an uninitialized memory region. The `Mu` flavor resolves into an initialized sub-slice
+    /// of the original uninitialized buffer.
+    pub struct Mu<'a> {
+        buf: &'a mut [MaybeUninit<u8>],
+        idx: usize,
+    }
+
+    impl<'a> Mu<'a> {
+        /// Create a new `Mu` flavor from a given an uninitialized backing buffer
+        pub fn new(buf: &'a mut [MaybeUninit<u8>]) -> Self {
+            Mu { buf, idx: 0 }
+        }
+    }
+
+    #[cfg(feature = "generic-array")]
+    impl<'a> Mu<'a> {
+        /// Create a new `Mu` flavor from a given an uninitialized backing buffer
+        pub fn new_from_generic_array<B: ArrayLength<u8>>(
+            buf: &'a mut MaybeUninit<GenericArray<u8, B>>,
+        ) -> Self {
+            // Array of MaybeUninit <-> MaybeUninit Array transformation
+            Mu {
+                buf: unsafe {
+                    slice::from_raw_parts_mut(
+                        buf.as_mut_ptr() as *mut _,
+                        mem::size_of::<MaybeUninit<GenericArray<u8, B>>>(),
+                    )
+                },
+                idx: 0,
+            }
+        }
+    }
+
+    impl<'a> SerFlavor for Mu<'a> {
+        type Output = &'a mut [u8];
+
+        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+            let len = data.len();
+
+            if (len + self.idx) > self.buf.len() {
+                return Err(());
+            }
+
+            unsafe {
+                ptr::copy_nonoverlapping(data.as_ptr(), self.buf.as_mut_ptr() as *mut _, len);
+            }
+
+            self.idx += len;
+
+            Ok(())
+        }
+
+        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+            if self.idx >= self.buf.len() {
+                return Err(());
+            }
+
+            unsafe {
+                ptr::write(self.buf.as_mut_ptr().add(self.idx) as *mut _, data);
+            }
+            self.idx += 1;
+
+            Ok(())
+        }
+
+        fn release(self) -> core::result::Result<Self::Output, ()> {
+            let slice =
+                unsafe { slice::from_raw_parts_mut(self.buf.as_mut_ptr() as *mut _, self.idx) };
+            Ok(slice)
+        }
+    }
+
+    impl<'a> Index<usize> for Mu<'a> {
+        type Output = u8;
+
+        fn index(&self, idx: usize) -> &u8 {
+            if idx >= self.idx {
+                panic!("Accessing uninitialized memory");
+            }
+
+            unsafe { &*(self.buf.as_ptr().add(idx) as *mut _) }
+        }
+    }
+
+    impl<'a> IndexMut<usize> for Mu<'a> {
+        fn index_mut(&mut self, idx: usize) -> &mut u8 {
+            if idx >= self.idx {
+                panic!("Accessing uninitialized memory");
+            }
+
+            unsafe { &mut *(self.buf.as_mut_ptr().add(idx) as *mut _) }
+        }
+    }
+}
+
 #[cfg(feature = "use-std")]
 mod std_vec {
     extern crate std;
-    use std::vec::Vec;
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use std::vec::Vec;
 
     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
     ///
@@ -289,10 +399,10 @@ mod std_vec {
 #[cfg(feature = "alloc")]
 mod alloc_vec {
     extern crate alloc;
-    use alloc::vec::Vec;
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use alloc::vec::Vec;
 
     /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
     ///
