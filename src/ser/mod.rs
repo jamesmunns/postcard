@@ -1,6 +1,6 @@
-use serde::Serialize;
 use crate::error::{Error, Result};
 use crate::ser::flavors::{Cobs, SerFlavor, Slice};
+use serde::Serialize;
 
 #[cfg(feature = "heapless")]
 use crate::ser::flavors::HVec;
@@ -54,10 +54,7 @@ pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a m
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
-        value,
-        Cobs::try_new(Slice::new(buf))?,
-    )
+    serialize_with_flavor(value, Cobs::try_new(Slice::new(buf))?)
 }
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
@@ -128,7 +125,7 @@ where
     T: Serialize + ?Sized,
     B: ArrayLength<u8>,
 {
-    serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
+    serialize_with_flavor(value, Cobs::try_new(HVec::default())?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -230,7 +227,10 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec(alloc::vec::Vec::new()))
+    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
+        value,
+        AllocVec(alloc::vec::Vec::new()),
+    )
 }
 
 /// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
@@ -278,7 +278,7 @@ where
 ///
 /// let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 /// let buffer = &mut [0u8; 32];
-/// let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+/// let res = serialize_with_flavor(
 ///     data,
 ///     Cobs::try_new(Slice::new(buffer)).unwrap(),
 /// ).unwrap();
@@ -302,6 +302,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::from_bytes_cobs;
     use crate::varint::VarintUsize;
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
@@ -586,5 +587,37 @@ mod test {
         let x = crate::from_bytes::<RefStruct>(&output.deref_mut()[..sz]).unwrap();
 
         assert_eq!(input, x);
+    }
+
+    struct MyFooter {
+        state: u16,
+    }
+
+    impl crate::flavors::FooterGenerator<[u8; 2]> for MyFooter {
+        fn feed(&mut self, data: u8) {
+            self.state += data as u16;
+        }
+
+        fn finalize(&mut self) -> [u8; 2] {
+            self.state.to_le_bytes()
+        }
+    }
+
+    #[test]
+    fn cobs_footer_test() {
+        let data: [u8; 4] = [0x01, 0x00, 0x20, 0x30];
+        let buffer = &mut [0; 32];
+        let res = serialize_with_flavor(
+            &data,
+            Cobs::try_new_with_footer(Slice::new(buffer), MyFooter { state: 0 }).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(res, &[0x02, 0x01, 0x04, 0x20, 0x30, 0x51, 0x01, 0x00]);
+
+        let res: ([u8; 4], [u8; 2]) = from_bytes_cobs(res).unwrap();
+
+        assert_eq!(res.0, data);
+        assert_eq!(res.1, (data.iter().sum::<u8>() as u16).to_le_bytes());
     }
 }

@@ -63,7 +63,7 @@
 //!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+//! let res = serialize_with_flavor(
 //!     data,
 //!     Cobs::try_new(Slice::new(buffer)).unwrap(),
 //! ).unwrap();
@@ -183,10 +183,10 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 
 #[cfg(feature = "heapless")]
 mod heapless_vec {
-    use heapless::{ArrayLength, Vec};
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use heapless::{ArrayLength, Vec};
 
     ////////////////////////////////////////
     // HVec
@@ -241,10 +241,10 @@ mod heapless_vec {
 #[cfg(feature = "use-std")]
 mod std_vec {
     extern crate std;
-    use std::vec::Vec;
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use std::vec::Vec;
 
     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
     ///
@@ -289,10 +289,10 @@ mod std_vec {
 #[cfg(feature = "alloc")]
 mod alloc_vec {
     extern crate alloc;
-    use alloc::vec::Vec;
-    use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
+    use super::SerFlavor;
+    use alloc::vec::Vec;
 
     /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
     ///
@@ -338,6 +338,35 @@ mod alloc_vec {
 // Modification Flavors
 ////////////////////////////////////////////////////////////////////////////////
 
+use core::convert::AsRef;
+
+/// The SerFlavor trait acts as a layer to generate footers in modification flavors, this can
+/// commonly be a hash or CRC in packets.
+pub trait FooterGenerator<T: AsRef<[u8]>> {
+    /// This feeds the generator with data to generate a footer
+    fn feed(&mut self, data: u8);
+    /// This returns the final footer
+    fn finalize(&mut self) -> T;
+}
+
+#[doc(hidden)]
+pub struct NoFooter;
+
+impl NoFooter {
+    fn new() -> Self {
+        NoFooter {}
+    }
+}
+
+impl FooterGenerator<[u8; 0]> for NoFooter {
+    #[inline(always)]
+    fn feed(&mut self, _data: u8) {}
+
+    fn finalize(&mut self) -> [u8; 0] {
+        [0; 0]
+    }
+}
+
 ////////////////////////////////////////
 // COBS
 ////////////////////////////////////////
@@ -349,15 +378,19 @@ mod alloc_vec {
 /// This protocol is useful when sending data over a serial interface without framing such as a UART
 ///
 /// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
-pub struct Cobs<B>
+pub struct Cobs<B, F, T>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
+    F: FooterGenerator<T>,
+    T: AsRef<[u8]>,
 {
     flav: B,
+    footer: F,
     cobs: EncoderState,
+    _t: core::marker::PhantomData<T>,
 }
 
-impl<B> Cobs<B>
+impl<B> Cobs<B, NoFooter, [u8; 0]>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
 {
@@ -367,20 +400,44 @@ where
         bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
         Ok(Self {
             flav: bee,
+            footer: NoFooter::new(),
             cobs: EncoderState::default(),
+            _t: core::marker::PhantomData,
         })
     }
 }
 
-impl<'a, B> SerFlavor for Cobs<B>
+impl<B, F, T> Cobs<B, F, T>
 where
     B: SerFlavor + IndexMut<usize, Output = u8>,
+    F: FooterGenerator<T>,
+    T: AsRef<[u8]>,
+{
+    /// Create a new Cobs modifier Flavor. If there is insufficient space
+    /// to push the leading header byte, the method will return an Error
+    pub fn try_new_with_footer(mut bee: B, footer: F) -> Result<Self> {
+        bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
+        Ok(Self {
+            flav: bee,
+            footer,
+            cobs: EncoderState::default(),
+            _t: core::marker::PhantomData,
+        })
+    }
+}
+
+impl<'a, B, F, T> SerFlavor for Cobs<B, F, T>
+where
+    B: SerFlavor + IndexMut<usize, Output = u8>,
+    F: FooterGenerator<T>,
+    T: AsRef<[u8]>,
 {
     type Output = <B as SerFlavor>::Output;
 
     #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         use PushResult::*;
+        self.footer.feed(data);
         match self.cobs.push(data) {
             AddSingle(n) => self.flav.try_push(n),
             ModifyFromStartAndSkip((idx, mval)) => {
@@ -396,6 +453,9 @@ where
     }
 
     fn release(mut self) -> core::result::Result<Self::Output, ()> {
+        for b in self.footer.finalize().as_ref() {
+            self.try_push(*b)?;
+        }
         let (idx, mval) = self.cobs.finalize();
         self.flav[idx] = mval;
         self.flav.try_push(0)?;
