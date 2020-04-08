@@ -604,6 +604,18 @@ mod test {
     }
 
     #[test]
+    fn mu_test_2() {
+        use core::mem::MaybeUninit;
+        use generic_array::{typenum::consts::U32, GenericArray};
+
+        let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+        let buffer = &mut MaybeUninit::<GenericArray<u8, U32>>::uninit();
+        let res = serialize_with_flavor(data, Mu::new_from_generic_array(buffer)).unwrap();
+
+        assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
+    }
+
+    #[test]
     fn mu_test_cobs() {
         use core::mem::MaybeUninit;
 

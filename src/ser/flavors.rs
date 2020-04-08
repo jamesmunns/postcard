@@ -333,20 +333,16 @@ mod mu {
         type Output = u8;
 
         fn index(&self, idx: usize) -> &u8 {
-            if idx >= self.idx {
-                panic!("Accessing uninitialized memory");
-            }
+            assert!(idx < self.idx, "Accessing uninitialized memory");
 
             // NOTE(unsafe): Access an index, safe based on check above
-            unsafe { &*(self.buf.as_ptr().add(idx) as *mut _) }
+            unsafe { &*(self.buf.as_ptr().add(idx) as *const _) }
         }
     }
 
     impl<'a> IndexMut<usize> for Mu<'a> {
         fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            if idx >= self.idx {
-                panic!("Accessing uninitialized memory");
-            }
+            assert!(idx < self.idx, "Accessing uninitialized memory");
 
             // NOTE(unsafe): Access an index, safe based on check above
             unsafe { &mut *(self.buf.as_mut_ptr().add(idx) as *mut _) }
