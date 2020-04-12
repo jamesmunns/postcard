@@ -305,7 +305,7 @@ mod test {
     use crate::varint::VarintUsize;
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
-    use heapless::{consts::*, String};
+    use heapless::{consts::*, String, FnvIndexMap};
     use serde::Deserialize;
 
     #[test]
@@ -568,6 +568,14 @@ mod test {
         write!(&mut input, "helLO!").unwrap();
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
+
+        let mut input: FnvIndexMap<u8, u8, U4> = FnvIndexMap::new();
+        input.insert(0x01, 0x05).unwrap();
+        input.insert(0x02, 0x06).unwrap();
+        input.insert(0x03, 0x07).unwrap();
+        input.insert(0x04, 0x08).unwrap();
+        let output: Vec<u8, U100> = to_vec(&input).unwrap();
+        assert_eq!(&[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08], output.deref());
     }
 
     #[test]
