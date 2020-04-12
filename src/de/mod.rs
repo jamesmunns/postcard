@@ -58,7 +58,7 @@ mod test_heapless {
     use crate::ser::to_vec;
     use core::fmt::Write;
     use core::ops::Deref;
-    use heapless::{consts::*, String, Vec};
+    use heapless::{consts::*, String, Vec, FnvIndexMap};
     use serde::{Deserialize, Serialize};
 
     #[test]
@@ -361,6 +361,16 @@ mod test_heapless {
         let output: Vec<u8, U7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
         let out: String<U8> = from_bytes(output.deref()).unwrap();
+        assert_eq!(input, out);
+
+        let mut input: FnvIndexMap<u8, u8, U4> = FnvIndexMap::new();
+        input.insert(0x01, 0x05).unwrap();
+        input.insert(0x02, 0x06).unwrap();
+        input.insert(0x03, 0x07).unwrap();
+        input.insert(0x04, 0x08).unwrap();
+        let output: Vec<u8, U100> = to_vec(&input).unwrap();
+        assert_eq!(&[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08], output.deref());
+        let out: FnvIndexMap<u8, u8, U4> = from_bytes(output.deref()).unwrap();
         assert_eq!(input, out);
     }
 

@@ -5,7 +5,7 @@ use core::fmt::Write;
 use core::ops::Deref;
 
 #[cfg(feature = "heapless")]
-use heapless::{consts::*, String, Vec};
+use heapless::{consts::*, String, Vec, FnvIndexMap};
 
 #[cfg(feature = "heapless")]
 use postcard::to_vec;
@@ -168,6 +168,13 @@ fn loopback() {
     let mut input: String<U8> = String::new();
     write!(&mut input, "helLO!").unwrap();
     test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
+
+    let mut input: FnvIndexMap<u8, u8, U4> = FnvIndexMap::new();
+    input.insert(0x01, 0x05).unwrap();
+    input.insert(0x02, 0x06).unwrap();
+    input.insert(0x03, 0x07).unwrap();
+    input.insert(0x04, 0x08).unwrap();
+    test_one(input, &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08]);
 }
 
 #[cfg(feature = "heapless")]
