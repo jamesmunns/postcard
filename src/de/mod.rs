@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use deserializer::Deserializer;
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
-/// of the byte slice is returned for further usage
+/// of the byte slice is not returned.
 pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
