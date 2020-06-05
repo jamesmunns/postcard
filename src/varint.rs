@@ -1,20 +1,7 @@
-use serde::{Serialize, Serializer};
-
 /// A wrapper type that exists as a `usize` at rest, but is serialized
 /// to or deserialized from a varint.
 #[derive(Debug)]
 pub struct VarintUsize(pub usize);
-
-impl Serialize for VarintUsize {
-    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut buf = Self::new_buf();
-        let used_buf = self.to_buf(&mut buf);
-        serializer.serialize_bytes(used_buf)
-    }
-}
 
 /// Type alias for the largest buffer needed to store
 /// a `usize` varint as bytes

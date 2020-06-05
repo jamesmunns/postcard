@@ -493,6 +493,10 @@ mod test {
         let x: &[u8; 32] = &[0u8; 32];
         let output: Vec<u8, U128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 32);
+
+        let x: &[u8] = &[0u8; 32];
+        let output: Vec<u8, U128> = to_vec(x).unwrap();
+        assert_eq!(output.len(), 33);
     }
 
     #[derive(Serialize)]
@@ -501,13 +505,6 @@ mod test {
     #[derive(Serialize)]
     pub struct TupleStruct((u8, u16));
 
-    #[derive(Serialize)]
-    struct ManyVarints {
-        a: VarintUsize,
-        b: VarintUsize,
-        c: VarintUsize,
-    }
-
     #[test]
     fn structs() {
         let output: Vec<u8, U4> = to_vec(&NewTypeStruct(5)).unwrap();
@@ -515,18 +512,6 @@ mod test {
 
         let output: Vec<u8, U3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
         assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
-
-        let output: Vec<u8, U128> = to_vec(&ManyVarints {
-            a: VarintUsize(0x01),
-            b: VarintUsize(0xFFFF_FFFF),
-            c: VarintUsize(0x07CD),
-        })
-        .unwrap();
-
-        assert_eq!(
-            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0xCD, 0x0F,],
-            output.deref()
-        );
     }
 
     #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
