@@ -175,6 +175,15 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         visitor.visit_i64(i64::from_le_bytes(buf))
     }
 
+    fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0u8; 16];
+        buf[..].copy_from_slice(self.try_take_n(16)?);
+        visitor.visit_i128(i128::from_le_bytes(buf))
+    }
+
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
@@ -207,6 +216,15 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         let mut buf = [0u8; 8];
         buf[..].copy_from_slice(self.try_take_n(8)?);
         visitor.visit_u64(u64::from_le_bytes(buf))
+    }
+
+    fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: Visitor<'de>,
+    {
+        let mut buf = [0u8; 16];
+        buf[..].copy_from_slice(self.try_take_n(16)?);
+        visitor.visit_u128(u128::from_le_bytes(buf))
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>

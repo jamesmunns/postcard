@@ -97,10 +97,25 @@ mod test_heapless {
         assert_eq!(out, 0x1234_5678_90AB_CDEFu64);
     }
 
+    #[test]
+    fn de_u128() {
+        let output: Vec<u8, U16> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
+        assert!(
+            &[
+                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12,
+                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12
+            ] == output.deref()
+        );
+
+        let out: u128 = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128);
+    }
+
     #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
     struct BasicU8S {
         st: u16,
         ei: u8,
+        ote: u128,
         sf: u64,
         tt: u32,
     }
@@ -110,16 +125,21 @@ mod test_heapless {
         let data = BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
+            ote: 0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA,
             sf: 0x1234_4321_ABCD_DCBA,
             tt: 0xACAC_ACAC,
         };
 
-        let output: Vec<u8, U15> = to_vec(&data).unwrap();
+        let output: Vec<u8, U31> = to_vec(&data).unwrap();
 
         assert!(
             &[
-                0xCD, 0xAB, 0xFE, 0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12, 0xAC, 0xAC, 0xAC,
-                0xAC
+                0xCD, 0xAB,
+                0xFE,
+                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
+                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
+                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
+                0xAC, 0xAC, 0xAC, 0xAC
             ] == output.deref()
         );
 
