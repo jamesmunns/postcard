@@ -39,6 +39,6 @@ version = "0.1.5-pre"
 default-features = false
 
 [features]
-use-std = []
+use-std = ["serde/std"]
 default = ["heapless"]
 alloc = ["serde/alloc"]
