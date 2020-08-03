@@ -262,8 +262,6 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        // AJM - in serialize_bytes, we don't write the length first
-        // is this asymmetry intended?
         let sz = self.try_take_varint()?;
         let bytes: &'de [u8] = self.try_take_n(sz)?;
         visitor.visit_borrowed_bytes(bytes)

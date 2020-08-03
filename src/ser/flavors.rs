@@ -72,6 +72,7 @@
 //! ```
 
 use crate::error::{Error, Result};
+use crate::varint::VarintUsize;
 use cobs::{EncoderState, PushResult};
 use core::ops::Index;
 use core::ops::IndexMut;
@@ -105,6 +106,15 @@ pub trait SerFlavor {
 
     /// The try_push() trait method can be used to push a single byte to be modified and/or stored
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
+
+    /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
+    /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
+    /// the desired behavior for most circumstances.
+    fn try_push_varint_usize(&mut self, data: &VarintUsize) -> core::result::Result<(), ()> {
+        let mut buf = VarintUsize::new_buf();
+        let used_buf = data.to_buf(&mut buf);
+        self.try_extend(used_buf)
+    }
 
     /// The release() trait method finalizes the modification or storage operation, and resolved into
     /// the type defined by `SerFlavor::Output` associated type.

@@ -175,6 +175,10 @@ fn loopback() {
     input.insert(0x03, 0x07).unwrap();
     input.insert(0x04, 0x08).unwrap();
     test_one(input, &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08]);
+
+    // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
+    #[cfg(feature = "use-std")]
+    test_one(std::ffi::CString::new("heLlo").unwrap(), &[0x05, b'h', b'e', b'L', b'l', b'o']);
 }
 
 #[cfg(feature = "heapless")]

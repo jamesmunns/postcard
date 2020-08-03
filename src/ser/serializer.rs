@@ -116,7 +116,9 @@ where
     }
 
     fn serialize_str(self, v: &str) -> Result<()> {
-        VarintUsize(v.len()).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(v.len()))
+            .map_err(|_| Error::SerializeBufferFull)?;
         self.output
             .try_extend(v.as_bytes())
             .map_err(|_| Error::SerializeBufferFull)?;
@@ -124,6 +126,9 @@ where
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
+        self.output
+            .try_push_varint_usize(&VarintUsize(v.len()))
+            .map_err(|_| Error::SerializeBufferFull)?;
         self.output
             .try_extend(v)
             .map_err(|_| Error::SerializeBufferFull)
@@ -155,7 +160,9 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<()> {
-        VarintUsize(variant_index as usize).serialize(self)
+        self.output
+            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
@@ -175,12 +182,16 @@ where
     where
         T: ?Sized + Serialize,
     {
-        VarintUsize(variant_index as usize).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .map_err(|_| Error::SerializeBufferFull)?;
         value.serialize(self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?))
+            .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
 
@@ -203,12 +214,16 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
-        VarintUsize(variant_index as usize).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
-        VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?))
+            .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
 
@@ -223,7 +238,9 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
-        VarintUsize(variant_index as usize).serialize(&mut *self)?;
+        self.output
+            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
 

@@ -59,7 +59,7 @@ mod test_heapless {
     use core::fmt::Write;
     use core::ops::Deref;
     use heapless::{consts::*, String, Vec, FnvIndexMap};
-    use serde::{Deserialize, Serialize};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     #[test]
     fn de_u8() {
@@ -272,6 +272,38 @@ mod test_heapless {
         assert_eq!(out, (1u8, 10u32, "Hello!"));
     }
 
+    #[derive(Debug, Eq, PartialEq)]
+    pub struct ByteSliceStruct<'a> {
+        bytes: &'a [u8],
+    }
+
+    impl<'a> Serialize for ByteSliceStruct<'a> {
+        fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            // Serialization is generic for all slice types, so the default serialization of byte
+            // slices does not use `Serializer::serialize_bytes`.
+            serializer.serialize_bytes(self.bytes)
+        }
+    }
+
+    impl<'a, 'de> Deserialize<'de> for ByteSliceStruct<'a>
+    where
+        'de: 'a,
+    {
+        fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            // Deserialization of byte slices is specialized for byte slices, so the default
+            // deserialization will call `Deserializer::deserialize_bytes`.
+            Ok(Self {
+                bytes: Deserialize::deserialize(deserializer)?,
+            })
+        }
+    }
+
     #[test]
     fn bytes() {
         let x: &[u8; 32] = &[0u8; 32];
@@ -279,6 +311,18 @@ mod test_heapless {
         assert_eq!(output.len(), 32);
         let out: [u8; 32] = from_bytes(output.deref()).unwrap();
         assert_eq!(out, [0u8; 32]);
+
+        let x: &[u8] = &[0u8; 32];
+        let output: Vec<u8, U128> = to_vec(x).unwrap();
+        assert_eq!(output.len(), 33);
+        let out: &[u8] = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, [0u8; 32]);
+
+        let x = ByteSliceStruct { bytes: &[0u8; 32] };
+        let output: Vec<u8, U128> = to_vec(&x).unwrap();
+        assert_eq!(output.len(), 33);
+        let out: ByteSliceStruct = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, ByteSliceStruct { bytes: &[0u8; 32] });
     }
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
