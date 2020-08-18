@@ -233,6 +233,10 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
+        let sz = self.try_take_varint()?;
+        if sz > 4 {
+            return Err(Error::DeserializeBadChar);
+        }
         let mut buf = [0u8; 4];
         let bytes = self.try_take_n(4)?;
         buf.copy_from_slice(bytes);
