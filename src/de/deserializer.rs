@@ -237,11 +237,17 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         if sz > 4 {
             return Err(Error::DeserializeBadChar);
         }
-        let mut buf = [0u8; 4];
-        let bytes = self.try_take_n(4)?;
-        buf.copy_from_slice(bytes);
-        let integer = u32::from_le_bytes(buf);
-        visitor.visit_char(core::char::from_u32(integer).ok_or(Error::DeserializeBadChar)?)
+        let bytes: &'de [u8] = self.try_take_n(sz)?;
+        // we pass the character through string conversion because
+        // this handles transforming the array of code units to a 
+        // codepoint. we can't use char::from_u32() because it expects
+        // an already-processed codepoint.
+        let character = core::str::from_utf8(&bytes)
+            .map_err(|_| Error::DeserializeBadChar)?
+            .chars()
+            .next()
+            .ok_or(Error::DeserializeBadChar)?;
+        visitor.visit_char(character)
     }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
