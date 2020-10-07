@@ -325,6 +325,15 @@ mod test_heapless {
         assert_eq!(out, ByteSliceStruct { bytes: &[0u8; 32] });
     }
 
+    #[test]
+    fn chars() {
+        let x: char = 'a';
+        let output: Vec<u8, U5> = to_vec(&x).unwrap();
+        assert_eq!(output.len(), 2);
+        let out: char = from_bytes(output.deref()).unwrap();
+        assert_eq!(out, 'a');
+    }
+
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     pub struct NewTypeStruct(u32);
 
