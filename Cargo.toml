@@ -25,6 +25,7 @@ all-features = true
 
 [dependencies.heapless]
 version = "0.5.4"
+default-features = false
 features = ["serde"]
 optional = true
 
@@ -40,5 +41,6 @@ default-features = false
 
 [features]
 use-std = ["serde/std"]
-default = ["heapless"]
+default = ["heapless-cas"]
+heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
