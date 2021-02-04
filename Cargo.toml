@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"
 readme = "README.md"
