@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"
 readme = "README.md"
@@ -24,7 +24,7 @@ all-features = true
 [dependencies]
 
 [dependencies.heapless]
-version = "0.5.4"
+version = "0.6.1"
 default-features = false
 features = ["serde"]
 optional = true
