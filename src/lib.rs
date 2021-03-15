@@ -132,7 +132,7 @@
 //!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+//! let res = serialize_with_flavor(
 //!     data,
 //!     Cobs::try_new(Slice::new(buffer)).unwrap(),
 //! ).unwrap();
@@ -167,9 +167,7 @@ mod varint;
 pub use de::deserializer::Deserializer;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
-pub use ser::{
-    flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs,
-};
+pub use ser::{flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
