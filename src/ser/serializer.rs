@@ -71,6 +71,12 @@ where
             .map_err(|_| Error::SerializeBufferFull)
     }
 
+    fn serialize_i128(self, v: i128) -> Result<()> {
+        self.output
+            .try_extend(&v.to_le_bytes())
+            .map_err(|_| Error::SerializeBufferFull)
+    }
+
     fn serialize_u8(self, v: u8) -> Result<()> {
         self.output
             .try_push(v)
@@ -90,6 +96,12 @@ where
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
+        self.output
+            .try_extend(&v.to_le_bytes())
+            .map_err(|_| Error::SerializeBufferFull)
+    }
+
+    fn serialize_u128(self, v: u128) -> Result<()> {
         self.output
             .try_extend(&v.to_le_bytes())
             .map_err(|_| Error::SerializeBufferFull)
@@ -354,7 +366,7 @@ where
     }
 
     fn end(self) -> Result<()> {
-      Ok(())
+        Ok(())
     }
 }
 
