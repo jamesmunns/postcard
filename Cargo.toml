@@ -24,7 +24,7 @@ all-features = true
 [dependencies]
 
 [dependencies.heapless]
-version = "0.6.1"
+version = "0.7.0"
 default-features = false
 features = ["serde"]
 optional = true

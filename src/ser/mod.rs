@@ -6,7 +6,7 @@ use crate::ser::flavors::{Cobs, SerFlavor, Slice};
 use crate::ser::flavors::HVec;
 
 #[cfg(feature = "heapless")]
-use heapless::{ArrayLength, Vec};
+use heapless::Vec;
 
 #[cfg(feature = "use-std")]
 use crate::ser::flavors::StdVec;
@@ -104,31 +104,30 @@ where
 ///
 /// ```rust
 /// use postcard::to_vec_cobs;
-/// use heapless::{Vec, consts::*};
+/// use heapless::Vec;
 /// use core::ops::Deref;
 ///
-/// let ser: Vec<u8, U32> = to_vec_cobs(&false).unwrap();
+/// let ser: Vec<u8, 32> = to_vec_cobs(&false).unwrap();
 /// assert_eq!(ser.deref(), &[0x01, 0x01, 0x00]);
 ///
-/// let ser: Vec<u8, U32> = to_vec_cobs("Hi!").unwrap();
+/// let ser: Vec<u8, 32> = to_vec_cobs("Hi!").unwrap();
 /// assert_eq!(ser.deref(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 ///
 /// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
 /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let ser: Vec<u8, U32> = to_vec_cobs(data).unwrap();
+/// let ser: Vec<u8, 32> = to_vec_cobs(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 ///
 /// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let ser: Vec<u8, U32> = to_vec_cobs(data).unwrap();
+/// let ser: Vec<u8, 32> = to_vec_cobs(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x02, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
 #[cfg(feature = "heapless")]
-pub fn to_vec_cobs<B, T>(value: &T) -> Result<Vec<u8, B>>
+pub fn to_vec_cobs<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
-    B: ArrayLength<u8>,
 {
-    serialize_with_flavor::<T, Cobs<HVec<_>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
+    serialize_with_flavor::<T, Cobs<HVec<B>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -138,29 +137,28 @@ where
 ///
 /// ```rust
 /// use postcard::to_vec;
-/// use heapless::{Vec, consts::*};
+/// use heapless::Vec;
 /// use core::ops::Deref;
 ///
-/// let ser: Vec<u8, U32> = to_vec(&true).unwrap();
+/// let ser: Vec<u8, 32> = to_vec(&true).unwrap();
 /// assert_eq!(ser.deref(), &[0x01]);
 ///
-/// let ser: Vec<u8, U32> = to_vec("Hi!").unwrap();
+/// let ser: Vec<u8, 32> = to_vec("Hi!").unwrap();
 /// assert_eq!(ser.deref(), &[0x03, b'H', b'i', b'!']);
 ///
 /// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
 /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let ser: Vec<u8, U32> = to_vec(data).unwrap();
+/// let ser: Vec<u8, 32> = to_vec(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x04, 0x01, 0x00, 0x20, 0x30]);
 ///
 /// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
-/// let ser: Vec<u8, U32> = to_vec(data).unwrap();
+/// let ser: Vec<u8, 32> = to_vec(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30]);
 /// ```
 #[cfg(feature = "heapless")]
-pub fn to_vec<B, T>(value: &T) -> Result<Vec<u8, B>>
+pub fn to_vec<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
-    B: ArrayLength<u8>,
 {
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
@@ -305,36 +303,36 @@ mod test {
     use crate::varint::VarintUsize;
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
-    use heapless::{consts::*, String, FnvIndexMap};
+    use heapless::{String, FnvIndexMap};
     use serde::Deserialize;
 
     #[test]
     fn ser_u8() {
-        let output: Vec<u8, U1> = to_vec(&0x05u8).unwrap();
+        let output: Vec<u8, 1> = to_vec(&0x05u8).unwrap();
         assert!(&[5] == output.deref());
     }
 
     #[test]
     fn ser_u16() {
-        let output: Vec<u8, U2> = to_vec(&0xA5C7u16).unwrap();
+        let output: Vec<u8, 2> = to_vec(&0xA5C7u16).unwrap();
         assert!(&[0xC7, 0xA5] == output.deref());
     }
 
     #[test]
     fn ser_u32() {
-        let output: Vec<u8, U4> = to_vec(&0xCDAB3412u32).unwrap();
+        let output: Vec<u8, 4> = to_vec(&0xCDAB3412u32).unwrap();
         assert!(&[0x12, 0x34, 0xAB, 0xCD] == output.deref());
     }
 
     #[test]
     fn ser_u64() {
-        let output: Vec<u8, U8> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
+        let output: Vec<u8, 8> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
         assert!(&[0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12] == output.deref());
     }
 
     #[test]
     fn ser_u128() {
-        let output: Vec<u8, U16> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
+        let output: Vec<u8, 16> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
         assert!(
             &[
                 0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12,
@@ -354,7 +352,7 @@ mod test {
 
     #[test]
     fn ser_struct_unsigned() {
-        let output: Vec<u8, U31> = to_vec(&BasicU8S {
+        let output: Vec<u8, 31> = to_vec(&BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
             ote: 0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA,
@@ -378,17 +376,17 @@ mod test {
     #[test]
     fn ser_byte_slice() {
         let input: &[u8] = &[1u8, 2, 3, 4, 5, 6, 7, 8];
-        let output: Vec<u8, U9> = to_vec(input).unwrap();
+        let output: Vec<u8, 9> = to_vec(input).unwrap();
         assert_eq!(
             &[0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
             output.deref()
         );
 
-        let mut input: Vec<u8, U1024> = Vec::new();
+        let mut input: Vec<u8, 1024> = Vec::new();
         for i in 0..1024 {
             input.push((i & 0xFF) as u8).unwrap();
         }
-        let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+        let output: Vec<u8, 2048> = to_vec(input.deref()).unwrap();
         assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
 
         assert_eq!(output.len(), 1026);
@@ -400,15 +398,15 @@ mod test {
     #[test]
     fn ser_str() {
         let input: &str = "hello, postcard!";
-        let output: Vec<u8, U17> = to_vec(input).unwrap();
+        let output: Vec<u8, 17> = to_vec(input).unwrap();
         assert_eq!(0x10, output.deref()[0]);
         assert_eq!(input.as_bytes(), &output.deref()[1..]);
 
-        let mut input: String<U1024> = String::new();
+        let mut input: String<1024> = String::new();
         for _ in 0..256 {
             write!(&mut input, "abcd").unwrap();
         }
-        let output: Vec<u8, U2048> = to_vec(input.deref()).unwrap();
+        let output: Vec<u8, 2048> = to_vec(input.deref()).unwrap();
         assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
 
         assert_eq!(output.len(), 1026);
@@ -463,42 +461,42 @@ mod test {
 
     #[test]
     fn enums() {
-        let output: Vec<u8, U1> = to_vec(&BasicEnum::Bim).unwrap();
+        let output: Vec<u8, 1> = to_vec(&BasicEnum::Bim).unwrap();
         assert_eq!(&[0x01], output.deref());
 
-        let output: Vec<u8, U9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let output: Vec<u8, 9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
             output.deref()
         );
 
-        let output: Vec<u8, U3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        let output: Vec<u8, 3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF], output.deref());
 
-        let output: Vec<u8, U2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
+        let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
         assert_eq!(&[0x02, 0xFF], output.deref());
 
-        let output: Vec<u8, U8> = to_vec(&DataEnum::Kim(EnumStruct {
+        let output: Vec<u8, 8> = to_vec(&DataEnum::Kim(EnumStruct {
             eight: 0xF0,
             sixt: 0xACAC,
         }))
         .unwrap();
         assert_eq!(&[0x03, 0xF0, 0xAC, 0xAC,], output.deref());
 
-        let output: Vec<u8, U8> = to_vec(&DataEnum::Chi {
+        let output: Vec<u8, 8> = to_vec(&DataEnum::Chi {
             a: 0x0F,
             b: 0xC7C7C7C7,
         })
         .unwrap();
         assert_eq!(&[0x04, 0x0F, 0xC7, 0xC7, 0xC7, 0xC7], output.deref());
 
-        let output: Vec<u8, U8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
+        let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
         assert_eq!(&[0x05, 0x69, 0x69, 0x07], output.deref());
     }
 
     #[test]
     fn tuples() {
-        let output: Vec<u8, U128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
+        let output: Vec<u8, 128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
         assert_eq!(
             &[1u8, 0x0A, 0x00, 0x00, 0x00, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
             output.deref()
@@ -508,11 +506,11 @@ mod test {
     #[test]
     fn bytes() {
         let x: &[u8; 32] = &[0u8; 32];
-        let output: Vec<u8, U128> = to_vec(x).unwrap();
+        let output: Vec<u8, 128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 32);
 
         let x: &[u8] = &[0u8; 32];
-        let output: Vec<u8, U128> = to_vec(x).unwrap();
+        let output: Vec<u8, 128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 33);
     }
 
@@ -524,10 +522,10 @@ mod test {
 
     #[test]
     fn structs() {
-        let output: Vec<u8, U4> = to_vec(&NewTypeStruct(5)).unwrap();
+        let output: Vec<u8, 4> = to_vec(&NewTypeStruct(5)).unwrap();
         assert_eq!(&[0x05, 0x00, 0x00, 0x00], output.deref());
 
-        let output: Vec<u8, U3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
+        let output: Vec<u8, 3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
         assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
     }
 
@@ -541,7 +539,7 @@ mod test {
     fn ref_struct() {
         let message = "hElLo";
         let bytes = [0x01, 0x10, 0x02, 0x20];
-        let output: Vec<u8, U11> = to_vec(&RefStruct {
+        let output: Vec<u8, 11> = to_vec(&RefStruct {
             bytes: &bytes,
             str_s: message,
         })
@@ -555,28 +553,28 @@ mod test {
 
     #[test]
     fn unit() {
-        let output: Vec<u8, U1> = to_vec(&()).unwrap();
+        let output: Vec<u8, 1> = to_vec(&()).unwrap();
         assert_eq!(output.len(), 0);
     }
 
     #[test]
     fn heapless_data() {
-        let mut input: Vec<u8, U4> = Vec::new();
+        let mut input: Vec<u8, 4> = Vec::new();
         input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
-        let output: Vec<u8, U5> = to_vec(&input).unwrap();
+        let output: Vec<u8, 5> = to_vec(&input).unwrap();
         assert_eq!(&[0x04, 0x01, 0x02, 0x03, 0x04], output.deref());
 
-        let mut input: String<U8> = String::new();
+        let mut input: String<8> = String::new();
         write!(&mut input, "helLO!").unwrap();
-        let output: Vec<u8, U7> = to_vec(&input).unwrap();
+        let output: Vec<u8, 7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
 
-        let mut input: FnvIndexMap<u8, u8, U4> = FnvIndexMap::new();
+        let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
         input.insert(0x01, 0x05).unwrap();
         input.insert(0x02, 0x06).unwrap();
         input.insert(0x03, 0x07).unwrap();
         input.insert(0x04, 0x08).unwrap();
-        let output: Vec<u8, U100> = to_vec(&input).unwrap();
+        let output: Vec<u8, 100> = to_vec(&input).unwrap();
         assert_eq!(&[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08], output.deref());
     }
 
@@ -589,7 +587,7 @@ mod test {
             str_s: message,
         };
 
-        let mut output: Vec<u8, U13> = to_vec_cobs(&input).unwrap();
+        let mut output: Vec<u8, 13> = to_vec_cobs(&input).unwrap();
 
         let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
 
