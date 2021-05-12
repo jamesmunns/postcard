@@ -5,7 +5,7 @@ use core::fmt::Write;
 use core::ops::Deref;
 
 #[cfg(feature = "heapless")]
-use heapless::{consts::*, String, Vec, FnvIndexMap};
+use heapless::{String, Vec, FnvIndexMap};
 
 #[cfg(feature = "heapless")]
 use postcard::to_vec;
@@ -102,8 +102,8 @@ fn loopback() {
     // );
 
     // AJM(TODO)
-    // let mut input: Vec<u8, U1024> = Vec::new();
-    // let mut output: ::std::vec::Vec<u8> = vec![];
+    // let mut input: Vec<u8, 1024> = Vec::new();
+    // let mut output: ::std::vec::Vec<8> = vec![];
     // output.push(0x80);
     // output.push(0x08); //  0x0800
     // for i in 0..1024 {
@@ -167,15 +167,15 @@ fn loopback() {
     //     &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',]
     // );
 
-    let mut input: Vec<u8, U4> = Vec::new();
+    let mut input: Vec<u8, 4> = Vec::new();
     input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
     test_one(input, &[0x04, 0x01, 0x02, 0x03, 0x04]);
 
-    let mut input: String<U8> = String::new();
+    let mut input: String<8> = String::new();
     write!(&mut input, "helLO!").unwrap();
     test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
 
-    let mut input: FnvIndexMap<u8, u8, U4> = FnvIndexMap::new();
+    let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
     input.insert(0x01, 0x05).unwrap();
     input.insert(0x02, 0x06).unwrap();
     input.insert(0x03, 0x07).unwrap();
@@ -192,7 +192,7 @@ fn test_one<'a, 'de, T>(data: T, ser_rep: &'a [u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
 {
-    let serialized: Vec<u8, U2048> = to_vec(&data).unwrap();
+    let serialized: Vec<u8, 2048> = to_vec(&data).unwrap();
     assert_eq!(serialized.len(), ser_rep.len());
     let mut x: ::std::vec::Vec<u8> = vec![];
     x.extend(serialized.deref().iter().cloned());
