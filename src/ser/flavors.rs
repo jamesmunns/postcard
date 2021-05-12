@@ -257,10 +257,10 @@ mod std_vec {
     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
     ///
     /// This type is only available when the (non-default) `use-std` feature is active
-    pub struct StdVec(pub Vec<8>);
+    pub struct StdVec(pub Vec<u8>);
 
     impl SerFlavor for StdVec {
-        type Output = Vec<8>;
+        type Output = Vec<u8>;
 
         #[inline(always)]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
@@ -305,10 +305,10 @@ mod alloc_vec {
     /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
     ///
     /// This type is only available when the (non-default) `alloc` feature is active
-    pub struct AllocVec(pub Vec<8>);
+    pub struct AllocVec(pub Vec<u8>);
 
     impl SerFlavor for AllocVec {
-        type Output = Vec<8>;
+        type Output = Vec<u8>;
 
         #[inline(always)]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {

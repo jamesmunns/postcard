@@ -96,7 +96,7 @@ where
     serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
 }
 
-/// Serialize a `T` to a `heapless::Vec<8>`, with the `Vec` containing
+/// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
 /// `0x00` byte is included in the output `Vec`. Requires the (default) `heapless` feature.
 ///
@@ -130,7 +130,7 @@ where
     serialize_with_flavor::<T, Cobs<HVec<B>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
 }
 
-/// Serialize a `T` to a `heapless::Vec<8>`, with the `Vec` containing
+/// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data in a serialized format. Requires the (default) `heapless` feature.
 ///
 /// ## Example
@@ -163,28 +163,28 @@ where
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
-/// Serialize a `T` to a `std::vec::Vec<8>`. Requires the `use-std` feature.
+/// Serialize a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
 ///
 /// ## Example
 ///
 /// ```rust
 /// use postcard::to_stdvec;
 ///
-/// let ser: Vec<8> = to_stdvec(&true).unwrap();
+/// let ser: Vec<u8> = to_stdvec(&true).unwrap();
 /// assert_eq!(ser.as_slice(), &[0x01]);
 ///
-/// let ser: Vec<8> = to_stdvec("Hi!").unwrap();
+/// let ser: Vec<u8> = to_stdvec("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<8>>
+pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, StdVec, std::vec::Vec<8>>(value, StdVec(std::vec::Vec::new()))
+    serialize_with_flavor::<T, StdVec, std::vec::Vec<u8>>(value, StdVec(std::vec::Vec::new()))
 }
 
-/// Serialize and COBS encode a `T` to a `std::vec::Vec<8>`. Requires the `use-std` feature.
+/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -193,45 +193,45 @@ where
 /// ```rust
 /// use postcard::to_stdvec_cobs;
 ///
-/// let ser: Vec<8> = to_stdvec_cobs(&true).unwrap();
+/// let ser: Vec<u8> = to_stdvec_cobs(&true).unwrap();
 /// assert_eq!(ser.as_slice(), &[0x02, 0x01, 0x00]);
 ///
-/// let ser: Vec<8> = to_stdvec_cobs("Hi!").unwrap();
+/// let ser: Vec<u8> = to_stdvec_cobs("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<8>>
+pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<StdVec>, std::vec::Vec<8>>(
+    serialize_with_flavor::<T, Cobs<StdVec>, std::vec::Vec<u8>>(
         value,
         Cobs::try_new(StdVec(std::vec::Vec::new()))?,
     )
 }
 
-/// Serialize a `T` to an `alloc::vec::Vec<8>`. Requires the `alloc` feature.
+/// Serialize a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
 ///
 /// ## Example
 ///
 /// ```rust
 /// use postcard::to_allocvec;
 ///
-/// let ser: Vec<8> = to_allocvec(&true).unwrap();
+/// let ser: Vec<u8> = to_allocvec(&true).unwrap();
 /// assert_eq!(ser.as_slice(), &[0x01]);
 ///
-/// let ser: Vec<8> = to_allocvec("Hi!").unwrap();
+/// let ser: Vec<u8> = to_allocvec("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "alloc")]
-pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<8>>
+pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<8>>(value, AllocVec(alloc::vec::Vec::new()))
+    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec(alloc::vec::Vec::new()))
 }
 
-/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<8>`. Requires the `alloc` feature.
+/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -240,18 +240,18 @@ where
 /// ```rust
 /// use postcard::to_allocvec_cobs;
 ///
-/// let ser: Vec<8> = to_allocvec_cobs(&true).unwrap();
+/// let ser: Vec<u8> = to_allocvec_cobs(&true).unwrap();
 /// assert_eq!(ser.as_slice(), &[0x02, 0x01, 0x00]);
 ///
-/// let ser: Vec<8> = to_allocvec_cobs("Hi!").unwrap();
+/// let ser: Vec<u8> = to_allocvec_cobs("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "alloc")]
-pub fn to_allocvec_cobs<T>(value: &T) -> Result<alloc::vec::Vec<8>>
+pub fn to_allocvec_cobs<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<8>>(
+    serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
         value,
         Cobs::try_new(AllocVec(alloc::vec::Vec::new()))?,
     )

@@ -103,7 +103,7 @@ fn loopback() {
 
     // AJM(TODO)
     // let mut input: Vec<u8, 1024> = Vec::new();
-    // let mut output: ::std::vec::Vec<8> = vec![];
+    // let mut output: ::std::vec::Vec<u8> = vec![];
     // output.push(0x80);
     // output.push(0x08); //  0x0800
     // for i in 0..1024 {

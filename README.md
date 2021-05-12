@@ -39,7 +39,7 @@ maximum value of `(1 << 32) - 1` as currently defined in Rust. Varints larger th
 ## Example - Serialization/Deserialization
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
-Using the default `heapless` feature to serialize to a `heapless::Vec<8>`:
+Using the default `heapless` feature to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
@@ -74,7 +74,7 @@ assert_eq!(
 );
 ```
 
-Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<8>`:
+Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
@@ -89,7 +89,7 @@ struct RefStruct<'a> {
 }
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
-let output: Vec<8> = to_allocvec(&RefStruct {
+let output: Vec<u8> = to_allocvec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
