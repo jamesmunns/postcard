@@ -45,7 +45,7 @@ Using the default `heapless` feature to serialize to a `heapless::Vec<u8>`:
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
 use postcard::{from_bytes, to_vec};
-use heapless::{Vec, consts::*};
+use heapless::Vec;
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct RefStruct<'a> {
@@ -54,7 +54,7 @@ struct RefStruct<'a> {
 }
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
-let output: Vec<u8, U11> = to_vec(&RefStruct {
+let output: Vec<u8, 11> = to_vec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
