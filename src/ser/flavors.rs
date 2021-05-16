@@ -193,7 +193,7 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 
 #[cfg(feature = "heapless")]
 mod heapless_vec {
-    use heapless::{ArrayLength, Vec};
+    use heapless::Vec;
     use super::SerFlavor;
     use super::Index;
     use super::IndexMut;
@@ -204,12 +204,9 @@ mod heapless_vec {
 
     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    pub struct HVec<B: ArrayLength<u8>>(Vec<u8, B>);
+    pub struct HVec<const B: usize>(Vec<u8, B>);
 
-    impl<'a, B> SerFlavor for HVec<B>
-    where
-        B: ArrayLength<u8>,
-    {
+    impl<'a, const B: usize> SerFlavor for HVec<B> {
         type Output = Vec<u8, B>;
 
         #[inline(always)]
@@ -227,7 +224,7 @@ mod heapless_vec {
         }
     }
 
-    impl<B: ArrayLength<u8>> Index<usize> for HVec<B> {
+    impl<const B: usize> Index<usize> for HVec<B> {
         type Output = u8;
 
         fn index(&self, idx: usize) -> &u8 {
@@ -235,13 +232,13 @@ mod heapless_vec {
         }
     }
 
-    impl<B: ArrayLength<u8>> IndexMut<usize> for HVec<B> {
+    impl<const B: usize> IndexMut<usize> for HVec<B> {
         fn index_mut(&mut self, idx: usize) -> &mut u8 {
             &mut self.0[idx]
         }
     }
 
-    impl<B: ArrayLength<u8>> Default for HVec<B> {
+    impl<const B: usize> Default for HVec<B> {
         fn default() -> Self {
             Self(Vec::new())
         }
