@@ -76,6 +76,7 @@ use crate::varint::VarintUsize;
 use cobs::{EncoderState, PushResult};
 use core::ops::Index;
 use core::ops::IndexMut;
+use kolben::rlercobs;
 
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
@@ -407,5 +408,57 @@ where
         self.flav[idx] = mval;
         self.flav.try_push(0)?;
         self.flav.release()
+    }
+}
+
+
+////////////////////////////////////////
+// RlerCobs
+////////////////////////////////////////
+
+/// TODO: Docs
+///
+/// The output of this flavor includes the termination/sentinel byte of `0x00`.
+///
+/// This protocol is useful when sending data over a serial interface without framing such as a UART
+///
+/// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
+///
+/// TODO: This doesn't really stack, because rlercobs holds it's own writer, which isn't really how
+/// postcard flavors are supposed to work. Let's roll with it for now, and it just can't be stacked.
+pub struct RlerCobs<W>
+where
+    W: rlercobs::Write + core::fmt::Debug,
+{
+    cobs: rlercobs::Encoder<W>,
+}
+
+impl<W> RlerCobs<W>
+where
+    W: rlercobs::Write + core::fmt::Debug,
+{
+    /// Create a new RlerCobs modifier Flavor.
+    pub fn with_writer(writer: W) -> Result<Self> {
+        Ok(Self {
+            cobs: rlercobs::Encoder::new(writer),
+        })
+    }
+}
+
+impl<W> SerFlavor for RlerCobs<W>
+where
+    W: rlercobs::Write + core::fmt::Debug,
+{
+    type Output = W;
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+        self.cobs.write(data).map_err(drop)
+    }
+
+    fn release(mut self) -> core::result::Result<Self::Output, ()> {
+        self.cobs.end().map_err(drop)?;
+        self.cobs.writer().write(0x00).map_err(drop)?;
+        Ok(self.cobs.free())
     }
 }

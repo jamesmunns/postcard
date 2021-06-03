@@ -39,8 +39,12 @@ package = "postcard-cobs"
 version = "0.1.5-pre"
 default-features = false
 
+[dependencies.kolben]
+path = "../kolben"
+default-features = false
+
 [features]
-use-std = ["serde/std"]
+use-std = ["serde/std", "kolben/use-std"]
 default = ["heapless-cas"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]

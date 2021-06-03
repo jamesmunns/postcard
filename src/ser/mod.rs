@@ -1,6 +1,7 @@
 use serde::Serialize;
 use crate::error::{Error, Result};
-use crate::ser::flavors::{Cobs, SerFlavor, Slice};
+use crate::ser::flavors::{Cobs, SerFlavor, Slice, RlerCobs};
+use kolben::rlercobs;
 
 #[cfg(feature = "heapless")]
 use crate::ser::flavors::HVec;
@@ -94,6 +95,15 @@ where
     T: Serialize + ?Sized,
 {
     serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
+}
+
+/// TODO: Docs
+pub fn to_rlercobs_writer<T, W>(value: &T, writer: W) -> Result<W>
+where
+    T: Serialize + ?Sized,
+    W: rlercobs::Write + core::fmt::Debug,
+{
+    serialize_with_flavor::<T, RlerCobs<W>, <RlerCobs<W> as SerFlavor>::Output>(value, RlerCobs::with_writer(writer)?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
