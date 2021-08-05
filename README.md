@@ -7,6 +7,7 @@ allowing for flexibility to customize behavior as needed.
 
 * [Documentation](https://docs.rs/postcard/)
 * [Crates.io](https://crates.io/crates/postcard)
+* [Changelog](./CHANGELOG.md)
 
 ## Design Goals
 
