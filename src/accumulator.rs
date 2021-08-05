@@ -13,46 +13,46 @@ use serde::Deserialize;
 /// use serde::Deserialize;
 /// use std::io::Read;
 ///
-/// // Read a "huge" serialized struct in 32 byte chunks into a 256 byte buffer and deserialize it.
-/// #[test]
-/// fn reader() {
-///     # let mut input_buf = [0u8; 256];
-///     # #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
-///     # struct MyData {
-///     #     a: u32,
-///     #     b: bool,
-///     #     c: [u8; 16],
-///     # }
-///     let input = /* Anything that implements the `Read` trait */
-///     # postcard::to_slice_cobs(&expected, &mut input_buf).unwrap();
-///     # let mut input = &input[..];
+/// # let mut input_buf = [0u8; 256];
+/// # #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+/// # struct MyData {
+/// #     a: u32,
+/// #     b: bool,
+/// #     c: [u8; 16],
+/// # }
+/// let input = /* Anything that implements the `Read` trait */
+/// # postcard::to_slice_cobs(&MyData {
+/// #     a: 0xabcdef00,
+/// #     b: true,
+/// #     c: [0xab; 16],
+/// # }, &mut input_buf).unwrap();
+/// # let mut input = &input[..];
 ///
-///     let mut raw_buf = [0u8; 32];
-///     let mut cobs_buf: CobsAccumulator<256> = CobsAccumulator::new();
+/// let mut raw_buf = [0u8; 32];
+/// let mut cobs_buf: CobsAccumulator<256> = CobsAccumulator::new();
 ///
-///     while let Ok(ct) = input.read(&mut raw_buf) {
-///         // Finished reading input
-///         if ct == 0 {
-///             break;
-///         }
+/// while let Ok(ct) = input.read(&mut raw_buf) {
+///     // Finished reading input
+///     if ct == 0 {
+///         break;
+///     }
 ///
-///         let buf = &raw_buf[..ct];
-///         let mut window = &buf[..];
+///     let buf = &raw_buf[..ct];
+///     let mut window = &buf[..];
 ///
-///         'cobs: while !window.is_empty() {
-///             window = match cobs_buf.feed::<Huge>(&window) {
-///                 FeedResult::Consumed => break 'cobs,
-///                 FeedResult::OverFull(new_wind) => new_wind,
-///                 FeedResult::DeserError(new_wind) => new_wind,
-///                 FeedResult::Success { data, remaining } => {
-///                     // Do something with `data: MyData` here.
+///     'cobs: while !window.is_empty() {
+///         window = match cobs_buf.feed::<MyData>(&window) {
+///             FeedResult::Consumed => break 'cobs,
+///             FeedResult::OverFull(new_wind) => new_wind,
+///             FeedResult::DeserError(new_wind) => new_wind,
+///             FeedResult::Success { data, remaining } => {
+///                 // Do something with `data: MyData` here.
 ///
-///                     dbg!(data);
+///                 dbg!(data);
 ///
-///                     remaining
-///                 }
-///             };
-///         }
+///                 remaining
+///             }
+///         };
 ///     }
 /// }
 /// ```
