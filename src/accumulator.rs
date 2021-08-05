@@ -1,6 +1,5 @@
 //! An accumulator used to collect chunked COBS data and deserialize it.
 
-use core::mem::MaybeUninit;
 use serde::Deserialize;
 
 /// An accumulator used to collect chunked COBS data and deserialize it.
