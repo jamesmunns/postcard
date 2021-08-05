@@ -4,6 +4,10 @@ Changes will be described here.
 
 ## Unreleased
 
+* ?
+
+## 0.7.1 -> 0.7.2
+
 * Changed the `CobsAccumulator::new()` into a const fn.
 
 ## 0.7.0 -> 0.7.1
