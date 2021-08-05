@@ -4,6 +4,9 @@ use serde::Deserialize;
 
 /// An accumulator used to collect chunked COBS data and deserialize it.
 ///
+/// This is often useful when you receive "parts" of the message at a time, for example when draining
+/// a serial port buffer that may not contain an entire uninterrupted message.
+///
 /// # Examples
 ///
 /// Deserialize a struct by reading chunks from a [`Read`]er.
