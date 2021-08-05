@@ -35,7 +35,7 @@ impl<const N: usize> CobsAccumulator<N> {
     /// Create a new accumulator.
     pub fn new() -> Self {
         CobsAccumulator {
-            buf: unsafe { MaybeUninit::zeroed().assume_init() },
+            buf: [0; N],
             idx: 0,
         }
     }
