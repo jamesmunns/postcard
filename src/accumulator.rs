@@ -90,7 +90,7 @@ pub enum FeedResult<'a, T> {
 
 impl<const N: usize> CobsAccumulator<N> {
     /// Create a new accumulator.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         CobsAccumulator {
             buf: [0; N],
             idx: 0,

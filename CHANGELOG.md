@@ -2,6 +2,10 @@
 
 Changes will be described here.
 
+## Unreleased
+
+* Changed the `CobsAccumulator::new()` into a const fn.
+
 ## 0.7.0 -> 0.7.1
 
 * Added the `CobsAccumulator` type for accumulating COBS encoded data for deserialization.
