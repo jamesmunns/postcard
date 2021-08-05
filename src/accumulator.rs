@@ -3,6 +3,61 @@
 use serde::Deserialize;
 
 /// An accumulator used to collect chunked COBS data and deserialize it.
+///
+/// # Examples
+///
+/// Deserialize a struct by reading chunks from a [`Read`]er.
+///
+/// ```rust
+/// use postcard::{CobsAccumulator, FeedResult};
+/// use serde::Deserialize;
+/// use std::io::Read;
+///
+/// // Read a "huge" serialized struct in 32 byte chunks into a 256 byte buffer and deserialize it.
+/// #[test]
+/// fn reader() {
+///     # let mut input_buf = [0u8; 256];
+///     # #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+///     # struct MyData {
+///     #     a: u32,
+///     #     b: bool,
+///     #     c: [u8; 16],
+///     # }
+///     let input = /* Anything that implements the `Read` trait */
+///     # postcard::to_slice_cobs(&expected, &mut input_buf).unwrap();
+///     # let mut input = &input[..];
+///
+///     let mut raw_buf = [0u8; 32];
+///     let mut cobs_buf: CobsAccumulator<256> = CobsAccumulator::new();
+///
+///     while let Ok(ct) = input.read(&mut raw_buf) {
+///         // Finished reading input
+///         if ct == 0 {
+///             break;
+///         }
+///
+///         let buf = &raw_buf[..ct];
+///         let mut window = &buf[..];
+///
+///         'cobs: while !window.is_empty() {
+///             window = match cobs_buf.feed::<Huge>(&window) {
+///                 FeedResult::Consumed => break 'cobs,
+///                 FeedResult::OverFull(new_wind) => new_wind,
+///                 FeedResult::DeserError(new_wind) => new_wind,
+///                 FeedResult::Success { data, remaining } => {
+///                     // Do something with `data: MyData` here.
+///
+///                     dbg!(data);
+///
+///                     remaining
+///                 }
+///             };
+///         }
+///     }
+/// }
+/// ```
+///
+/// [`Read`]: std::io::Read
 pub struct CobsAccumulator<const N: usize> {
     buf: [u8; N],
     idx: usize,
