@@ -140,6 +140,21 @@
 //! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 //! ```
 //!
+//! ## Setup - `Cargo.toml`
+//!
+//! Don't forget to add [the `no-std` subset](https://serde.rs/no-std.html) of `serde` along with `postcard` to the `[dependencies]` section of your `Cargo.toml`!
+//!
+//! ``` toml
+//! # Cargo.toml
+//!
+//! [dependencies]
+//! postcard = "0.7.2"
+//!
+//! # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
+//! # disabling default-features fixes this
+//! serde = { version = "1.0.*", default-features = false }
+//! ```
+//!
 //! ## License
 //!
 //! Licensed under either of
