@@ -39,8 +39,13 @@ package = "postcard-cobs"
 version = "0.1.5-pre"
 default-features = false
 
+[dependencies.defmt]
+version = "0.3.0"
+optional = true
+
 [features]
 use-std = ["serde/std"]
 default = ["heapless-cas"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
+use-defmt = ["defmt"]

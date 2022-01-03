@@ -1,6 +1,7 @@
 /// A wrapper type that exists as a `usize` at rest, but is serialized
 /// to or deserialized from a varint.
 #[derive(Debug)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct VarintUsize(pub usize);
 
 /// Type alias for the largest buffer needed to store
