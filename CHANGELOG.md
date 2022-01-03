@@ -4,7 +4,7 @@ Changes will be described here.
 
 ## Unreleased
 
-* ?
+* Added optional [`defmt`](https://crates.io/crates/defmt) support with the `use-defmt` feature.
 
 ## 0.7.1 -> 0.7.2
 

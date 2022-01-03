@@ -61,12 +61,14 @@ use serde::Deserialize;
 /// ```
 ///
 /// [`Read`]: std::io::Read
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub struct CobsAccumulator<const N: usize> {
     buf: [u8; N],
     idx: usize,
 }
 
 /// The result of feeding the accumulator.
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 pub enum FeedResult<'a, T> {
     /// Consumed all data, still pending.
     Consumed,
