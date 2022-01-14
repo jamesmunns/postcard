@@ -171,8 +171,6 @@
 //! for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 //! dual licensed as above, without any additional terms or conditions.
 
-#![cfg_attr(not(any(test, feature = "use-std")), no_std)]
-#![warn(missing_docs)]
 
 mod accumulator;
 mod de;
