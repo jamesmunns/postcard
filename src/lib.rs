@@ -194,3 +194,6 @@ pub use ser::{to_stdvec, to_stdvec_cobs};
 
 #[cfg(feature = "alloc")]
 pub use ser::{to_allocvec, to_allocvec_cobs};
+
+#[cfg(feature = "derive")]
+pub use postcard_derive::MaxSize;
