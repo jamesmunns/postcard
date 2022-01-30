@@ -21,6 +21,7 @@ use crate::ser::serializer::Serializer;
 
 pub mod flavors;
 pub(crate) mod serializer;
+pub(crate) mod max_size;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel `0x00` byte is included
