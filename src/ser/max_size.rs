@@ -189,6 +189,10 @@ const fn varint_size(max_n: usize) -> usize {
     const BITS_PER_BYTE: usize = 8;
     const BITS_PER_VARINT_BYTE: usize = 7;
 
+    if max_n == 0 {
+        return 1;
+    }
+
     // How many data bits do we need for `max_n`.
     let bits = core::mem::size_of::<usize>() * BITS_PER_BYTE - max_n.leading_zeros() as usize;
 

@@ -58,6 +58,10 @@ fn test_vec_edge_cases() {
 
     let mut buf = [0; 16400];
 
+    test_equals::<0>(&mut buf);
+    test_equals::<1>(&mut buf);
+    test_equals::<2>(&mut buf);
+
     test_equals::<127>(&mut buf);
     test_equals::<128>(&mut buf);
     test_equals::<129>(&mut buf);
