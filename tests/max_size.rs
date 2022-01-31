@@ -33,3 +33,13 @@ fn test_enum_max_size() {
 
     assert_eq!(Baz::POSTCARD_MAX_SIZE, 0);
 }
+
+// #[cfg(feature = "derive")]
+// #[test]
+// fn test_union_max_size() {
+//     #[derive(postcard::MaxSize)]
+//     union Foo {
+//         a: u16,
+//         b: Option<u8>,
+//     }
+// }

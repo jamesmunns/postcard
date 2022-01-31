@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{TokenStream, Span};
 use quote::{quote, quote_spanned};
 use syn::{parse_macro_input, parse_quote, DeriveInput, Generics, GenericParam, Data, spanned::Spanned, Fields};
 
@@ -7,13 +7,14 @@ use syn::{parse_macro_input, parse_quote, DeriveInput, Generics, GenericParam, D
 pub fn derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
 
+    let span = input.span();
     let name = input.ident;
 
     // Add a bound `T: MaxSize` to every type parameter T.
     let generics = add_trait_bounds(input.generics);
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let sum = max_size_sum(&input.data);
+    let sum = max_size_sum(&input.data, span).unwrap_or_else(syn::Error::into_compile_error);
 
     let expanded = quote! {
         impl #impl_generics ::postcard::MaxSize for #name #ty_generics #where_clause {
@@ -35,10 +36,10 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
 }
 
 /// Generate a constant expression that sums up the maximum size of the type.
-fn max_size_sum(data: &Data) -> TokenStream {
+fn max_size_sum(data: &Data, span: Span) -> Result<TokenStream, syn::Error> {
     match data {
         Data::Struct(data) => {
-            sum_fields(&data.fields)
+            Ok(sum_fields(&data.fields))
         }
         Data::Enum(data) => {
             let variant_count = data.variants.len();
@@ -64,11 +65,11 @@ fn max_size_sum(data: &Data) -> TokenStream {
                 }
             });
 
-            quote! {
+            Ok(quote! {
                 #discriminant_size + #max
-            }
+            })
         },
-        Data::Union(_) => unimplemented!(),
+        Data::Union(_) => Err(syn::Error::new(span, "unions are not supported by `postcard::MaxSize`")),
     }
 }
 
