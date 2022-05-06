@@ -34,6 +34,8 @@ pub enum Error {
     SerdeSerCustom,
     /// Serde Deserialization Error
     SerdeDeCustom,
+    /// ?
+    CollectStrError,
 }
 
 impl Display for Error {
@@ -61,6 +63,7 @@ impl Display for Error {
                 DeserializeBadEncoding => "The original data was not well encoded",
                 SerdeSerCustom => "Serde Serialization Error",
                 SerdeDeCustom => "Serde Deserialization Error",
+                CollectStrError => "Error Collecting string",
             }
         )
     }

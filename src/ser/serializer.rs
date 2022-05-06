@@ -256,11 +256,53 @@ where
         Ok(self)
     }
 
-    fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
     where
         T: core::fmt::Display,
     {
-        unreachable!()
+        use core::fmt::Write;
+
+        struct CountWriter {
+            ct: usize
+        }
+        impl Write for CountWriter {
+            fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
+                self.ct += s.as_bytes().len();
+                Ok(())
+            }
+        }
+
+        let mut ctr = CountWriter {
+            ct: 0,
+        };
+
+        write!(&mut ctr, "{}", value).map_err(|_| Error::CollectStrError)?;
+        let len = ctr.ct;
+        self.output
+            .try_push_varint_usize(&VarintUsize(len))
+            .map_err(|_| Error::SerializeBufferFull)?;
+
+        struct FmtWriter<'a, IF>
+        where
+            IF: SerFlavor,
+        {
+            output: &'a mut IF,
+        }
+        impl<'a, IF> Write for FmtWriter<'a, IF>
+        where
+            IF: SerFlavor,
+        {
+            fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
+                self.output.try_extend(s.as_bytes()).map_err(|_| core::fmt::Error::default())
+            }
+        }
+
+        let mut fw = FmtWriter {
+            output: &mut self.output,
+        };
+        write!(&mut fw, "{}", value).map_err(|_| Error::CollectStrError)?;
+
+        Ok(())
     }
 }
 
