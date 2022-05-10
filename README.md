@@ -11,7 +11,7 @@ allowing for flexibility to customize behavior as needed.
 
 ## Run to 1.0
 
-Postcard will be reaching v1.0.0 in June! Stay tuned for more details!
+Postcard will be reaching v1.0.0 in June! Read the [announcement blog post](https://jamesmunns.com/blog/postcard-1-0-run/) for more details!
 
 > Work towards the Postcard Specification and portions of the Postcard 1.0 Release has been sponsored by Mozilla Corporation.
 
