@@ -9,6 +9,12 @@ allowing for flexibility to customize behavior as needed.
 * [Crates.io](https://crates.io/crates/postcard)
 * [Changelog](./CHANGELOG.md)
 
+## Run to 1.0
+
+Postcard will be reaching v1.0.0 in June! Stay tuned for more details!
+
+> Work towards the Postcard Specification and portions of the Postcard 1.0 Release has been sponsored by Mozilla Corporation.
+
 ## Design Goals
 
 1. Design primarily for `#![no_std]` usage, in embedded or other constrained contexts
