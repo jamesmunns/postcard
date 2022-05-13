@@ -7,7 +7,7 @@ use serde::de::{
 };
 
 use crate::error::{Error, Result};
-use crate::varint::VarintUsize;
+use crate::varint::varint_max;
 
 /// A structure for deserializing a postcard message. For now, Deserializer does not
 /// implement the same Flavor interface as the serializer does, as messages are typically
@@ -37,16 +37,64 @@ impl<'de> Deserializer<'de> {
         }
     }
 
-    fn try_take_varint(&mut self) -> Result<usize> {
-        for i in 0..VarintUsize::varint_usize_max() {
+    #[cfg(target_pointer_width = "32")]
+    #[inline(always)]
+    fn try_take_varint_usize(&mut self) -> Result<usize> {
+        self.try_take_varint_u32().map(|u| u as usize)
+    }
+
+    #[cfg(target_pointer_width = "64")]
+    #[inline(always)]
+    fn try_take_varint_usize(&mut self) -> Result<usize> {
+        self.try_take_varint_u64().map(|u| u as usize)
+    }
+
+    fn try_take_varint_u16(&mut self) -> Result<u16> {
+        for i in 0..varint_max::<u16>() {
             let val = self.input.get(i).ok_or(Error::DeserializeUnexpectedEnd)?;
             if (val & 0x80) == 0 {
                 let (a, b) = self.input.split_at(i + 1);
                 self.input = b;
-                let mut out = 0usize;
+                let mut out = 0;
                 for byte in a.iter().rev() {
                     out <<= 7;
-                    out |= (byte & 0x7F) as usize;
+                    out |= (byte & 0x7F) as u16;
+                }
+                return Ok(out);
+            }
+        }
+
+        Err(Error::DeserializeBadVarint)
+    }
+
+    fn try_take_varint_u32(&mut self) -> Result<u32> {
+        for i in 0..varint_max::<u32>() {
+            let val = self.input.get(i).ok_or(Error::DeserializeUnexpectedEnd)?;
+            if (val & 0x80) == 0 {
+                let (a, b) = self.input.split_at(i + 1);
+                self.input = b;
+                let mut out = 0;
+                for byte in a.iter().rev() {
+                    out <<= 7;
+                    out |= (byte & 0x7F) as u32;
+                }
+                return Ok(out);
+            }
+        }
+
+        Err(Error::DeserializeBadVarint)
+    }
+
+    fn try_take_varint_u64(&mut self) -> Result<u64> {
+        for i in 0..varint_max::<u64>() {
+            let val = self.input.get(i).ok_or(Error::DeserializeUnexpectedEnd)?;
+            if (val & 0x80) == 0 {
+                let (a, b) = self.input.split_at(i + 1);
+                self.input = b;
+                let mut out = 0;
+                for byte in a.iter().rev() {
+                    out <<= 7;
+                    out |= (byte & 0x7F) as u64;
                 }
                 return Ok(out);
             }
@@ -152,27 +200,24 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 2];
-        buf[..].copy_from_slice(self.try_take_n(2)?);
-        visitor.visit_i16(i16::from_le_bytes(buf))
+        let v = self.try_take_varint_u16()?;
+        visitor.visit_i16(de_zig_zag_i16(v))
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 4];
-        buf[..].copy_from_slice(self.try_take_n(4)?);
-        visitor.visit_i32(i32::from_le_bytes(buf))
+        let v = self.try_take_varint_u32()?;
+        visitor.visit_i32(de_zig_zag_i32(v))
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 8];
-        buf[..].copy_from_slice(self.try_take_n(8)?);
-        visitor.visit_i64(i64::from_le_bytes(buf))
+        let v = self.try_take_varint_u64()?;
+        visitor.visit_i64(de_zig_zag_i64(v))
     }
 
     fn deserialize_i128<V>(self, visitor: V) -> Result<V::Value>
@@ -195,27 +240,24 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 2];
-        buf[..].copy_from_slice(self.try_take_n(2)?);
-        visitor.visit_u16(u16::from_le_bytes(buf))
+        let v = self.try_take_varint_u16()?;
+        visitor.visit_u16(v)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 4];
-        buf[..].copy_from_slice(self.try_take_n(4)?);
-        visitor.visit_u32(u32::from_le_bytes(buf))
+        let v = self.try_take_varint_u32()?;
+        visitor.visit_u32(v)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 8];
-        buf[..].copy_from_slice(self.try_take_n(8)?);
-        visitor.visit_u64(u64::from_le_bytes(buf))
+        let v = self.try_take_varint_u64()?;
+        visitor.visit_u64(v)
     }
 
     fn deserialize_u128<V>(self, visitor: V) -> Result<V::Value>
@@ -251,7 +293,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let sz = self.try_take_varint()?;
+        let sz = self.try_take_varint_usize()?;
         if sz > 4 {
             return Err(Error::DeserializeBadChar);
         }
@@ -272,7 +314,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let sz = self.try_take_varint()?;
+        let sz = self.try_take_varint_usize()?;
         let bytes: &'de [u8] = self.try_take_n(sz)?;
         let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
@@ -290,7 +332,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let sz = self.try_take_varint()?;
+        let sz = self.try_take_varint_usize()?;
         let bytes: &'de [u8] = self.try_take_n(sz)?;
         visitor.visit_borrowed_bytes(bytes)
     }
@@ -342,7 +384,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let len = self.try_take_varint()?;
+        let len = self.try_take_varint_usize()?;
 
         visitor.visit_seq(SeqAccess {
             deserializer: self,
@@ -376,7 +418,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let len = self.try_take_varint()?;
+        let len = self.try_take_varint_usize()?;
 
         visitor.visit_map(MapAccess {
             deserializer: self,
@@ -455,11 +497,20 @@ impl<'de, 'a> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de> {
     type Variant = Self;
 
     fn variant_seed<V: DeserializeSeed<'de>>(self, seed: V) -> Result<(V::Value, Self)> {
-        let varint = self.try_take_varint()?;
-        if varint > 0xFFFF_FFFF {
-            return Err(Error::DeserializeBadEnum);
-        }
-        let v = DeserializeSeed::deserialize(seed, (varint as u32).into_deserializer())?;
+        let varint = self.try_take_varint_u32()?;
+        let v = DeserializeSeed::deserialize(seed, varint.into_deserializer())?;
         Ok((v, self))
     }
+}
+
+fn de_zig_zag_i16(n: u16) -> i16 {
+    ((n >> 1) as i16) ^ (-((n & 0b1) as i16))
+}
+
+fn de_zig_zag_i32(n: u32) -> i32 {
+    ((n >> 1) as i32) ^ (-((n & 0b1) as i32))
+}
+
+fn de_zig_zag_i64(n: u64) -> i64 {
+    ((n >> 1) as i64) ^ (-((n & 0b1) as i64))
 }

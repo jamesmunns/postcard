@@ -72,10 +72,10 @@
 //! ```
 
 use crate::error::{Error, Result};
-use crate::varint::VarintUsize;
 use cobs::{EncoderState, PushResult};
 use core::ops::Index;
 use core::ops::IndexMut;
+use crate::varint::*;
 
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
@@ -110,9 +110,30 @@ pub trait SerFlavor {
     /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
     /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
     /// the desired behavior for most circumstances.
-    fn try_push_varint_usize(&mut self, data: &VarintUsize) -> core::result::Result<(), ()> {
-        let mut buf = VarintUsize::new_buf();
-        let used_buf = data.to_buf(&mut buf);
+    fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<usize>()];
+        let used_buf = varint_usize(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u64>()];
+        let used_buf = varint_u64(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u32>()];
+        let used_buf = varint_u32(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u16>()];
+        let used_buf = varint_u16(data, &mut buf);
         self.try_extend(used_buf)
     }
 

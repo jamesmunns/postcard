@@ -2,7 +2,6 @@ use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
 use crate::ser::flavors::SerFlavor;
-use crate::varint::VarintUsize;
 
 /// A `serde` compatible serializer, generic over "Flavors" of serializing plugins.
 ///
@@ -54,20 +53,23 @@ where
     }
 
     fn serialize_i16(self, v: i16) -> Result<()> {
+        let zzv = zig_zag_i16(v);
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u16(zzv)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_i32(self, v: i32) -> Result<()> {
+        let zzv = zig_zag_i32(v);
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u32(zzv)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_i64(self, v: i64) -> Result<()> {
+        let zzv = zig_zag_i64(v);
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u64(zzv)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
@@ -85,19 +87,19 @@ where
 
     fn serialize_u16(self, v: u16) -> Result<()> {
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u16(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u32(self, v: u32) -> Result<()> {
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u32(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     fn serialize_u64(self, v: u64) -> Result<()> {
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u64(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
@@ -129,7 +131,7 @@ where
 
     fn serialize_str(self, v: &str) -> Result<()> {
         self.output
-            .try_push_varint_usize(&VarintUsize(v.len()))
+            .try_push_varint_usize(v.len())
             .map_err(|_| Error::SerializeBufferFull)?;
         self.output
             .try_extend(v.as_bytes())
@@ -139,7 +141,7 @@ where
 
     fn serialize_bytes(self, v: &[u8]) -> Result<()> {
         self.output
-            .try_push_varint_usize(&VarintUsize(v.len()))
+            .try_push_varint_usize(v.len())
             .map_err(|_| Error::SerializeBufferFull)?;
         self.output
             .try_extend(v)
@@ -173,7 +175,7 @@ where
         _variant: &'static str,
     ) -> Result<()> {
         self.output
-            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .try_push_varint_u32(variant_index)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
@@ -195,14 +197,14 @@ where
         T: ?Sized + Serialize,
     {
         self.output
-            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .try_push_varint_u32(variant_index)
             .map_err(|_| Error::SerializeBufferFull)?;
         value.serialize(self)
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
         self.output
-            .try_push_varint_usize(&VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?))
+            .try_push_varint_usize(len.ok_or(Error::SerializeSeqLengthUnknown)?)
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
@@ -227,14 +229,14 @@ where
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant> {
         self.output
-            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .try_push_varint_u32(variant_index)
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
         self.output
-            .try_push_varint_usize(&VarintUsize(len.ok_or(Error::SerializeSeqLengthUnknown)?))
+            .try_push_varint_usize(len.ok_or(Error::SerializeSeqLengthUnknown)?)
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
@@ -251,7 +253,7 @@ where
         _len: usize,
     ) -> Result<Self::SerializeStructVariant> {
         self.output
-            .try_push_varint_usize(&VarintUsize(variant_index as usize))
+            .try_push_varint_u32(variant_index)
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(self)
     }
@@ -406,4 +408,16 @@ where
     fn end(self) -> Result<()> {
         Ok(())
     }
+}
+
+fn zig_zag_i16(n: i16) -> u16 {
+    ((n << 1) ^ (n >> 15)) as u16
+}
+
+fn zig_zag_i32(n: i32) -> u32 {
+    ((n << 1) ^ (n >> 31)) as u32
+}
+
+fn zig_zag_i64(n: i64) -> u64 {
+    ((n << 1) ^ (n >> 63)) as u64
 }
