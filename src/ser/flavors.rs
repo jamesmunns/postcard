@@ -77,11 +77,11 @@ use core::ops::Index;
 use core::ops::IndexMut;
 use crate::varint::*;
 
-#[cfg(feature = "heapless")]
-pub use heapless_vec::*;
+// #[cfg(feature = "heapless")]
+// pub use heapless_vec::*;
 
-#[cfg(feature = "use-std")]
-pub use std_vec::*;
+// #[cfg(feature = "use-std")]
+// pub use std_vec::*;
 
 #[cfg(feature = "alloc")]
 pub use alloc_vec::*;
@@ -150,51 +150,80 @@ pub trait SerFlavor {
 // Slice
 ////////////////////////////////////////
 
+use core::marker::PhantomData;
+
 /// The `Slice` flavor is a storage flavor, storing the serialized (or otherwise modified) bytes into a plain
 /// `[u8]` slice. The `Slice` flavor resolves into a sub-slice of the original slice buffer.
 pub struct Slice<'a> {
-    buf: &'a mut [u8],
-    idx: usize,
+    start: *mut u8,
+    cursor: *mut u8,
+    end: *mut u8,
+    _pl: PhantomData<&'a [u8]>
 }
 
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
-        Slice { buf, idx: 0 }
+        Slice {
+            start: buf.as_mut_ptr(),
+            cursor: buf.as_mut_ptr(),
+            end: unsafe { buf.as_mut_ptr().add(buf.len()) },
+            _pl: PhantomData,
+        }
     }
 }
 
 impl<'a> SerFlavor for Slice<'a> {
     type Output = &'a mut [u8];
 
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-        let len = data.len();
-
-        if (len + self.idx) > self.buf.len() {
-            return Err(());
+    #[inline(always)]
+    fn try_push(&mut self, b: u8) -> core::result::Result<(), ()> {
+        if self.cursor == self.end {
+            Err(())
+        } else {
+            unsafe {
+                self.cursor.write(b);
+                self.cursor = self.cursor.add(1);
+            }
+            Ok(())
         }
-
-        self.buf[self.idx..self.idx + len].copy_from_slice(data);
-
-        self.idx += len;
-
-        Ok(())
     }
 
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-        if self.idx >= self.buf.len() {
-            return Err(());
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> core::result::Result<(), ()> {
+        let remain = (self.end as usize) - (self.cursor as usize);
+        let blen = b.len();
+        if blen > remain {
+            Err(())
+        } else {
+            unsafe {
+                core::ptr::copy_nonoverlapping(b.as_ptr(), self.cursor, blen);
+                self.cursor = self.cursor.add(blen);
+            }
+            Ok(())
         }
-
-        self.buf[self.idx] = data;
-        self.idx += 1;
-
-        Ok(())
     }
+
+    // fn try_extend_with<F>(&mut self, n: usize, f: F) -> Result<(), ()>
+    // where
+    //     F: FnOnce(&mut [u8])
+    // {
+    //     let remain = (self.end as usize) - (self.cursor as usize);
+    //     if n > remain {
+    //         Err(())
+    //     } else {
+    //         unsafe {
+    //             f(core::slice::from_raw_parts_mut(self.cursor, n));
+    //             self.cursor = self.cursor.add(n);
+    //         }
+    //         Ok(())
+    //     }
+    // }
 
     fn release(self) -> core::result::Result<Self::Output, ()> {
-        let (used, _unused) = self.buf.split_at_mut(self.idx);
-        Ok(used)
+        let used = (self.cursor as usize) - (self.start as usize);
+        let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
+        Ok(sli)
     }
 }
 
@@ -202,117 +231,125 @@ impl<'a> Index<usize> for Slice<'a> {
     type Output = u8;
 
     fn index(&self, idx: usize) -> &u8 {
-        &self.buf[idx]
+        let len = (self.end as usize) - (self.start as usize);
+        assert!(idx < len);
+        unsafe {
+            &*self.start.add(idx)
+        }
     }
 }
 
 impl<'a> IndexMut<usize> for Slice<'a> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
-        &mut self.buf[idx]
-    }
-}
-
-#[cfg(feature = "heapless")]
-mod heapless_vec {
-    use heapless::Vec;
-    use super::SerFlavor;
-    use super::Index;
-    use super::IndexMut;
-
-    ////////////////////////////////////////
-    // HVec
-    ////////////////////////////////////////
-
-    /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
-    /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    pub struct HVec<const B: usize>(Vec<u8, B>);
-
-    impl<'a, const B: usize> SerFlavor for HVec<B> {
-        type Output = Vec<u8, B>;
-
-        #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.0.extend_from_slice(data)
-        }
-
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.0.push(data).map_err(|_| ())
-        }
-
-        fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
-            Ok(self.0)
-        }
-    }
-
-    impl<const B: usize> Index<usize> for HVec<B> {
-        type Output = u8;
-
-        fn index(&self, idx: usize) -> &u8 {
-            &self.0[idx]
-        }
-    }
-
-    impl<const B: usize> IndexMut<usize> for HVec<B> {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.0[idx]
-        }
-    }
-
-    impl<const B: usize> Default for HVec<B> {
-        fn default() -> Self {
-            Self(Vec::new())
+        let len = (self.end as usize) - (self.start as usize);
+        assert!(idx < len);
+        unsafe {
+            &mut *self.start.add(idx)
         }
     }
 }
 
-#[cfg(feature = "use-std")]
-mod std_vec {
-    extern crate std;
-    use std::vec::Vec;
-    use super::SerFlavor;
-    use super::Index;
-    use super::IndexMut;
+// #[cfg(feature = "heapless")]
+// mod heapless_vec {
+//     use heapless::Vec;
+//     use super::SerFlavor;
+//     use super::Index;
+//     use super::IndexMut;
 
-    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
-    ///
-    /// This type is only available when the (non-default) `use-std` feature is active
-    pub struct StdVec(pub Vec<u8>);
+//     ////////////////////////////////////////
+//     // HVec
+//     ////////////////////////////////////////
 
-    impl SerFlavor for StdVec {
-        type Output = Vec<u8>;
+//     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
+//     /// allocated data structure, with a fixed maximum size and variable amount of contents.
+//     pub struct HVec<const B: usize>(Vec<u8, B>);
 
-        #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.0.extend_from_slice(data);
-            Ok(())
-        }
+//     impl<'a, const B: usize> SerFlavor for HVec<B> {
+//         type Output = Vec<u8, B>;
 
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.0.push(data);
-            Ok(())
-        }
+//         #[inline(always)]
+//         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+//             self.0.extend_from_slice(data)
+//         }
 
-        fn release(self) -> core::result::Result<Self::Output, ()> {
-            Ok(self.0)
-        }
-    }
+//         #[inline(always)]
+//         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+//             self.0.push(data).map_err(|_| ())
+//         }
 
-    impl Index<usize> for StdVec {
-        type Output = u8;
+//         fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
+//             Ok(self.0)
+//         }
+//     }
 
-        fn index(&self, idx: usize) -> &u8 {
-            &self.0[idx]
-        }
-    }
+//     impl<const B: usize> Index<usize> for HVec<B> {
+//         type Output = u8;
 
-    impl IndexMut<usize> for StdVec {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.0[idx]
-        }
-    }
-}
+//         fn index(&self, idx: usize) -> &u8 {
+//             &self.0[idx]
+//         }
+//     }
+
+//     impl<const B: usize> IndexMut<usize> for HVec<B> {
+//         fn index_mut(&mut self, idx: usize) -> &mut u8 {
+//             &mut self.0[idx]
+//         }
+//     }
+
+//     impl<const B: usize> Default for HVec<B> {
+//         fn default() -> Self {
+//             Self(Vec::new())
+//         }
+//     }
+// }
+
+// #[cfg(feature = "use-std")]
+// mod std_vec {
+//     extern crate std;
+//     use std::vec::Vec;
+//     use super::SerFlavor;
+//     use super::Index;
+//     use super::IndexMut;
+
+//     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
+//     ///
+//     /// This type is only available when the (non-default) `use-std` feature is active
+//     pub struct StdVec(pub Vec<u8>);
+
+//     impl SerFlavor for StdVec {
+//         type Output = Vec<u8>;
+
+//         #[inline(always)]
+//         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+//             self.0.extend_from_slice(data);
+//             Ok(())
+//         }
+
+//         #[inline(always)]
+//         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+//             self.0.push(data);
+//             Ok(())
+//         }
+
+//         fn release(self) -> core::result::Result<Self::Output, ()> {
+//             Ok(self.0)
+//         }
+//     }
+
+//     impl Index<usize> for StdVec {
+//         type Output = u8;
+
+//         fn index(&self, idx: usize) -> &u8 {
+//             &self.0[idx]
+//         }
+//     }
+
+//     impl IndexMut<usize> for StdVec {
+//         fn index_mut(&mut self, idx: usize) -> &mut u8 {
+//             &mut self.0[idx]
+//         }
+//     }
+// }
 
 #[cfg(feature = "alloc")]
 mod alloc_vec {
@@ -370,63 +407,63 @@ mod alloc_vec {
 // COBS
 ////////////////////////////////////////
 
-/// The `Cobs` flavor implements [Consistent Overhead Byte Stuffing] on
-/// the serialized data. The output of this flavor includes the termination/sentinel
-/// byte of `0x00`.
-///
-/// This protocol is useful when sending data over a serial interface without framing such as a UART
-///
-/// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
-pub struct Cobs<B>
-where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
-{
-    flav: B,
-    cobs: EncoderState,
-}
+// /// The `Cobs` flavor implements [Consistent Overhead Byte Stuffing] on
+// /// the serialized data. The output of this flavor includes the termination/sentinel
+// /// byte of `0x00`.
+// ///
+// /// This protocol is useful when sending data over a serial interface without framing such as a UART
+// ///
+// /// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
+// pub struct Cobs<B>
+// where
+//     B: SerFlavor + IndexMut<usize, Output = u8>,
+// {
+//     flav: B,
+//     cobs: EncoderState,
+// }
 
-impl<B> Cobs<B>
-where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
-{
-    /// Create a new Cobs modifier Flavor. If there is insufficient space
-    /// to push the leading header byte, the method will return an Error
-    pub fn try_new(mut bee: B) -> Result<Self> {
-        bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
-        Ok(Self {
-            flav: bee,
-            cobs: EncoderState::default(),
-        })
-    }
-}
+// impl<B> Cobs<B>
+// where
+//     B: SerFlavor + IndexMut<usize, Output = u8>,
+// {
+//     /// Create a new Cobs modifier Flavor. If there is insufficient space
+//     /// to push the leading header byte, the method will return an Error
+//     pub fn try_new(mut bee: B) -> Result<Self> {
+//         bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
+//         Ok(Self {
+//             flav: bee,
+//             cobs: EncoderState::default(),
+//         })
+//     }
+// }
 
-impl<'a, B> SerFlavor for Cobs<B>
-where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
-{
-    type Output = <B as SerFlavor>::Output;
+// impl<'a, B> SerFlavor for Cobs<B>
+// where
+//     B: SerFlavor + IndexMut<usize, Output = u8>,
+// {
+//     type Output = <B as SerFlavor>::Output;
 
-    #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-        use PushResult::*;
-        match self.cobs.push(data) {
-            AddSingle(n) => self.flav.try_push(n),
-            ModifyFromStartAndSkip((idx, mval)) => {
-                self.flav[idx] = mval;
-                self.flav.try_push(0)
-            }
-            ModifyFromStartAndPushAndSkip((idx, mval, nval)) => {
-                self.flav[idx] = mval;
-                self.flav.try_push(nval)?;
-                self.flav.try_push(0)
-            }
-        }
-    }
+//     #[inline(always)]
+//     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+//         use PushResult::*;
+//         match self.cobs.push(data) {
+//             AddSingle(n) => self.flav.try_push(n),
+//             ModifyFromStartAndSkip((idx, mval)) => {
+//                 self.flav[idx] = mval;
+//                 self.flav.try_push(0)
+//             }
+//             ModifyFromStartAndPushAndSkip((idx, mval, nval)) => {
+//                 self.flav[idx] = mval;
+//                 self.flav.try_push(nval)?;
+//                 self.flav.try_push(0)
+//             }
+//         }
+//     }
 
-    fn release(mut self) -> core::result::Result<Self::Output, ()> {
-        let (idx, mval) = self.cobs.finalize();
-        self.flav[idx] = mval;
-        self.flav.try_push(0)?;
-        self.flav.release()
-    }
-}
+//     fn release(mut self) -> core::result::Result<Self::Output, ()> {
+//         let (idx, mval) = self.cobs.finalize();
+//         self.flav[idx] = mval;
+//         self.flav.try_push(0)?;
+//         self.flav.release()
+//     }
+// }

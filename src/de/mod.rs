@@ -46,7 +46,7 @@ where
 {
     let mut deserializer = Deserializer::from_bytes(s);
     let t = T::deserialize(&mut deserializer)?;
-    Ok((t, deserializer.input))
+    Ok((t, deserializer.remaining()))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
