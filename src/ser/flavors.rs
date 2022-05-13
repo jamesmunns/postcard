@@ -167,6 +167,7 @@ impl<'a> Slice<'a> {
 impl<'a> SerFlavor for Slice<'a> {
     type Output = &'a mut [u8];
 
+    #[inline]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         let len = data.len();
 
@@ -181,6 +182,7 @@ impl<'a> SerFlavor for Slice<'a> {
         Ok(())
     }
 
+    #[inline]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         if self.idx >= self.buf.len() {
             return Err(());
@@ -230,12 +232,12 @@ mod heapless_vec {
     impl<'a, const B: usize> SerFlavor for HVec<B> {
         type Output = Vec<u8, B>;
 
-        #[inline(always)]
+        #[inline]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
             self.0.extend_from_slice(data)
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
             self.0.push(data).map_err(|_| ())
         }
@@ -282,13 +284,13 @@ mod std_vec {
     impl SerFlavor for StdVec {
         type Output = Vec<u8>;
 
-        #[inline(always)]
+        #[inline]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
             self.0.extend_from_slice(data);
             Ok(())
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
             self.0.push(data);
             Ok(())
@@ -330,13 +332,13 @@ mod alloc_vec {
     impl SerFlavor for AllocVec {
         type Output = Vec<u8>;
 
-        #[inline(always)]
+        #[inline]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
             self.0.extend_from_slice(data);
             Ok(())
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
             self.0.push(data);
             Ok(())
@@ -406,7 +408,7 @@ where
 {
     type Output = <B as SerFlavor>::Output;
 
-    #[inline(always)]
+    #[inline]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
         use PushResult::*;
         match self.cobs.push(data) {
