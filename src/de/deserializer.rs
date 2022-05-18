@@ -7,7 +7,7 @@ use serde::de::{
 };
 
 use crate::error::{Error, Result};
-use crate::varint::varint_max;
+use crate::varint::{varint_max, decoded_len, devarint_u16, devarint_u64, devarint_u32};
 use core::marker::PhantomData;
 
 /// A structure for deserializing a postcard message. For now, Deserializer does not
@@ -82,41 +82,41 @@ impl<'de> Deserializer<'de> {
 
     #[inline]
     fn try_take_varint_u16(&mut self) -> Result<u16> {
-        let mut out = 0;
-        for i in 0..varint_max::<u16>() {
-            let val = self.pop()?;
-            out |= ((val & 0x7F) as u16) << (7 * i);
-            if (val & 0x80) == 0 {
-                return Ok(out);
-            }
+        const MAX: usize = varint_max::<u16>();
+        let mut out = [0u8; MAX];
+        out[0] = self.pop()?;
+        let length = decoded_len(out[0]);
+        if length > MAX {
+            return Err(Error::DeserializeBadVarint);
         }
-        Err(Error::DeserializeBadVarint)
+        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
+        Ok(devarint_u16(length, &out))
     }
 
     #[inline]
     fn try_take_varint_u32(&mut self) -> Result<u32> {
-        let mut out = 0;
-        for i in 0..varint_max::<u32>() {
-            let val = self.pop()?;
-            out |= ((val & 0x7F) as u32) << (7 * i);
-            if (val & 0x80) == 0 {
-                return Ok(out);
-            }
+        const MAX: usize = varint_max::<u32>();
+        let mut out = [0u8; MAX];
+        out[0] = self.pop()?;
+        let length = decoded_len(out[0]);
+        if length > MAX {
+            return Err(Error::DeserializeBadVarint);
         }
-        Err(Error::DeserializeBadVarint)
+        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
+        Ok(devarint_u32(length, &out))
     }
 
     #[inline]
     fn try_take_varint_u64(&mut self) -> Result<u64> {
-        let mut out = 0;
-        for i in 0..varint_max::<u64>() {
-            let val = self.pop()?;
-            out |= ((val & 0x7F) as u64) << (7 * i);
-            if (val & 0x80) == 0 {
-                return Ok(out);
-            }
+        const MAX: usize = varint_max::<u64>();
+        let mut out = [0u8; MAX];
+        out[0] = self.pop()?;
+        let length = decoded_len(out[0]);
+        if length > MAX {
+            return Err(Error::DeserializeBadVarint);
         }
-        Err(Error::DeserializeBadVarint)
+        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
+        Ok(devarint_u64(length, &out))
     }
 }
 
