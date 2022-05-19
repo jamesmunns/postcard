@@ -98,6 +98,7 @@ pub trait SerFlavor {
     /// The try_extend() trait method can be implemented when there is a more efficient way of processing
     /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
     /// at a time.
+    #[inline]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
@@ -110,31 +111,35 @@ pub trait SerFlavor {
     /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
     /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
     /// the desired behavior for most circumstances.
+    #[inline]
     fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<usize>()];
-        let used_buf = varint_usize(data, &mut buf);
-        self.try_extend(used_buf)
+        let used_buf = varint_usize(data);
+        self.try_push(used_buf.header)?;
+        self.try_extend(unsafe { core::slice::from_raw_parts(used_buf.body.bytes.as_ptr(), (used_buf.len - 1) as usize)} )
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u64>()];
-        let used_buf = varint_u64(data, &mut buf);
-        self.try_extend(used_buf)
+        let used_buf = varint_u64(data);
+        self.try_push(used_buf.header)?;
+        self.try_extend(unsafe { core::slice::from_raw_parts(used_buf.body.bytes.as_ptr(), (used_buf.len - 1) as usize)} )
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u32>()];
-        let used_buf = varint_u32(data, &mut buf);
-        self.try_extend(used_buf)
+        let used_buf = varint_u32(data);
+        self.try_push(used_buf.header)?;
+        self.try_extend(unsafe { core::slice::from_raw_parts(used_buf.body.bytes.as_ptr(), (used_buf.len - 1) as usize)} )
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u16>()];
-        let used_buf = varint_u16(data, &mut buf);
-        self.try_extend(used_buf)
+        let used_buf = varint_u16(data);
+        self.try_push(used_buf.header)?;
+        self.try_extend(unsafe { core::slice::from_raw_parts(used_buf.body.bytes.as_ptr(), (used_buf.len - 1) as usize)} )
     }
 
     /// The release() trait method finalizes the modification or storage operation, and resolved into
@@ -176,7 +181,7 @@ impl<'a> Slice<'a> {
 impl<'a> SerFlavor for Slice<'a> {
     type Output = &'a mut [u8];
 
-    #[inline(always)]
+    #[inline]
     fn try_push(&mut self, b: u8) -> core::result::Result<(), ()> {
         if self.cursor == self.end {
             Err(())
@@ -189,7 +194,7 @@ impl<'a> SerFlavor for Slice<'a> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn try_extend(&mut self, b: &[u8]) -> core::result::Result<(), ()> {
         let remain = (self.end as usize) - (self.cursor as usize);
         let blen = b.len();
@@ -267,12 +272,12 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 //     impl<'a, const B: usize> SerFlavor for HVec<B> {
 //         type Output = Vec<u8, B>;
 
-//         #[inline(always)]
+//         #[inline]
 //         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
 //             self.0.extend_from_slice(data)
 //         }
 
-//         #[inline(always)]
+//         #[inline]
 //         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
 //             self.0.push(data).map_err(|_| ())
 //         }
@@ -319,13 +324,13 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 //     impl SerFlavor for StdVec {
 //         type Output = Vec<u8>;
 
-//         #[inline(always)]
+//         #[inline]
 //         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
 //             self.0.extend_from_slice(data);
 //             Ok(())
 //         }
 
-//         #[inline(always)]
+//         #[inline]
 //         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
 //             self.0.push(data);
 //             Ok(())
@@ -367,13 +372,13 @@ mod alloc_vec {
     impl SerFlavor for AllocVec {
         type Output = Vec<u8>;
 
-        #[inline(always)]
+        #[inline]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
             self.0.extend_from_slice(data);
             Ok(())
         }
 
-        #[inline(always)]
+        #[inline]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
             self.0.push(data);
             Ok(())
@@ -443,7 +448,7 @@ mod alloc_vec {
 // {
 //     type Output = <B as SerFlavor>::Output;
 
-//     #[inline(always)]
+//     #[inline]
 //     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
 //         use PushResult::*;
 //         match self.cobs.push(data) {

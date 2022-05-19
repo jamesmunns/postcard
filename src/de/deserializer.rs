@@ -93,7 +93,8 @@ impl<'de> Deserializer<'de> {
         unsafe {
             core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
         }
-        Ok(devarint_u16(length, ditch))
+        ditch.len = length as u8;
+        Ok(devarint_u16(ditch))
     }
 
     #[inline]
@@ -109,7 +110,8 @@ impl<'de> Deserializer<'de> {
         unsafe {
             core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
         }
-        Ok(devarint_u32(length, ditch))
+        ditch.len = length as u8;
+        Ok(devarint_u32(ditch))
     }
 
     #[inline]
@@ -125,7 +127,8 @@ impl<'de> Deserializer<'de> {
         unsafe {
             core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
         }
-        Ok(devarint_u64(length, ditch))
+        ditch.len = length as u8;
+        Ok(devarint_u64(ditch))
     }
 }
 

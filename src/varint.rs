@@ -32,15 +32,15 @@
 #[inline]
 pub fn encoded_len_u64(value: u64) -> usize {
     match value.leading_zeros() {
-        0..=7 => 9,
-        8..=14 => 8,
-        15..=21 => 7,
-        22..=28 => 6,
-        29..=35 => 5,
-        36..=42 => 4,
-        43..=49 => 3,
-        50..=56 => 2,
         57..=64 => 1,
+        50..=56 => 2,
+        43..=49 => 3,
+        36..=42 => 4,
+        29..=35 => 5,
+        22..=28 => 6,
+        15..=21 => 7,
+        8..=14 => 8,
+        0..=7 => 9,
         _ => {
             // SAFETY:
             //
@@ -61,11 +61,11 @@ pub fn encoded_len_u64(value: u64) -> usize {
 #[inline]
 pub fn encoded_len_u32(value: u32) -> usize {
     match value.leading_zeros() {
-        0..=3 => 5,
-        4..=10 => 4,
-        11..=17 => 3,
-        18..=24 => 2,
         25..=32 => 1,
+        18..=24 => 2,
+        11..=17 => 3,
+        4..=10 => 4,
+        0..=3 => 5,
         _ => {
             // SAFETY:
             //
@@ -86,9 +86,9 @@ pub fn encoded_len_u32(value: u32) -> usize {
 #[inline]
 pub fn encoded_len_u16(value: u16) -> usize {
     match value.leading_zeros() {
-        0..=1 => 3,
-        2..=8 => 2,
         9..=16 => 1,
+        2..=8 => 2,
+        0..=1 => 3,
         _ => {
             // SAFETY:
             //
@@ -114,7 +114,8 @@ pub fn decoded_len(byte: u8) -> usize {
 }
 
 #[inline]
-pub fn devarint_u16(length: usize, mut data: DitchU16) -> u16 {
+pub fn devarint_u16(mut data: DitchU16) -> u16 {
+    let length = data.len as u16;
     // TODO, body.word needs to be swizzled to native endian!
     unsafe {
         data.body.word <<= 8 - length;
@@ -124,7 +125,8 @@ pub fn devarint_u16(length: usize, mut data: DitchU16) -> u16 {
 }
 
 #[inline]
-pub fn devarint_u32(length: usize, mut data: DitchU32) -> u32 {
+pub fn devarint_u32(mut data: DitchU32) -> u32 {
+    let length = data.len as u32;
     // TODO, body.word needs to be swizzled to native endian!
     unsafe {
         data.body.word <<= 8 - length;
@@ -134,7 +136,8 @@ pub fn devarint_u32(length: usize, mut data: DitchU32) -> u32 {
 }
 
 #[inline]
-pub fn devarint_u64(length: usize, mut data: DitchU64) -> u64 {
+pub fn devarint_u64(mut data: DitchU64) -> u64 {
+    let length = data.len as u64;
     // TODO, body.word needs to be swizzled to native endian!
     unsafe {
         data.body.word <<= 8 - length;
@@ -145,58 +148,72 @@ pub fn devarint_u64(length: usize, mut data: DitchU64) -> u64 {
 
 
 #[inline]
-pub fn varint_u16(mut data: u16, buf: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
+pub fn varint_u16(mut data: u16) -> DitchU16 {
     let length = encoded_len_u16(data);
     let header = ((data << 1 | 1) << (length - 1)) as u8;
 
-    buf[0] = header;
-    data >>= 8 - length;
-    unsafe { core::ptr::copy_nonoverlapping((&data.to_le() as *const _ as *const u8), buf.as_mut_ptr().add(1), length - 1); }
-
-    &mut buf[..length]
+    unsafe {
+        DitchU16 {
+            len: length as u8,
+            header,
+            body: UDitchU16 { word: data >> (8 - length) },
+        }
+    }
 }
 
 #[inline]
-pub fn varint_u32(mut data: u32, buf: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
+pub fn varint_u32(mut data: u32) -> DitchU32 {
     let length = encoded_len_u32(data);
     let header = ((data << 1 | 1) << (length - 1)) as u8;
 
-    buf[0] = header;
-    data >>= 8 - length;
-    unsafe { core::ptr::copy_nonoverlapping((&data.to_le() as *const _ as *const u8), buf.as_mut_ptr().add(1), length - 1); }
-
-    &mut buf[..length]
+    unsafe {
+        DitchU32 {
+            len: length as u8,
+            header,
+            body: UDitchU32 { word: data >> (8 - length) },
+        }
+    }
 }
 
 #[inline]
-pub fn varint_u64(mut data: u64, buf: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
+pub fn varint_u64(mut data: u64) -> DitchU64 {
     let length = encoded_len_u64(data);
     let header = ((data << 1 | 1) << (length - 1)) as u8;
 
-    buf[0] = header;
-    data >>= 8 - length;
-    unsafe { core::ptr::copy_nonoverlapping((&data.to_le() as *const _ as *const u8), buf.as_mut_ptr().add(1), length - 1); }
-
-    &mut buf[..length]
+    unsafe {
+        DitchU64 {
+            len: length as u8,
+            header,
+            body: UDitchU64 { word: data >> (8 - length) },
+        }
+    }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[inline]
-pub fn varint_usize(data: usize, buf: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
-    varint_u64(data as u64, buf)
+pub fn varint_usize(data: usize) -> DitchUsize {
+    varint_u64(data as u64)
 }
 
 #[cfg(target_pointer_width = "32")]
 #[inline]
-pub fn varint_usize(data: usize, buf: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
-    varint_u32(data as u32, buf)
+pub fn varint_usize(data: usize) -> DitchU16 {
+    varint_u32(data as u32)
 }
+
+#[cfg(target_pointer_width = "32")]
+pub type DitchUsize = DitchU32;
+
+#[cfg(target_pointer_width = "64")]
+pub type DitchUsize = DitchU64;
 
 pub const fn varint_max<T: Sized>() -> usize {
     core::mem::size_of::<T>() + 1
 }
 
+#[derive(Default)]
 pub struct DitchU16 {
+    pub len: u8,
     pub header: u8,
     pub body: UDitchU16,
 }
@@ -215,6 +232,7 @@ impl Default for UDitchU16 {
 
 #[derive(Default)]
 pub struct DitchU32 {
+    pub len: u8,
     pub header: u8,
     pub body: UDitchU32,
 }
@@ -233,6 +251,7 @@ impl Default for UDitchU32 {
 
 #[derive(Default)]
 pub struct DitchU64 {
+    pub len: u8,
     pub header: u8,
     pub body: UDitchU64,
 }
@@ -248,12 +267,3 @@ impl Default for UDitchU64 {
         Self { word: 0 }
     }
 }
-
-
-// What if:
-// two bits for length:
-// xy
-// 00: 1     1 + (0b00 << 0)     // 1 + (xy << 0x)
-// 01: 2     1 + (0b01 << 0)     // 1 + (xy << 0x)
-// 10: 4/5   1 + (0b10 << 1)     // 1 + (xy << 0x)
-// 11: 9     1 + (0b10 << 2)     // 1 + (x0 << x0)
