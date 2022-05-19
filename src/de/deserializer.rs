@@ -7,7 +7,7 @@ use serde::de::{
 };
 
 use crate::error::{Error, Result};
-use crate::varint::{varint_max, decoded_len, devarint_u16, devarint_u64, devarint_u32};
+use crate::varint::{varint_max, decoded_len, devarint_u16, devarint_u64, devarint_u32, DitchU16, DitchU32, DitchU64};
 use core::marker::PhantomData;
 
 /// A structure for deserializing a postcard message. For now, Deserializer does not
@@ -83,40 +83,49 @@ impl<'de> Deserializer<'de> {
     #[inline]
     fn try_take_varint_u16(&mut self) -> Result<u16> {
         const MAX: usize = varint_max::<u16>();
-        let mut out = [0u8; MAX];
-        out[0] = self.pop()?;
-        let length = decoded_len(out[0]);
+        let mut ditch = DitchU16::default();
+        ditch.header = self.pop()?;
+        let length = decoded_len(ditch.header);
         if length > MAX {
             return Err(Error::DeserializeBadVarint);
         }
-        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
-        Ok(devarint_u16(length, &out))
+        let lenm1 = length - 1;
+        unsafe {
+            core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
+        }
+        Ok(devarint_u16(length, ditch))
     }
 
     #[inline]
     fn try_take_varint_u32(&mut self) -> Result<u32> {
         const MAX: usize = varint_max::<u32>();
-        let mut out = [0u8; MAX];
-        out[0] = self.pop()?;
-        let length = decoded_len(out[0]);
+        let mut ditch = DitchU32::default();
+        ditch.header = self.pop()?;
+        let length = decoded_len(ditch.header);
         if length > MAX {
             return Err(Error::DeserializeBadVarint);
         }
-        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
-        Ok(devarint_u32(length, &out))
+        let lenm1 = length - 1;
+        unsafe {
+            core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
+        }
+        Ok(devarint_u32(length, ditch))
     }
 
     #[inline]
     fn try_take_varint_u64(&mut self) -> Result<u64> {
         const MAX: usize = varint_max::<u64>();
-        let mut out = [0u8; MAX];
-        out[0] = self.pop()?;
-        let length = decoded_len(out[0]);
+        let mut ditch = DitchU64::default();
+        ditch.header = self.pop()?;
+        let length = decoded_len(ditch.header);
         if length > MAX {
             return Err(Error::DeserializeBadVarint);
         }
-        out[1..length].copy_from_slice(self.try_take_n(length - 1)?);
-        Ok(devarint_u64(length, &out))
+        let lenm1 = length - 1;
+        unsafe {
+            core::ptr::copy_nonoverlapping(self.try_take_n(lenm1)?.as_ptr(), ditch.body.bytes.as_mut_ptr(), lenm1);
+        }
+        Ok(devarint_u64(length, ditch))
     }
 }
 
