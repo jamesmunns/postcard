@@ -22,6 +22,7 @@ documentation = "https://docs.rs/postcard/"
 all-features = true
 
 [dependencies]
+const_format = "0.2.24"
 
 [dependencies.heapless]
 version = "0.7.0"
