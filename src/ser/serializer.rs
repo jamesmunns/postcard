@@ -117,7 +117,7 @@ where
     #[inline]
     fn serialize_u128(self, v: u128) -> Result<()> {
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u128(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
 

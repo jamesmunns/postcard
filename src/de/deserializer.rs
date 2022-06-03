@@ -32,6 +32,7 @@ impl<'de> Deserializer<'de> {
         }
     }
 
+    /// Return the remaining (unused) bytes in the Deserializer
     pub fn remaining(self) -> &'de [u8] {
         let remain = (self.end as usize) - (self.cursor as usize);
         unsafe {
@@ -129,6 +130,27 @@ impl<'de> Deserializer<'de> {
         for i in 0..varint_max::<u64>() {
             let val = self.pop()?;
             let carry = (val & 0x7F) as u64;
+            out |= carry << (7 * i);
+
+            if (val & 0x80) == 0 {
+                if carry > check {
+                    return Err(Error::DeserializeBadVarint);
+                } else {
+                    return Ok(out);
+                }
+            }
+            check >>= 7;
+        }
+        Err(Error::DeserializeBadVarint)
+    }
+
+    #[inline]
+    fn try_take_varint_u128(&mut self) -> Result<u128> {
+        let mut out = 0;
+        let mut check = u128::MAX;
+        for i in 0..varint_max::<u128>() {
+            let val = self.pop()?;
+            let carry = (val & 0x7F) as u128;
             out |= carry << (7 * i);
 
             if (val & 0x80) == 0 {
@@ -322,9 +344,8 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 16];
-        buf[..].copy_from_slice(self.try_take_n(16)?);
-        visitor.visit_u128(u128::from_le_bytes(buf))
+        let v = self.try_take_varint_u128()?;
+        visitor.visit_u128(v)
     }
 
     #[inline]

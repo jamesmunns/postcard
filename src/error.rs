@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 use core::fmt::{Display, Formatter};
 
 /// This is the error type used by Postcard

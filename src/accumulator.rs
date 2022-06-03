@@ -11,7 +11,7 @@ use serde::Deserialize;
 ///
 /// Deserialize a struct by reading chunks from a [`Read`]er.
 ///
-/// ```rust,ignore
+/// ```rust
 /// use postcard::{CobsAccumulator, FeedResult};
 /// use serde::Deserialize;
 /// use std::io::Read;
@@ -162,23 +162,23 @@ impl<const N: usize> CobsAccumulator<N> {
     }
 }
 
-// #[test]
-// fn loop_test() {
-//     #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
-//     struct Demo {
-//         a: u32,
-//         b: u8,
-//     }
+#[test]
+fn loop_test() {
+    #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+    struct Demo {
+        a: u32,
+        b: u8,
+    }
 
-//     let mut raw_buf = [0u8; 64];
-//     let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
+    let mut raw_buf = [0u8; 64];
+    let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
 
-//     let ser = crate::to_slice_cobs(&Demo { a: 10, b: 20 }, &mut raw_buf).unwrap();
+    let ser = crate::to_slice_cobs(&Demo { a: 10, b: 20 }, &mut raw_buf).unwrap();
 
-//     if let FeedResult::Success { data, remaining } = cobs_buf.feed(ser) {
-//         assert_eq!(Demo { a: 10, b: 20 }, data);
-//         assert_eq!(remaining.len(), 0);
-//     } else {
-//         panic!()
-//     }
-// }
+    if let FeedResult::Success { data, remaining } = cobs_buf.feed(ser) {
+        assert_eq!(Demo { a: 10, b: 20 }, data);
+        assert_eq!(remaining.len(), 0);
+    } else {
+        panic!()
+    }
+}
