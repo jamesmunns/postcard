@@ -83,12 +83,20 @@ impl<'de> Deserializer<'de> {
     #[inline]
     fn try_take_varint_u16(&mut self) -> Result<u16> {
         let mut out = 0;
+        let mut check = u16::MAX;
         for i in 0..varint_max::<u16>() {
             let val = self.pop()?;
-            out |= ((val & 0x7F) as u16) << (7 * i);
+            let carry = (val & 0x7F) as u16;
+            out |= carry << (7 * i);
+
             if (val & 0x80) == 0 {
-                return Ok(out);
+                if carry > check {
+                    return Err(Error::DeserializeBadVarint);
+                } else {
+                    return Ok(out);
+                }
             }
+            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }
@@ -96,12 +104,20 @@ impl<'de> Deserializer<'de> {
     #[inline]
     fn try_take_varint_u32(&mut self) -> Result<u32> {
         let mut out = 0;
+        let mut check = u32::MAX;
         for i in 0..varint_max::<u32>() {
             let val = self.pop()?;
-            out |= ((val & 0x7F) as u32) << (7 * i);
+            let carry = (val & 0x7F) as u32;
+            out |= carry << (7 * i);
+
             if (val & 0x80) == 0 {
-                return Ok(out);
+                if carry > check {
+                    return Err(Error::DeserializeBadVarint);
+                } else {
+                    return Ok(out);
+                }
             }
+            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }
@@ -109,12 +125,20 @@ impl<'de> Deserializer<'de> {
     #[inline]
     fn try_take_varint_u64(&mut self) -> Result<u64> {
         let mut out = 0;
+        let mut check = u64::MAX;
         for i in 0..varint_max::<u64>() {
             let val = self.pop()?;
-            out |= ((val & 0x7F) as u64) << (7 * i);
+            let carry = (val & 0x7F) as u64;
+            out |= carry << (7 * i);
+
             if (val & 0x80) == 0 {
-                return Ok(out);
+                if carry > check {
+                    return Err(Error::DeserializeBadVarint);
+                } else {
+                    return Ok(out);
+                }
             }
+            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }

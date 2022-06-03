@@ -1,5 +1,5 @@
 [package]
-name = "postcardrf"
+name = "postcardrc"
 version = "0.7.3"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"

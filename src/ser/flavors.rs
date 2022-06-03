@@ -98,6 +98,7 @@ pub trait SerFlavor {
     /// The try_extend() trait method can be implemented when there is a more efficient way of processing
     /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
     /// at a time.
+    #[inline]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
@@ -110,6 +111,7 @@ pub trait SerFlavor {
     /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
     /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
     /// the desired behavior for most circumstances.
+    #[inline]
     fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<usize>()];
         let used_buf = varint_usize(data, &mut buf);
@@ -117,6 +119,7 @@ pub trait SerFlavor {
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u64>()];
         let used_buf = varint_u64(data, &mut buf);
@@ -124,6 +127,7 @@ pub trait SerFlavor {
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u32>()];
         let used_buf = varint_u32(data, &mut buf);
@@ -131,6 +135,7 @@ pub trait SerFlavor {
     }
 
     /// ...
+    #[inline]
     fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u16>()];
         let used_buf = varint_u16(data, &mut buf);

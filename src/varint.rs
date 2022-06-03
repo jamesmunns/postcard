@@ -14,6 +14,7 @@ pub const fn varint_max<T: Sized>() -> usize {
     roundup_bits / BITS_PER_VARINT_BYTE
 }
 
+#[inline]
 pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<usize>() {
@@ -29,6 +30,7 @@ pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8
     &mut out[..]
 }
 
+#[inline]
 pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u16>() {
@@ -44,6 +46,7 @@ pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
     &mut out[..]
 }
 
+#[inline]
 pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u32>() {
@@ -59,6 +62,7 @@ pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
     &mut out[..]
 }
 
+#[inline]
 pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u64>() {
