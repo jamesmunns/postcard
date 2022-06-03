@@ -107,7 +107,7 @@ impl_schema![
     f32: SdmTy::F32,
     f64: SdmTy::F64,
     char: SdmTy::Char,
-    &'_ str: SdmTy::String,
+    str: SdmTy::String,
     (): SdmTy::Unit
 ];
 impl_schema!(varint => [
@@ -145,7 +145,11 @@ impl<T: Schema, E: Schema> Schema for Result<T, E> {
     };
 }
 
-impl<T: Schema> Schema for &'_ [T] {
+impl<T: Schema> Schema for &'_ T {
+    const SCHEMA: &'static NamedType = T::SCHEMA;
+}
+
+impl<T: Schema> Schema for [T] {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "&[T]",
         ty: &SdmTy::Seq(T::SCHEMA),
@@ -154,7 +158,7 @@ impl<T: Schema> Schema for &'_ [T] {
 impl<T: Schema, const N: usize> Schema for [T; N] {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "[T; N]",
-        ty: &SdmTy::Seq(T::SCHEMA),
+        ty: &SdmTy::Tuple(&[T::SCHEMA; N]),
     };
 }
 
