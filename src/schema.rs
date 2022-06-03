@@ -165,6 +165,14 @@ impl<T: Schema, const N: usize> Schema for heapless::Vec<T, N> {
         ty: &SdmTy::Seq(T::SCHEMA),
     };
 }
+#[cfg(feature = "heapless")]
+impl<const N: usize> Schema for heapless::String<N> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "heapless::String<N>",
+        ty: &SdmTy::String,
+    };
+}
+
 #[cfg(feature = "use-std")]
 impl<T: Schema> Schema for std::vec::Vec<T> {
     const TYPE: &'static NamedType = &NamedType {
