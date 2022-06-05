@@ -2,6 +2,7 @@ use cobs::decode_in_place;
 use serde::Deserialize;
 
 pub(crate) mod deserializer;
+pub(crate) mod flavors;
 
 use crate::error::{Error, Result};
 use deserializer::Deserializer;
@@ -46,7 +47,7 @@ where
 {
     let mut deserializer = Deserializer::from_bytes(s);
     let t = T::deserialize(&mut deserializer)?;
-    Ok((t, deserializer.remaining()))
+    Ok((t, deserializer.remaining()?))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -9,66 +9,37 @@ use serde::de::{
 use crate::error::{Error, Result};
 use crate::varint::varint_max;
 use core::marker::PhantomData;
+use crate::de::flavors::{Flavor, Slice};
 
 /// A structure for deserializing a postcard message. For now, Deserializer does not
 /// implement the same Flavor interface as the serializer does, as messages are typically
 /// easier to deserialize in place. This may change in the future for consistency, or
 /// to support items that cannot be deserialized in-place, such as compressed message types
-pub struct Deserializer<'de> {
-    // This string starts with the input data and characters are truncated off
-    // the beginning as data is parsed.
-    cursor: *const u8,
-    end: *const u8,
-    _pl: PhantomData<&'de [u8]>,
+pub struct Deserializer<'de, F: Flavor<'de>> {
+    flavor: F,
+    _plt: PhantomData<&'de ()>,
 }
 
-impl<'de> Deserializer<'de> {
+impl<'de> Deserializer<'de, Slice<'de>> {
     /// Obtain a Deserializer from a slice of bytes
     pub fn from_bytes(input: &'de [u8]) -> Self {
         Deserializer {
-            cursor: input.as_ptr(),
-            end: unsafe { input.as_ptr().add(input.len()) },
-            _pl: PhantomData,
+            flavor: Slice {
+                cursor: input.as_ptr(),
+                end: unsafe { input.as_ptr().add(input.len()) },
+                _pl: PhantomData,
+            },
+            _plt: PhantomData,
         }
     }
 
     /// Return the remaining (unused) bytes in the Deserializer
-    pub fn remaining(self) -> &'de [u8] {
-        let remain = (self.end as usize) - (self.cursor as usize);
-        unsafe {
-            core::slice::from_raw_parts(self.cursor, remain)
-        }
+    pub fn remaining(self) -> Result<&'de [u8]> {
+        self.flavor.remaining()
     }
 }
 
-impl<'de> Deserializer<'de> {
-    #[inline]
-    fn pop(&mut self) -> Result<u8> {
-        if self.cursor == self.end {
-            Err(Error::DeserializeUnexpectedEnd)
-        } else {
-            unsafe {
-                let res = Ok(*self.cursor);
-                self.cursor = self.cursor.add(1);
-                res
-            }
-        }
-    }
-
-    #[inline]
-    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-        let remain = (self.end as usize) - (self.cursor as usize);
-        if remain < ct {
-            Err(Error::DeserializeUnexpectedEnd)
-        } else {
-            unsafe {
-                let sli = core::slice::from_raw_parts(self.cursor, ct);
-                self.cursor = self.cursor.add(ct);
-                Ok(sli)
-            }
-        }
-    }
-
+impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     #[cfg(target_pointer_width = "32")]
     #[inline(always)]
     fn try_take_varint_usize(&mut self) -> Result<usize> {
@@ -86,7 +57,7 @@ impl<'de> Deserializer<'de> {
         let mut out = 0;
         let mut check = u16::MAX;
         for i in 0..varint_max::<u16>() {
-            let val = self.pop()?;
+            let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u16;
             out |= carry << (7 * i);
 
@@ -107,7 +78,7 @@ impl<'de> Deserializer<'de> {
         let mut out = 0;
         let mut check = u32::MAX;
         for i in 0..varint_max::<u32>() {
-            let val = self.pop()?;
+            let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u32;
             out |= carry << (7 * i);
 
@@ -128,7 +99,7 @@ impl<'de> Deserializer<'de> {
         let mut out = 0;
         let mut check = u64::MAX;
         for i in 0..varint_max::<u64>() {
-            let val = self.pop()?;
+            let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u64;
             out |= carry << (7 * i);
 
@@ -149,7 +120,7 @@ impl<'de> Deserializer<'de> {
         let mut out = 0;
         let mut check = u128::MAX;
         for i in 0..varint_max::<u128>() {
-            let val = self.pop()?;
+            let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u128;
             out |= carry << (7 * i);
 
@@ -166,12 +137,12 @@ impl<'de> Deserializer<'de> {
     }
 }
 
-struct SeqAccess<'a, 'b: 'a> {
-    deserializer: &'a mut Deserializer<'b>,
+struct SeqAccess<'a, 'b: 'a, F: Flavor<'b>> {
+    deserializer: &'a mut Deserializer<'b, F>,
     len: usize,
 }
 
-impl<'a, 'b: 'a> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
     type Error = Error;
 
     #[inline]
@@ -193,12 +164,12 @@ impl<'a, 'b: 'a> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b> {
     }
 }
 
-struct MapAccess<'a, 'b: 'a> {
-    deserializer: &'a mut Deserializer<'b>,
+struct MapAccess<'a, 'b: 'a, F: Flavor<'b>> {
+    deserializer: &'a mut Deserializer<'b, F>,
     len: usize,
 }
 
-impl<'a, 'b: 'a> serde::de::MapAccess<'b> for MapAccess<'a, 'b> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
     type Error = Error;
 
     #[inline]
@@ -225,7 +196,7 @@ impl<'a, 'b: 'a> serde::de::MapAccess<'b> for MapAccess<'a, 'b> {
     }
 }
 
-impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
+impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de, F> {
     type Error = Error;
 
     #[inline]
@@ -249,7 +220,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let val = match self.try_take_n(1)?[0] {
+        let val = match self.flavor.pop()? {
             0 => false,
             1 => true,
             _ => return Err(Error::DeserializeBadBool),
@@ -262,9 +233,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 1];
-        buf[..].copy_from_slice(self.try_take_n(1)?);
-        visitor.visit_i8(i8::from_le_bytes(buf))
+        visitor.visit_i8(self.flavor.pop()? as i8)
     }
 
     #[inline]
@@ -300,7 +269,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let mut buf = [0u8; 16];
-        buf[..].copy_from_slice(self.try_take_n(16)?);
+        buf[..].copy_from_slice(self.flavor.try_take_n(16)?);
         visitor.visit_i128(i128::from_le_bytes(buf))
     }
 
@@ -309,7 +278,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u8(self.try_take_n(1)?[0])
+        visitor.visit_u8(self.flavor.pop()?)
     }
 
     #[inline]
@@ -353,7 +322,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.try_take_n(4)?;
+        let bytes = self.flavor.try_take_n(4)?;
         let mut buf = [0u8; 4];
         buf.copy_from_slice(bytes);
         visitor.visit_f32(f32::from_bits(u32::from_le_bytes(buf)))
@@ -364,7 +333,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.try_take_n(8)?;
+        let bytes = self.flavor.try_take_n(8)?;
         let mut buf = [0u8; 8];
         buf.copy_from_slice(bytes);
         visitor.visit_f64(f64::from_bits(u64::from_le_bytes(buf)))
@@ -379,7 +348,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         if sz > 4 {
             return Err(Error::DeserializeBadChar);
         }
-        let bytes: &'de [u8] = self.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         // we pass the character through string conversion because
         // this handles transforming the array of code units to a 
         // codepoint. we can't use char::from_u32() because it expects
@@ -398,7 +367,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
         visitor.visit_borrowed_str(str_sl)
@@ -418,7 +387,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         visitor.visit_borrowed_bytes(bytes)
     }
 
@@ -435,7 +404,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     where
         V: Visitor<'de>,
     {
-        match self.try_take_n(1)?[0] {
+        match self.flavor.pop()? {
             0 => visitor.visit_none(),
             1 => visitor.visit_some(self),
             _ => Err(Error::DeserializeBadOption),
@@ -566,7 +535,7 @@ impl<'de, 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
     }
 }
 
-impl<'de, 'a> serde::de::VariantAccess<'de> for &'a mut Deserializer<'de> {
+impl<'de, 'a, F: Flavor<'de>> serde::de::VariantAccess<'de> for &'a mut Deserializer<'de, F> {
     type Error = Error;
 
     #[inline]
@@ -594,7 +563,7 @@ impl<'de, 'a> serde::de::VariantAccess<'de> for &'a mut Deserializer<'de> {
     }
 }
 
-impl<'de, 'a> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de> {
+impl<'de, 'a, F: Flavor<'de>> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de, F> {
     type Error = Error;
     type Variant = Self;
 

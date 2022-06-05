@@ -47,9 +47,7 @@ version = "0.3.0"
 optional = true
 
 [features]
-# TODO
-# default = ["heapless-cas"]
-default = ["use-std", "heapless-cas"]
+default = ["heapless-cas"]
 
 use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
