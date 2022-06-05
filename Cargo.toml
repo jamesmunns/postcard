@@ -1,5 +1,5 @@
 [package]
-name = "postcard"
+name = "postcardrc"
 version = "0.7.3"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"
@@ -17,6 +17,9 @@ keywords = [
     "framing",
 ]
 documentation = "https://docs.rs/postcard/"
+
+[lib]
+name = "postcard"
 
 [package.metadata.docs.rs]
 all-features = true

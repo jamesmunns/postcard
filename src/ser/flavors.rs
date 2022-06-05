@@ -72,10 +72,11 @@
 //! ```
 
 use crate::error::{Error, Result};
-use crate::varint::VarintUsize;
 use cobs::{EncoderState, PushResult};
 use core::ops::Index;
 use core::ops::IndexMut;
+use core::marker::PhantomData;
+use crate::varint::*;
 
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
@@ -98,6 +99,7 @@ pub trait SerFlavor {
     /// The try_extend() trait method can be implemented when there is a more efficient way of processing
     /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
     /// at a time.
+    #[inline]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
@@ -110,9 +112,42 @@ pub trait SerFlavor {
     /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
     /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
     /// the desired behavior for most circumstances.
-    fn try_push_varint_usize(&mut self, data: &VarintUsize) -> core::result::Result<(), ()> {
-        let mut buf = VarintUsize::new_buf();
-        let used_buf = data.to_buf(&mut buf);
+    #[inline]
+    fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<usize>()];
+        let used_buf = varint_usize(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    fn try_push_varint_u128(&mut self, data: u128) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u128>()];
+        let used_buf = varint_u128(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u64>()];
+        let used_buf = varint_u64(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u32>()];
+        let used_buf = varint_u32(data, &mut buf);
+        self.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u16>()];
+        let used_buf = varint_u16(data, &mut buf);
         self.try_extend(used_buf)
     }
 
@@ -132,48 +167,59 @@ pub trait SerFlavor {
 /// The `Slice` flavor is a storage flavor, storing the serialized (or otherwise modified) bytes into a plain
 /// `[u8]` slice. The `Slice` flavor resolves into a sub-slice of the original slice buffer.
 pub struct Slice<'a> {
-    buf: &'a mut [u8],
-    idx: usize,
+    start: *mut u8,
+    cursor: *mut u8,
+    end: *mut u8,
+    _pl: PhantomData<&'a [u8]>
 }
 
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
-        Slice { buf, idx: 0 }
+        Slice {
+            start: buf.as_mut_ptr(),
+            cursor: buf.as_mut_ptr(),
+            end: unsafe { buf.as_mut_ptr().add(buf.len()) },
+            _pl: PhantomData,
+        }
     }
 }
 
 impl<'a> SerFlavor for Slice<'a> {
     type Output = &'a mut [u8];
 
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-        let len = data.len();
-
-        if (len + self.idx) > self.buf.len() {
-            return Err(());
+    #[inline(always)]
+    fn try_push(&mut self, b: u8) -> core::result::Result<(), ()> {
+        if self.cursor == self.end {
+            Err(())
+        } else {
+            unsafe {
+                self.cursor.write(b);
+                self.cursor = self.cursor.add(1);
+            }
+            Ok(())
         }
-
-        self.buf[self.idx..self.idx + len].copy_from_slice(data);
-
-        self.idx += len;
-
-        Ok(())
     }
 
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-        if self.idx >= self.buf.len() {
-            return Err(());
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> core::result::Result<(), ()> {
+        let remain = (self.end as usize) - (self.cursor as usize);
+        let blen = b.len();
+        if blen > remain {
+            Err(())
+        } else {
+            unsafe {
+                core::ptr::copy_nonoverlapping(b.as_ptr(), self.cursor, blen);
+                self.cursor = self.cursor.add(blen);
+            }
+            Ok(())
         }
-
-        self.buf[self.idx] = data;
-        self.idx += 1;
-
-        Ok(())
     }
 
     fn release(self) -> core::result::Result<Self::Output, ()> {
-        let (used, _unused) = self.buf.split_at_mut(self.idx);
-        Ok(used)
+        let used = (self.cursor as usize) - (self.start as usize);
+        let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
+        Ok(sli)
     }
 }
 
@@ -181,13 +227,21 @@ impl<'a> Index<usize> for Slice<'a> {
     type Output = u8;
 
     fn index(&self, idx: usize) -> &u8 {
-        &self.buf[idx]
+        let len = (self.end as usize) - (self.start as usize);
+        assert!(idx < len);
+        unsafe {
+            &*self.start.add(idx)
+        }
     }
 }
 
 impl<'a> IndexMut<usize> for Slice<'a> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
-        &mut self.buf[idx]
+        let len = (self.end as usize) - (self.start as usize);
+        assert!(idx < len);
+        unsafe {
+            &mut *self.start.add(idx)
+        }
     }
 }
 

@@ -1,6 +1,6 @@
-use serde::Serialize;
 use crate::error::{Error, Result};
 use crate::ser::flavors::{Cobs, SerFlavor, Slice};
+use serde::Serialize;
 
 #[cfg(feature = "heapless")]
 use crate::ser::flavors::HVec;
@@ -228,7 +228,10 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec(alloc::vec::Vec::new()))
+    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
+        value,
+        AllocVec(alloc::vec::Vec::new()),
+    )
 }
 
 /// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
@@ -300,10 +303,10 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::varint::VarintUsize;
+    use crate::varint::{varint_max, varint_usize};
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
-    use heapless::{String, FnvIndexMap};
+    use heapless::{FnvIndexMap, String};
     use serde::Deserialize;
 
     #[test]
@@ -314,30 +317,38 @@ mod test {
 
     #[test]
     fn ser_u16() {
-        let output: Vec<u8, 2> = to_vec(&0xA5C7u16).unwrap();
-        assert!(&[0xC7, 0xA5] == output.deref());
+        const SZ: usize = varint_max::<u16>();
+        let output: Vec<u8, SZ> = to_vec(&0xA5C7u16).unwrap();
+        assert_eq!(&[0xC7, 0xCB, 0x02], output.deref());
     }
 
     #[test]
     fn ser_u32() {
-        let output: Vec<u8, 4> = to_vec(&0xCDAB3412u32).unwrap();
-        assert!(&[0x12, 0x34, 0xAB, 0xCD] == output.deref());
+        const SZ: usize = varint_max::<u32>();
+        let output: Vec<u8, SZ> = to_vec(&0xCDAB3412u32).unwrap();
+        assert_eq!(&[0x92, 0xE8, 0xAC, 0xED, 0x0C], output.deref());
     }
 
     #[test]
     fn ser_u64() {
-        let output: Vec<u8, 8> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
-        assert!(&[0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12] == output.deref());
+        const SZ: usize = varint_max::<u64>();
+        let output: Vec<u8, SZ> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
+        assert_eq!(
+            &[0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x12],
+            output.deref()
+        );
     }
 
     #[test]
     fn ser_u128() {
-        let output: Vec<u8, 16> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
-        assert!(
+        const SZ: usize = varint_max::<u128>();
+        let output: Vec<u8, SZ> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
+        assert_eq!(
             &[
-                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12,
-                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12
-            ] == output.deref()
+                0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x92, 0xDE, 0xB7, 0xDE, 0x8A, 0x92,
+                0x9E, 0xAB, 0xB4, 0x24,
+            ],
+            output.deref()
         );
     }
 
@@ -352,7 +363,12 @@ mod test {
 
     #[test]
     fn ser_struct_unsigned() {
-        let output: Vec<u8, 31> = to_vec(&BasicU8S {
+        const SZ: usize = varint_max::<u16>()
+            + 1
+            + varint_max::<u128>()
+            + varint_max::<u64>()
+            + varint_max::<u32>();
+        let output: Vec<u8, SZ> = to_vec(&BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
             ote: 0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA,
@@ -361,15 +377,15 @@ mod test {
         })
         .unwrap();
 
-        assert!(
+        assert_eq!(
             &[
-                0xCD, 0xAB,
+                0xCD, 0xD7, 0x02,
                 0xFE,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xAC, 0xAC, 0xAC, 0xAC
-            ] == output.deref()
+                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4, 0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24,
+                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12,
+                0xAC, 0xD9, 0xB2, 0xE5, 0x0A
+            ],
+            output.deref()
         );
     }
 
@@ -417,15 +433,15 @@ mod test {
 
     #[test]
     fn usize_varint_encode() {
-        let mut buf = VarintUsize::new_buf();
-        let res = VarintUsize(1).to_buf(&mut buf);
+        let mut buf = [0; varint_max::<usize>()];
+        let res = varint_usize(1, &mut buf);
 
         assert!(&[1] == res);
 
-        let res = VarintUsize(usize::max_value()).to_buf(&mut buf);
+        let res = varint_usize(usize::MAX, &mut buf);
 
         // AJM TODO
-        if VarintUsize::varint_usize_max() == 5 {
+        if varint_max::<usize>() == 5 {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
         } else {
             assert_eq!(
@@ -464,14 +480,14 @@ mod test {
         let output: Vec<u8, 1> = to_vec(&BasicEnum::Bim).unwrap();
         assert_eq!(&[0x01], output.deref());
 
-        let output: Vec<u8, 9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let output: Vec<u8, {1 + varint_max::<u64>()}> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
         assert_eq!(
-            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
+            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
 
-        let output: Vec<u8, 3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
-        assert_eq!(&[0x00, 0xFF, 0xFF], output.deref());
+        let output: Vec<u8, {1 + varint_max::<u16>()}> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
 
         let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
         assert_eq!(&[0x02, 0xFF], output.deref());
@@ -481,24 +497,24 @@ mod test {
             sixt: 0xACAC,
         }))
         .unwrap();
-        assert_eq!(&[0x03, 0xF0, 0xAC, 0xAC,], output.deref());
+        assert_eq!(&[0x03, 0xF0, 0xAC, 0xD9, 0x02], output.deref());
 
         let output: Vec<u8, 8> = to_vec(&DataEnum::Chi {
             a: 0x0F,
             b: 0xC7C7C7C7,
         })
         .unwrap();
-        assert_eq!(&[0x04, 0x0F, 0xC7, 0xC7, 0xC7, 0xC7], output.deref());
+        assert_eq!(&[0x04, 0x0F, 0xC7, 0x8F, 0x9F, 0xBE, 0x0C], output.deref());
 
         let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
-        assert_eq!(&[0x05, 0x69, 0x69, 0x07], output.deref());
+        assert_eq!(&[0x05, 0xE9, 0xD2, 0x01, 0x07], output.deref());
     }
 
     #[test]
     fn tuples() {
         let output: Vec<u8, 128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
         assert_eq!(
-            &[1u8, 0x0A, 0x00, 0x00, 0x00, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
+            &[1u8, 0x0A, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
             output.deref()
         )
     }
@@ -522,11 +538,11 @@ mod test {
 
     #[test]
     fn structs() {
-        let output: Vec<u8, 4> = to_vec(&NewTypeStruct(5)).unwrap();
-        assert_eq!(&[0x05, 0x00, 0x00, 0x00], output.deref());
+        let output: Vec<u8, 1> = to_vec(&NewTypeStruct(5)).unwrap();
+        assert_eq!(&[0x05], output.deref());
 
         let output: Vec<u8, 3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
-        assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+        assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
     }
 
     #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
@@ -575,7 +591,10 @@ mod test {
         input.insert(0x03, 0x07).unwrap();
         input.insert(0x04, 0x08).unwrap();
         let output: Vec<u8, 100> = to_vec(&input).unwrap();
-        assert_eq!(&[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08], output.deref());
+        assert_eq!(
+            &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
+            output.deref()
+        );
     }
 
     #[test]
