@@ -87,13 +87,10 @@ pub use std_vec::*;
 #[cfg(feature = "alloc")]
 pub use alloc_vec::*;
 
-/// The SerFlavor trait acts as a combinator/middleware interface that can be used to pass bytes
-/// through storage or modification flavors. See the module level documentation for more information
-/// and examples.
-pub trait SerFlavor {
-    /// The `Output` type is what this flavor "resolves" to when the serialization is complete.
-    /// For storage flavors, this is typically a concrete type. For modification flavors, this is
-    /// typically a generic parameter for the storage flavor they are wrapped around.
+/// TODO
+pub trait Storage {
+    /// The `Output` type is what this storage "resolves" to when the serialization is complete,
+    /// such as a slice or a Vec of some sort.
     type Output;
 
     /// The try_extend() trait method can be implemented when there is a more efficient way of processing
@@ -103,62 +100,61 @@ pub trait SerFlavor {
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
         data.iter()
             .try_for_each(|d| self.try_push(*d))
-            .map_err(|_| ())
     }
 
     /// The try_push() trait method can be used to push a single byte to be modified and/or stored
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
 
-    /// The try_push_varint_usize() trait method can be used to push a `VarintUsize`. The default
-    /// implementation uses try_extend() to process the encoded `VarintUsize` bytes, which is likely
-    /// the desired behavior for most circumstances.
-    #[inline]
-    fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<usize>()];
-        let used_buf = varint_usize(data, &mut buf);
-        self.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    fn try_push_varint_u128(&mut self, data: u128) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u128>()];
-        let used_buf = varint_u128(data, &mut buf);
-        self.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u64>()];
-        let used_buf = varint_u64(data, &mut buf);
-        self.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u32>()];
-        let used_buf = varint_u32(data, &mut buf);
-        self.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u16>()];
-        let used_buf = varint_u16(data, &mut buf);
-        self.try_extend(used_buf)
-    }
-
-    /// The release() trait method finalizes the modification or storage operation, and resolved into
-    /// the type defined by `SerFlavor::Output` associated type.
+    /// TODO
     fn release(self) -> core::result::Result<Self::Output, ()>;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Storage Flavors
-////////////////////////////////////////////////////////////////////////////////
+/// TODO
+pub struct Encoder<S: Storage> {
+    pub(crate) storage: S,
+}
+
+impl<S: Storage> Encoder<S> {
+    /// ...
+    #[inline]
+    pub(crate) fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<usize>()];
+        let used_buf = varint_usize(data, &mut buf);
+        self.storage.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    pub(crate) fn try_push_varint_u128(&mut self, data: u128) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u128>()];
+        let used_buf = varint_u128(data, &mut buf);
+        self.storage.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    pub(crate) fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u64>()];
+        let used_buf = varint_u64(data, &mut buf);
+        self.storage.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    pub(crate) fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u32>()];
+        let used_buf = varint_u32(data, &mut buf);
+        self.storage.try_extend(used_buf)
+    }
+
+    /// ...
+    #[inline]
+    pub(crate) fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
+        let mut buf = [0u8; varint_max::<u16>()];
+        let used_buf = varint_u16(data, &mut buf);
+        self.storage.try_extend(used_buf)
+    }
+}
 
 ////////////////////////////////////////
 // Slice
@@ -185,7 +181,7 @@ impl<'a> Slice<'a> {
     }
 }
 
-impl<'a> SerFlavor for Slice<'a> {
+impl<'a> Storage for Slice<'a> {
     type Output = &'a mut [u8];
 
     #[inline(always)]
@@ -248,7 +244,7 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 #[cfg(feature = "heapless")]
 mod heapless_vec {
     use heapless::Vec;
-    use super::SerFlavor;
+    use super::Storage;
     use super::Index;
     use super::IndexMut;
 
@@ -258,23 +254,25 @@ mod heapless_vec {
 
     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    pub struct HVec<const B: usize>(Vec<u8, B>);
+    pub struct HVec<const B: usize> {
+        vec: Vec<u8, B>
+    }
 
-    impl<'a, const B: usize> SerFlavor for HVec<B> {
+    impl<'a, const B: usize> Storage for HVec<B> {
         type Output = Vec<u8, B>;
 
         #[inline(always)]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.0.extend_from_slice(data)
+            self.vec.extend_from_slice(data)
         }
 
         #[inline(always)]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.0.push(data).map_err(|_| ())
+            self.vec.push(data).map_err(drop)
         }
 
         fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
-            Ok(self.0)
+            Ok(self.vec)
         }
     }
 
@@ -282,115 +280,79 @@ mod heapless_vec {
         type Output = u8;
 
         fn index(&self, idx: usize) -> &u8 {
-            &self.0[idx]
+            &self.vec[idx]
         }
     }
 
     impl<const B: usize> IndexMut<usize> for HVec<B> {
         fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.0[idx]
+            &mut self.vec[idx]
         }
     }
 
     impl<const B: usize> Default for HVec<B> {
         fn default() -> Self {
-            Self(Vec::new())
+            Self {
+                vec: Vec::new()
+            }
         }
     }
 }
 
 #[cfg(feature = "use-std")]
 mod std_vec {
-    extern crate std;
-    use std::vec::Vec;
-    use super::SerFlavor;
-    use super::Index;
-    use super::IndexMut;
-
-    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
-    ///
-    /// This type is only available when the (non-default) `use-std` feature is active
-    pub struct StdVec(pub Vec<u8>);
-
-    impl SerFlavor for StdVec {
-        type Output = Vec<u8>;
-
-        #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.0.extend_from_slice(data);
-            Ok(())
-        }
-
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.0.push(data);
-            Ok(())
-        }
-
-        fn release(self) -> core::result::Result<Self::Output, ()> {
-            Ok(self.0)
-        }
-    }
-
-    impl Index<usize> for StdVec {
-        type Output = u8;
-
-        fn index(&self, idx: usize) -> &u8 {
-            &self.0[idx]
-        }
-    }
-
-    impl IndexMut<usize> for StdVec {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.0[idx]
-        }
-    }
+    /// TODO
+    pub type StdVec = crate::storage::alloc_vec::AllocVec;
 }
 
 #[cfg(feature = "alloc")]
 mod alloc_vec {
     extern crate alloc;
     use alloc::vec::Vec;
-    use super::SerFlavor;
+    use super::Storage;
     use super::Index;
     use super::IndexMut;
 
     /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
     ///
     /// This type is only available when the (non-default) `alloc` feature is active
-    pub struct AllocVec(pub Vec<u8>);
+    pub struct AllocVec {
+        pub(crate) vec: Vec<u8>
+    }
 
-    impl SerFlavor for AllocVec {
+    impl Storage for AllocVec {
         type Output = Vec<u8>;
 
         #[inline(always)]
         fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.0.extend_from_slice(data);
+            self.vec.extend_from_slice(data);
             Ok(())
         }
 
         #[inline(always)]
         fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.0.push(data);
+            self.vec.push(data);
             Ok(())
         }
 
         fn release(self) -> core::result::Result<Self::Output, ()> {
-            Ok(self.0)
+            Ok(self.vec)
         }
     }
 
     impl Index<usize> for AllocVec {
         type Output = u8;
 
+        #[inline]
         fn index(&self, idx: usize) -> &u8 {
-            &self.0[idx]
+            &self.vec[idx]
         }
     }
 
     impl IndexMut<usize> for AllocVec {
+        #[inline]
         fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.0[idx]
+            &mut self.vec[idx]
         }
     }
 }
@@ -412,7 +374,7 @@ mod alloc_vec {
 /// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 pub struct Cobs<B>
 where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
+    B: Storage + IndexMut<usize, Output = u8>,
 {
     flav: B,
     cobs: EncoderState,
@@ -420,7 +382,7 @@ where
 
 impl<B> Cobs<B>
 where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
+    B: Storage + IndexMut<usize, Output = u8>,
 {
     /// Create a new Cobs modifier Flavor. If there is insufficient space
     /// to push the leading header byte, the method will return an Error
@@ -433,11 +395,11 @@ where
     }
 }
 
-impl<'a, B> SerFlavor for Cobs<B>
+impl<'a, B> Storage for Cobs<B>
 where
-    B: SerFlavor + IndexMut<usize, Output = u8>,
+    B: Storage + IndexMut<usize, Output = u8>,
 {
-    type Output = <B as SerFlavor>::Output;
+    type Output = <B as Storage>::Output;
 
     #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {

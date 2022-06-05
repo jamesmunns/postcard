@@ -1,25 +1,24 @@
 use crate::error::{Error, Result};
-use crate::ser::flavors::{Cobs, SerFlavor, Slice};
+use crate::ser::storage::{Cobs, Storage, Slice};
 use serde::Serialize;
 
 #[cfg(feature = "heapless")]
-use crate::ser::flavors::HVec;
+use crate::ser::storage::HVec;
 
 #[cfg(feature = "heapless")]
 use heapless::Vec;
 
-#[cfg(feature = "use-std")]
-use crate::ser::flavors::StdVec;
-
 #[cfg(feature = "alloc")]
-use crate::ser::flavors::AllocVec;
+use crate::ser::storage::AllocVec;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
 use crate::ser::serializer::Serializer;
 
-pub mod flavors;
+use self::storage::Encoder;
+
+pub mod storage;
 pub(crate) mod serializer;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
@@ -54,7 +53,7 @@ pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a m
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
+    serialize_with_storage::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
         value,
         Cobs::try_new(Slice::new(buf))?,
     )
@@ -93,7 +92,7 @@ pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
+    serialize_with_storage::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -127,7 +126,7 @@ pub fn to_vec_cobs<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<HVec<B>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
+    serialize_with_storage::<T, Cobs<HVec<B>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -160,7 +159,7 @@ pub fn to_vec<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
+    serialize_with_storage::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
 /// Serialize a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
@@ -177,12 +176,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
-where
-    T: Serialize + ?Sized,
-{
-    serialize_with_flavor::<T, StdVec, std::vec::Vec<u8>>(value, StdVec(std::vec::Vec::new()))
-}
+pub use to_allocvec as to_stdvec;
 
 /// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
 ///
@@ -200,15 +194,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
-where
-    T: Serialize + ?Sized,
-{
-    serialize_with_flavor::<T, Cobs<StdVec>, std::vec::Vec<u8>>(
-        value,
-        Cobs::try_new(StdVec(std::vec::Vec::new()))?,
-    )
-}
+pub use to_allocvec_cobs as to_stdvec_cobs;
 
 /// Serialize a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
 ///
@@ -228,9 +214,9 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
+    serialize_with_storage::<T, AllocVec, alloc::vec::Vec<u8>>(
         value,
-        AllocVec(alloc::vec::Vec::new()),
+        AllocVec { vec: alloc::vec::Vec::new() },
     )
 }
 
@@ -254,16 +240,16 @@ pub fn to_allocvec_cobs<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
+    serialize_with_storage::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
         value,
-        Cobs::try_new(AllocVec(alloc::vec::Vec::new()))?,
+        Cobs::try_new(AllocVec { vec: alloc::vec::Vec::new() })?,
     )
 }
 
-/// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
+/// `serialize_with_storage()` has three generic parameters, `T, F, O`.
 ///
 /// * `T`: This is the type that is being serialized
-/// * `F`: This is the Flavor (combination) that is used during serialization
+/// * `S`: This is the Storage that is used during serialization
 /// * `O`: This is the resulting storage type that is returned containing the serialized data
 ///
 /// For more information about how Flavors work, please see the
@@ -271,7 +257,7 @@ where
 ///
 /// ```rust
 /// use postcard::{
-///     serialize_with_flavor,
+///     serialize_with_storage,
 ///     flavors::{Cobs, Slice},
 /// };
 ///
@@ -279,22 +265,23 @@ where
 ///
 /// let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 /// let buffer = &mut [0u8; 32];
-/// let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+/// let res = serialize_with_storage::<[u8], Cobs<Slice>, &mut [u8]>(
 ///     data,
 ///     Cobs::try_new(Slice::new(buffer)).unwrap(),
 /// ).unwrap();
 ///
 /// assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
-pub fn serialize_with_flavor<T, F, O>(value: &T, flavor: F) -> Result<O>
+pub fn serialize_with_storage<T, S, O>(value: &T, storage: S) -> Result<O>
 where
     T: Serialize + ?Sized,
-    F: SerFlavor<Output = O>,
+    S: Storage<Output = O>,
 {
-    let mut serializer = Serializer { output: flavor };
+    let mut serializer = Serializer { output: Encoder { storage } };
     value.serialize(&mut serializer)?;
     serializer
         .output
+        .storage
         .release()
         .map_err(|_| Error::SerializeBufferFull)
 }

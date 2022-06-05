@@ -1,6 +1,6 @@
 [package]
-name = "postcardrc"
-version = "0.7.3"
+name = "postcard"
+version = "1.0.0-alpha.1"
 authors = ["James Munns <james.munns@ferrous-systems.com>"]
 edition = "2018"
 readme = "README.md"
@@ -47,8 +47,11 @@ version = "0.3.0"
 optional = true
 
 [features]
-use-std = ["serde/std"]
-default = ["heapless-cas"]
+# TODO
+# default = ["heapless-cas"]
+default = ["use-std", "heapless-cas"]
+
+use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]

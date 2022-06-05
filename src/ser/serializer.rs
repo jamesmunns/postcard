@@ -1,7 +1,7 @@
 use serde::{ser, Serialize};
 
 use crate::error::{Error, Result};
-use crate::ser::flavors::SerFlavor;
+use crate::ser::storage::{Storage, Encoder};
 
 /// A `serde` compatible serializer, generic over "Flavors" of serializing plugins.
 ///
@@ -11,18 +11,18 @@ use crate::ser::flavors::SerFlavor;
 /// See the docs for [`SerFlavor`] for more information about "flavors" of serialization
 ///
 /// [`SerFlavor`]: trait.SerFlavor.html
-pub struct Serializer<F>
+pub struct Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     /// This is the Flavor(s) that will be used to modify or store any bytes generated
     /// by serialization
-    pub output: F,
+    pub output: Encoder<S>,
 }
 
-impl<'a, F> ser::Serializer for &'a mut Serializer<F>
+impl<'a, S> ser::Serializer for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
 
@@ -81,14 +81,16 @@ where
 
     #[inline]
     fn serialize_i128(self, v: i128) -> Result<()> {
+        let zzv = zig_zag_i128(v);
         self.output
-            .try_extend(&v.to_le_bytes())
+            .try_push_varint_u128(zzv)
             .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
     fn serialize_u8(self, v: u8) -> Result<()> {
         self.output
+            .storage
             .try_push(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
@@ -125,6 +127,7 @@ where
     fn serialize_f32(self, v: f32) -> Result<()> {
         let buf = v.to_bits().to_le_bytes();
         self.output
+            .storage
             .try_extend(&buf)
             .map_err(|_| Error::SerializeBufferFull)
     }
@@ -133,6 +136,7 @@ where
     fn serialize_f64(self, v: f64) -> Result<()> {
         let buf = v.to_bits().to_le_bytes();
         self.output
+            .storage
             .try_extend(&buf)
             .map_err(|_| Error::SerializeBufferFull)
     }
@@ -150,6 +154,7 @@ where
             .try_push_varint_usize(v.len())
             .map_err(|_| Error::SerializeBufferFull)?;
         self.output
+            .storage
             .try_extend(v.as_bytes())
             .map_err(|_| Error::SerializeBufferFull)?;
         Ok(())
@@ -161,6 +166,7 @@ where
             .try_push_varint_usize(v.len())
             .map_err(|_| Error::SerializeBufferFull)?;
         self.output
+            .storage
             .try_extend(v)
             .map_err(|_| Error::SerializeBufferFull)
     }
@@ -298,9 +304,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeSeq for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeSeq for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     // Must match the `Ok` type of the serializer.
     type Ok = ();
@@ -323,9 +329,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTuple for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeTuple for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -344,9 +350,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTupleStruct for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeTupleStruct for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -365,9 +371,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTupleVariant for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeTupleVariant for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -386,9 +392,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeMap for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeMap for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -415,9 +421,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeStruct for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeStruct for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -436,9 +442,9 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeStructVariant for &'a mut Serializer<F>
+impl<'a, S> ser::SerializeStructVariant for &'a mut Serializer<S>
 where
-    F: SerFlavor,
+    S: Storage,
 {
     type Ok = ();
     type Error = Error;
@@ -467,4 +473,8 @@ fn zig_zag_i32(n: i32) -> u32 {
 
 fn zig_zag_i64(n: i64) -> u64 {
     ((n << 1) ^ (n >> 63)) as u64
+}
+
+fn zig_zag_i128(n: i128) -> u128 {
+    ((n << 1) ^ (n >> 127)) as u128
 }
