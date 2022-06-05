@@ -125,7 +125,7 @@
 //! ```rust
 //! use postcard::{
 //!     serialize_with_flavor,
-//!     flavors::{Cobs, Slice},
+//!     ser_flavors::{Cobs, Slice},
 //! };
 //!
 //! let mut buf = [0u8; 32];
@@ -184,7 +184,8 @@ pub use accumulator::{CobsAccumulator, FeedResult};
 pub use de::deserializer::Deserializer;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
-pub use ser::{flavors, serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
+pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
+pub use ser::flavors as ser_flavors;
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};

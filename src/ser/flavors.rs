@@ -33,7 +33,7 @@
 //! ```rust
 //! use postcard::{
 //!     serialize_with_flavor,
-//!     flavors::Slice,
+//!     ser_flavors::Slice,
 //! };
 //!
 //! let mut buf = [0u8; 32];
@@ -56,7 +56,7 @@
 //! ```rust
 //! use postcard::{
 //!     serialize_with_flavor,
-//!     flavors::{Cobs, Slice},
+//!     ser_flavors::{Cobs, Slice},
 //! };
 //!
 //! let mut buf = [0u8; 32];
@@ -302,7 +302,7 @@ mod heapless_vec {
 #[cfg(feature = "use-std")]
 mod std_vec {
     /// TODO
-    pub type StdVec = crate::flavors::alloc_vec::AllocVec;
+    pub type StdVec = super::alloc_vec::AllocVec;
 }
 
 #[cfg(feature = "alloc")]

@@ -258,7 +258,7 @@ where
 /// ```rust
 /// use postcard::{
 ///     serialize_with_flavor,
-///     flavors::{Cobs, Slice},
+///     ser_flavors::{Cobs, Slice},
 /// };
 ///
 /// let mut buf = [0u8; 32];
