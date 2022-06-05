@@ -5,6 +5,14 @@
 //! Postcard aims to be convenient for developers in constrained environments, while
 //! allowing for flexibility to customize behavior as needed.
 //!
+//! ## Run to 1.0
+//!
+//! Postcard will be reaching v1.0.0 in June 2022! Read the [announcement blog post](https://jamesmunns.com/blog/postcard-1-0-run/) for more details!
+//!
+//! You can also see the [preview specification](https://postcard.jamesmunns.com).
+//!
+//! > Work towards the Postcard Specification and portions of the Postcard 1.0 Release has been sponsored by Mozilla Corporation.
+//!
 //! ## Design Goals
 //!
 //! 1. Design primarily for `#![no_std]` usage, in embedded or other constrained contexts
@@ -186,6 +194,7 @@ pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs}
 pub use error::{Error, Result};
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
 pub use ser::flavors as ser_flavors;
+pub use de::flavors as de_flavors;
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};

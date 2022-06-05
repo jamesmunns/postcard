@@ -2,7 +2,7 @@ use cobs::decode_in_place;
 use serde::Deserialize;
 
 pub(crate) mod deserializer;
-pub(crate) mod flavors;
+pub mod flavors;
 
 use crate::error::{Error, Result};
 use deserializer::Deserializer;

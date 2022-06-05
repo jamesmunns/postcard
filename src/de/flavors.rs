@@ -1,3 +1,7 @@
+//! # Deserialization flavors
+//!
+//! Docs TO-DO!
+
 use crate::{Result, Error};
 use core::marker::PhantomData;
 
@@ -14,6 +18,7 @@ pub trait Flavor<'de>: 'de {
     fn remaining(self) -> Result<Self::Remainder>;
 }
 
+/// TODO
 pub struct Slice<'de> {
     // This string starts with the input data and characters are truncated off
     // the beginning as data is parsed.
