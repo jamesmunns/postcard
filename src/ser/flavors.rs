@@ -88,7 +88,7 @@ pub use std_vec::*;
 pub use alloc_vec::*;
 
 /// TODO
-pub trait Storage {
+pub trait Flavor {
     /// The `Output` type is what this storage "resolves" to when the serialization is complete,
     /// such as a slice or a Vec of some sort.
     type Output;
@@ -110,17 +110,17 @@ pub trait Storage {
 }
 
 /// TODO
-pub struct Encoder<S: Storage> {
-    pub(crate) storage: S,
+pub struct Encoder<F: Flavor> {
+    pub(crate) flavor: F,
 }
 
-impl<S: Storage> Encoder<S> {
+impl<F: Flavor> Encoder<F> {
     /// ...
     #[inline]
     pub(crate) fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<usize>()];
         let used_buf = varint_usize(data, &mut buf);
-        self.storage.try_extend(used_buf)
+        self.flavor.try_extend(used_buf)
     }
 
     /// ...
@@ -128,7 +128,7 @@ impl<S: Storage> Encoder<S> {
     pub(crate) fn try_push_varint_u128(&mut self, data: u128) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u128>()];
         let used_buf = varint_u128(data, &mut buf);
-        self.storage.try_extend(used_buf)
+        self.flavor.try_extend(used_buf)
     }
 
     /// ...
@@ -136,7 +136,7 @@ impl<S: Storage> Encoder<S> {
     pub(crate) fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u64>()];
         let used_buf = varint_u64(data, &mut buf);
-        self.storage.try_extend(used_buf)
+        self.flavor.try_extend(used_buf)
     }
 
     /// ...
@@ -144,7 +144,7 @@ impl<S: Storage> Encoder<S> {
     pub(crate) fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u32>()];
         let used_buf = varint_u32(data, &mut buf);
-        self.storage.try_extend(used_buf)
+        self.flavor.try_extend(used_buf)
     }
 
     /// ...
@@ -152,7 +152,7 @@ impl<S: Storage> Encoder<S> {
     pub(crate) fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
         let mut buf = [0u8; varint_max::<u16>()];
         let used_buf = varint_u16(data, &mut buf);
-        self.storage.try_extend(used_buf)
+        self.flavor.try_extend(used_buf)
     }
 }
 
@@ -181,7 +181,7 @@ impl<'a> Slice<'a> {
     }
 }
 
-impl<'a> Storage for Slice<'a> {
+impl<'a> Flavor for Slice<'a> {
     type Output = &'a mut [u8];
 
     #[inline(always)]
@@ -244,7 +244,7 @@ impl<'a> IndexMut<usize> for Slice<'a> {
 #[cfg(feature = "heapless")]
 mod heapless_vec {
     use heapless::Vec;
-    use super::Storage;
+    use super::Flavor;
     use super::Index;
     use super::IndexMut;
 
@@ -258,7 +258,7 @@ mod heapless_vec {
         vec: Vec<u8, B>
     }
 
-    impl<'a, const B: usize> Storage for HVec<B> {
+    impl<'a, const B: usize> Flavor for HVec<B> {
         type Output = Vec<u8, B>;
 
         #[inline(always)]
@@ -302,14 +302,14 @@ mod heapless_vec {
 #[cfg(feature = "use-std")]
 mod std_vec {
     /// TODO
-    pub type StdVec = crate::storage::alloc_vec::AllocVec;
+    pub type StdVec = crate::flavors::alloc_vec::AllocVec;
 }
 
 #[cfg(feature = "alloc")]
 mod alloc_vec {
     extern crate alloc;
     use alloc::vec::Vec;
-    use super::Storage;
+    use super::Flavor;
     use super::Index;
     use super::IndexMut;
 
@@ -320,7 +320,7 @@ mod alloc_vec {
         pub(crate) vec: Vec<u8>
     }
 
-    impl Storage for AllocVec {
+    impl Flavor for AllocVec {
         type Output = Vec<u8>;
 
         #[inline(always)]
@@ -374,7 +374,7 @@ mod alloc_vec {
 /// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
 pub struct Cobs<B>
 where
-    B: Storage + IndexMut<usize, Output = u8>,
+    B: Flavor + IndexMut<usize, Output = u8>,
 {
     flav: B,
     cobs: EncoderState,
@@ -382,7 +382,7 @@ where
 
 impl<B> Cobs<B>
 where
-    B: Storage + IndexMut<usize, Output = u8>,
+    B: Flavor + IndexMut<usize, Output = u8>,
 {
     /// Create a new Cobs modifier Flavor. If there is insufficient space
     /// to push the leading header byte, the method will return an Error
@@ -395,11 +395,11 @@ where
     }
 }
 
-impl<'a, B> Storage for Cobs<B>
+impl<'a, B> Flavor for Cobs<B>
 where
-    B: Storage + IndexMut<usize, Output = u8>,
+    B: Flavor + IndexMut<usize, Output = u8>,
 {
-    type Output = <B as Storage>::Output;
+    type Output = <B as Flavor>::Output;
 
     #[inline(always)]
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
