@@ -55,7 +55,10 @@ where
 #[cfg(test)]
 mod test_heapless {
     use super::*;
-    use crate::ser::to_vec;
+    use crate::{
+        ser::to_vec,
+        varint::varint_max,
+    };
     use core::fmt::Write;
     use core::ops::Deref;
     use heapless::{String, Vec, FnvIndexMap};
@@ -72,8 +75,8 @@ mod test_heapless {
 
     #[test]
     fn de_u16() {
-        let output: Vec<u8, 2> = to_vec(&0xA5C7u16).unwrap();
-        assert!(&[0xC7, 0xA5] == output.deref());
+        let output: Vec<u8, {varint_max::<u16>()}> = to_vec(&0xA5C7u16).unwrap();
+        assert!(&[0xC7, 0xCB, 0x02] == output.deref());
 
         let out: u16 = from_bytes(output.deref()).unwrap();
         assert_eq!(out, 0xA5C7);
@@ -81,8 +84,8 @@ mod test_heapless {
 
     #[test]
     fn de_u32() {
-        let output: Vec<u8, 4> = to_vec(&0xCDAB3412u32).unwrap();
-        assert!(&[0x12, 0x34, 0xAB, 0xCD] == output.deref());
+        let output: Vec<u8, {varint_max::<u32>()}> = to_vec(&0xCDAB3412u32).unwrap();
+        assert_eq!(&[0x92, 0xE8, 0xAC, 0xED, 0x0C], output.deref());
 
         let out: u32 = from_bytes(output.deref()).unwrap();
         assert_eq!(out, 0xCDAB3412u32);
@@ -90,8 +93,8 @@ mod test_heapless {
 
     #[test]
     fn de_u64() {
-        let output: Vec<u8, 8> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
-        assert!(&[0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12] == output.deref());
+        let output: Vec<u8, {varint_max::<u64>()}> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
+        assert!(&[0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x12] == output.deref());
 
         let out: u64 = from_bytes(output.deref()).unwrap();
         assert_eq!(out, 0x1234_5678_90AB_CDEFu64);
@@ -99,11 +102,11 @@ mod test_heapless {
 
     #[test]
     fn de_u128() {
-        let output: Vec<u8, 16> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
+        let output: Vec<u8, {varint_max::<u128>()}> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
         assert!(
             &[
-                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12,
-                0xEF, 0xCD, 0xAB, 0x90, 0x78, 0x56, 0x34, 0x12
+                0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x92, 0xDE, 0xB7, 0xDE, 0x8A, 0x92,
+                0x9E, 0xAB, 0xB4, 0x24,
             ] == output.deref()
         );
 
@@ -130,17 +133,23 @@ mod test_heapless {
             tt: 0xACAC_ACAC,
         };
 
-        let output: Vec<u8, 31> = to_vec(&data).unwrap();
+        const SZ: usize = varint_max::<u16>()
+            + 1
+            + varint_max::<u128>()
+            + varint_max::<u64>()
+            + varint_max::<u32>();
 
-        assert!(
+        let output: Vec<u8, SZ> = to_vec(&data).unwrap();
+
+        assert_eq!(
             &[
-                0xCD, 0xAB,
+                0xCD, 0xD7, 0x02,
                 0xFE,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xBA, 0xDC, 0xCD, 0xAB, 0x21, 0x43, 0x34, 0x12,
-                0xAC, 0xAC, 0xAC, 0xAC
-            ] == output.deref()
+                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4, 0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24,
+                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12,
+                0xAC, 0xD9, 0xB2, 0xE5, 0x0A
+            ],
+            output.deref()
         );
 
         let out: BasicU8S = from_bytes(output.deref()).unwrap();
@@ -229,14 +238,14 @@ mod test_heapless {
         let out: BasicEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(out, BasicEnum::Bim);
 
-        let output: Vec<u8, 9> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let output: Vec<u8, {1 + varint_max::<u64>()}> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
         assert_eq!(
-            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF],
+            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
 
-        let output: Vec<u8, 3> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
-        assert_eq!(&[0x00, 0xFF, 0xFF], output.deref());
+        let output: Vec<u8, {1 + varint_max::<u16>()}> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(out, DataEnum::Bib(u16::max_value()));
 
@@ -250,7 +259,7 @@ mod test_heapless {
             sixt: 0xACAC,
         }))
         .unwrap();
-        assert_eq!(&[0x03, 0xF0, 0xAC, 0xAC,], output.deref());
+        assert_eq!(&[0x03, 0xF0, 0xAC, 0xD9, 0x02], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(
             out,
@@ -265,7 +274,7 @@ mod test_heapless {
             b: 0xC7C7C7C7,
         })
         .unwrap();
-        assert_eq!(&[0x04, 0x0F, 0xC7, 0xC7, 0xC7, 0xC7], output.deref());
+        assert_eq!(&[0x04, 0x0F, 0xC7, 0x8F, 0x9F, 0xBE, 0x0C], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(
             out,
@@ -276,7 +285,7 @@ mod test_heapless {
         );
 
         let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
-        assert_eq!(&[0x05, 0x69, 0x69, 0x07], output.deref());
+        assert_eq!(&[0x05, 0xE9, 0xD2, 0x01, 0x07], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(out, DataEnum::Sho(0x6969, 0x07));
     }
@@ -285,7 +294,7 @@ mod test_heapless {
     fn tuples() {
         let output: Vec<u8, 128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
         assert_eq!(
-            &[1u8, 0x0A, 0x00, 0x00, 0x00, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
+            &[1u8, 0x0A, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
             output.deref()
         );
         let out: (u8, u32, &str) = from_bytes(output.deref()).unwrap();
@@ -366,17 +375,17 @@ mod test_heapless {
     #[test]
     fn structs() {
         let output: Vec<u8, 4> = to_vec(&NewTypeStruct(5)).unwrap();
-        assert_eq!(&[0x05, 0x00, 0x00, 0x00], output.deref());
+        assert_eq!(&[0x05], output.deref());
         let out: NewTypeStruct = from_bytes(output.deref()).unwrap();
         assert_eq!(out, NewTypeStruct(5));
 
         let output: Vec<u8, 3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
-        assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+        assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: TupleStruct = from_bytes(output.deref()).unwrap();
         assert_eq!(out, TupleStruct((0xA0, 0x1234)));
         
         let output: Vec<u8, 3> = to_vec(&DualTupleStruct(0xA0, 0x1234)).unwrap();
-        assert_eq!(&[0xA0, 0x34, 0x12], output.deref());
+        assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: DualTupleStruct = from_bytes(output.deref()).unwrap();
         assert_eq!(out, DualTupleStruct(0xA0, 0x1234));
     }
