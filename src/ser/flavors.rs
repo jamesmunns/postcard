@@ -255,9 +255,17 @@ mod heapless_vec {
 
     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
+    #[derive(Default)]
     pub struct HVec<const B: usize> {
         /// TODO
         pub vec: Vec<u8, B>
+    }
+
+    impl<const B: usize> HVec<B> {
+        /// TODO
+        pub fn new() -> Self {
+            Self::default()
+        }
     }
 
     impl<'a, const B: usize> Flavor for HVec<B> {
@@ -289,14 +297,6 @@ mod heapless_vec {
     impl<const B: usize> IndexMut<usize> for HVec<B> {
         fn index_mut(&mut self, idx: usize) -> &mut u8 {
             &mut self.vec[idx]
-        }
-    }
-
-    impl<const B: usize> Default for HVec<B> {
-        fn default() -> Self {
-            Self {
-                vec: Vec::new()
-            }
         }
     }
 }
