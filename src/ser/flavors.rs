@@ -325,7 +325,8 @@ mod alloc_vec {
     }
 
     impl AllocVec {
-        pub fn new() {
+        /// TODO
+        pub fn new() -> Self {
             Self::default()
         }
     }
