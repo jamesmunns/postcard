@@ -6,6 +6,11 @@ Changes will be described here.
 
 ...
 
+## 1.0.0-alpha.1 -> 1.0.0-alpha.2
+
+* Re-exposed fields of the Flavor constructors, made various flavors impl `Default`
+* No breaking changes vs `1.0.0-alpha.1`.
+
 ## 0.7.3 -> 1.0.0-alpha.1
 
 * WARNING: This includes a BREAKING wire change from postcard v0.x.y! Please ensure
