@@ -111,7 +111,8 @@ pub trait Flavor {
 
 /// TODO
 pub struct Encoder<F: Flavor> {
-    pub(crate) flavor: F,
+    /// TODO
+    pub flavor: F,
 }
 
 impl<F: Flavor> Encoder<F> {
@@ -255,7 +256,8 @@ mod heapless_vec {
     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
     pub struct HVec<const B: usize> {
-        vec: Vec<u8, B>
+        /// TODO
+        pub vec: Vec<u8, B>
     }
 
     impl<'a, const B: usize> Flavor for HVec<B> {
@@ -316,8 +318,16 @@ mod alloc_vec {
     /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
     ///
     /// This type is only available when the (non-default) `alloc` feature is active
+    #[derive(Default)]
     pub struct AllocVec {
-        pub(crate) vec: Vec<u8>
+        /// TODO
+        pub vec: Vec<u8>
+    }
+
+    impl AllocVec {
+        pub fn new() {
+            Self::default()
+        }
     }
 
     impl Flavor for AllocVec {
