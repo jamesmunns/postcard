@@ -136,8 +136,6 @@
 //!     ser_flavors::{Cobs, Slice},
 //! };
 //!
-//! let mut buf = [0u8; 32];
-//!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
 //! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
