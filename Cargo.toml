@@ -38,8 +38,7 @@ default-features = false
 features = ["derive"]
 
 [dependencies.cobs]
-package = "postcard-cobs"
-version = "0.1.5-pre"
+version = "0.2"
 default-features = false
 
 [dependencies.defmt]
