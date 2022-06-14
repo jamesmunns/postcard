@@ -38,7 +38,7 @@ default-features = false
 features = ["derive"]
 
 [dependencies.cobs]
-version = "0.2.2"
+version = "0.2.3"
 default-features = false
 
 [dependencies.defmt]

@@ -1,4 +1,4 @@
-use cobs::decode_in_place;
+use cobs::{decode_in_place, decode_in_place_report};
 use serde::Deserialize;
 
 pub(crate) mod deserializer;
@@ -34,9 +34,22 @@ pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
 where
     T: Deserialize<'a>,
 {
-    let sz = decode_in_place(s).map_err(|_| Error::DeserializeBadEncoding)?;
-    let (used, unused) = s.split_at_mut(sz);
-    Ok((from_bytes::<T>(used)?, unused))
+    let mut report = decode_in_place_report(s).map_err(|_| Error::DeserializeBadEncoding)?;
+
+    // The report does not include terminator bytes. If there is one in the
+    // buffer right AFTER the message, also include it.
+    if s.get(report.src_used) == Some(&0) {
+        report.src_used += 1;
+    }
+
+    // First split off the amount used for the "destination", which includes our now
+    // decoded message to deserialize
+    let (dst_used, dst_unused) = s.split_at_mut(report.dst_used);
+
+    // Then create a slice that includes the unused bytes, but DON'T include the
+    // excess bytes that were "shrunk" away from the original message
+    let (_unused, src_unused) = dst_unused.split_at_mut(report.src_used - report.dst_used);
+    Ok((from_bytes::<T>(dst_used)?, src_unused))
 }
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
@@ -58,7 +71,7 @@ mod test_heapless {
     use super::*;
     use crate::{
         ser::to_vec,
-        varint::varint_max,
+        varint::varint_max, to_vec_cobs,
     };
     use core::fmt::Write;
     use core::ops::Deref;
@@ -473,5 +486,21 @@ mod test_heapless {
         let out = from_bytes_cobs::<RefStruct>(&mut encode_buf[..sz]).unwrap();
 
         assert_eq!(input, out);
+    }
+
+    #[test]
+    fn take_from_includes_terminator() {
+        // With the null terminator
+        let mut output: Vec<u8, 32> = to_vec_cobs(&(4i32, 0u8, 4u64)).unwrap();
+        let (val, remain) = take_from_bytes_cobs::<(i32, u8, u64)>(&mut output).unwrap();
+        assert_eq!((4, 0, 4), val);
+        assert_eq!(remain.len(), 0);
+
+        // without the null terminator
+        let mut output: Vec<u8, 32> = to_vec_cobs(&(4i32, 0u8, 4u64)).unwrap();
+        assert_eq!(output.pop(), Some(0));
+        let (val, remain) = take_from_bytes_cobs::<(i32, u8, u64)>(&mut output).unwrap();
+        assert_eq!((4, 0, 4), val);
+        assert_eq!(remain.len(), 0);
     }
 }
