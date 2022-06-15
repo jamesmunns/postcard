@@ -22,13 +22,11 @@ pub mod flavors;
 pub(crate) mod serializer;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
-/// data in a serialized then COBS encoded format. The terminating sentinel `0x00` byte is included
-/// in the output buffer.
+/// data in a serialized then COBS encoded format. The terminating sentinel
+/// `0x00` byte is included in the output buffer.
 ///
-/// When successful, this function returns the slices containing:
-///
-/// 1. A slice that contains the serialized and encoded message
-/// 2. A slice that contains the unused portion of the given buffer
+/// When successful, this function returns the slice containing the
+/// serialized and encoded message.
 ///
 /// ## Example
 ///
@@ -62,10 +60,8 @@ where
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized format.
 ///
-/// When successful, this function returns the slices containing:
-///
-/// 1. A slice that contains the serialized message
-/// 2. A slice that contains the unused portion of the given buffer
+/// When successful, this function returns the slice containing the
+/// serialized message
 ///
 /// ## Example
 ///
