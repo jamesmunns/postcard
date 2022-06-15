@@ -14,7 +14,9 @@ use crate::de::flavors::{Flavor, Slice};
 /// A structure for deserializing a postcard message. For now, Deserializer does not
 /// implement the same Flavor interface as the serializer does, as messages are typically
 /// easier to deserialize in place. This may change in the future for consistency, or
-/// to support items that cannot be deserialized in-place, such as compressed message types
+/// to support items that cannot be deserialized in-place, such as compressed message types.
+/// Please note that postcard messages are not self-describing and therefore incompatible with
+/// [internally tagged enums](https://serde.rs/enum-representations.html#internally-tagged).
 pub struct Deserializer<'de, F: Flavor<'de>> {
     flavor: F,
     _plt: PhantomData<&'de ()>,
