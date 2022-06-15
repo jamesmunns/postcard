@@ -2,9 +2,13 @@
 
 Changes will be described here.
 
-## Unreleased
+## 1.0.0-alpha.1 -> 1.0.0-alpha.2
 
-...
+* Moved back to `cobs` from `postcard-cobs`
+    * This fixed a number of upstream issues, including removal of panicking branches
+* Improved documentation and code examples
+* Corrected the behavior of `take_from_cobs`
+* Added support for serializing `Debug`/`Display` representation strings via serde's `collect_str` method (and removed the panic)
 
 ## 1.0.0-alpha.1 -> 1.0.0-alpha.2
 
