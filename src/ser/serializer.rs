@@ -296,11 +296,74 @@ where
     }
 
     #[inline]
-    fn collect_str<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
     where
         T: core::fmt::Display,
     {
-        unreachable!()
+        use core::fmt::Write;
+
+        // Unfortunately, we need to know the size of the serialized data before
+        // we can place it into the output. In order to do this, we run the formatting
+        // of the output data TWICE, the first time to determine the length, the
+        // second time to actually format the data
+        //
+        // There are potentially other ways to do this, such as:
+        //
+        // * Reserving a fixed max size, such as 5 bytes, for the length field, and
+        //     leaving non-canonical trailing zeroes at the end. This would work up
+        //     to some reasonable length, but might have some portability vs max size
+        //     tradeoffs, e.g. 64KiB if we pick 3 bytes, or 4GiB if we pick 5 bytes
+        // * Expose some kind of "memmove" capability to flavors, to allow us to
+        //     format into the buffer, then "scoot over" that many times.
+        //
+        // Despite the current approaches downside in speed, it is likely flexible
+        // enough for the rare-ish case where formatting a Debug impl is necessary.
+        // This is better than the previous panicking behavior, and can be improved
+        // in the future.
+        struct CountWriter {
+            ct: usize
+        }
+        impl Write for CountWriter {
+            fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
+                self.ct += s.as_bytes().len();
+                Ok(())
+            }
+        }
+
+        let mut ctr = CountWriter {
+            ct: 0,
+        };
+
+        // This is the first pass through, where we just count the length of the
+        // data that we are given
+        write!(&mut ctr, "{}", value).map_err(|_| Error::CollectStrError)?;
+        let len = ctr.ct;
+        self.output
+            .try_push_varint_usize(len)
+            .map_err(|_| Error::SerializeBufferFull)?;
+
+        struct FmtWriter<'a, IF>
+        where
+            IF: Flavor,
+        {
+            output: &'a mut IF,
+        }
+        impl<'a, IF> Write for FmtWriter<'a, IF>
+        where
+            IF: Flavor,
+        {
+            fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
+                self.output.try_extend(s.as_bytes()).map_err(|_| core::fmt::Error::default())
+            }
+        }
+
+        // This second pass actually inserts the data.
+        let mut fw = FmtWriter {
+            output: &mut self.output.flavor,
+        };
+        write!(&mut fw, "{}", value).map_err(|_| Error::CollectStrError)?;
+
+        Ok(())
     }
 }
 
