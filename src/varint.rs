@@ -94,3 +94,4 @@ pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     debug_assert_eq!(value, 0);
     &mut out[..]
 }
+
