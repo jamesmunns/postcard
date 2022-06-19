@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize, Serializer};
+
 pub const fn varint_max<T: Sized>() -> usize {
     const BITS_PER_BYTE: usize = 8;
     const BITS_PER_VARINT_BYTE: usize = 7;
@@ -93,3 +95,51 @@ pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     debug_assert_eq!(value, 0);
     &mut out[..]
 }
+
+/// Type wrapper that disables varint serialization/deserialization
+/// for the wrapped integer. The contained integer will always be serialized
+/// in the same way as a fixed size array.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[repr(transparent)]
+pub struct Fixint<T>(pub T);
+
+macro_rules! impl_fixint {
+    ($( $int:ty ),*) => {
+        $(
+            impl From<$int> for Fixint<$int> {
+                fn from(x: $int) -> Self {
+                    Self(x)
+                }
+            }
+
+            impl From<Fixint<$int>> for $int {
+                fn from(x: Fixint<$int>) -> $int {
+                    x.0
+                }
+            }
+
+            impl Serialize for Fixint<$int> {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: Serializer,
+                {
+                    self.0.to_le_bytes().serialize(serializer)
+                }
+            }
+
+            impl<'de> Deserialize<'de> for Fixint<$int> {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: serde::Deserializer<'de>,
+                {
+                    <_ as Deserialize>::deserialize(deserializer)
+                        .map(<$int>::from_le_bytes)
+                        .map(Self)
+                }
+            }
+        )*
+    };
+}
+
+impl_fixint![i16, i32, i64, i128, u16, u32, u64, u128];
