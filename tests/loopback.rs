@@ -3,7 +3,7 @@ use core::fmt::Write;
 use core::ops::Deref;
 
 #[cfg(feature = "heapless")]
-use heapless::{String, Vec, FnvIndexMap};
+use heapless::{FnvIndexMap, String, Vec};
 
 #[cfg(feature = "heapless")]
 use postcard::to_vec;
@@ -85,12 +85,10 @@ fn loopback() {
             sf: 0x1234_4321_ABCD_DCBA,
             tt: 0xACAC_ACAC,
         },
-            &[
-                0xCD, 0xD7, 0x02,
-                0xFE,
-                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12,
-                0xAC, 0xD9, 0xB2, 0xE5, 0x0A
-            ],
+        &[
+            0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12, 0xAC,
+            0xD9, 0xB2, 0xE5, 0x0A,
+        ],
     );
 
     // Slices
@@ -123,7 +121,9 @@ fn loopback() {
     test_one(BasicEnum::Bim, &[0x01]);
     test_one(
         DataEnum::Bim(u64::max_value()),
-        &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+        &[
+            0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01,
+        ],
     );
     test_one(DataEnum::Bib(u16::max_value()), &[0x00, 0xFF, 0xFF, 0x03]);
     test_one(DataEnum::Bap(u8::max_value()), &[0x02, 0xFF]);
@@ -180,11 +180,17 @@ fn loopback() {
     input.insert(0x02, 0x06).unwrap();
     input.insert(0x03, 0x07).unwrap();
     input.insert(0x04, 0x08).unwrap();
-    test_one(input, &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08]);
+    test_one(
+        input,
+        &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
+    );
 
     // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
     #[cfg(feature = "use-std")]
-    test_one(std::ffi::CString::new("heLlo").unwrap(), &[0x05, b'h', b'e', b'L', b'l', b'o']);
+    test_one(
+        std::ffi::CString::new("heLlo").unwrap(),
+        &[0x05, b'h', b'e', b'L', b'l', b'o'],
+    );
 }
 
 #[cfg(feature = "heapless")]

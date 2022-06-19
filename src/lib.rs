@@ -166,8 +166,8 @@
 //! Licensed under either of
 //!
 //! - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-//!   http://www.apache.org/licenses/LICENSE-2.0)
-//! - MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+//!   <http://www.apache.org/licenses/LICENSE-2.0>)
+//! - MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
 //!
 //! at your option.
 //!
@@ -183,18 +183,18 @@
 mod accumulator;
 mod de;
 mod error;
+mod fixint;
 mod ser;
 mod varint;
-mod fixint;
 
 pub use accumulator::{CobsAccumulator, FeedResult};
 pub use de::deserializer::Deserializer;
+pub use de::flavors as de_flavors;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
-pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
 pub use fixint::{FixintBE, FixintLE};
 pub use ser::flavors as ser_flavors;
-pub use de::flavors as de_flavors;
+pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};

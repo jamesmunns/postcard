@@ -69,13 +69,10 @@ where
 #[cfg(test)]
 mod test_heapless {
     use super::*;
-    use crate::{
-        ser::to_vec,
-        varint::varint_max, to_vec_cobs,
-    };
+    use crate::{ser::to_vec, to_vec_cobs, varint::varint_max};
     use core::fmt::Write;
     use core::ops::Deref;
-    use heapless::{String, Vec, FnvIndexMap};
+    use heapless::{FnvIndexMap, String, Vec};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     #[test]
@@ -89,7 +86,7 @@ mod test_heapless {
 
     #[test]
     fn de_u16() {
-        let output: Vec<u8, {varint_max::<u16>()}> = to_vec(&0xA5C7u16).unwrap();
+        let output: Vec<u8, { varint_max::<u16>() }> = to_vec(&0xA5C7u16).unwrap();
         assert!(&[0xC7, 0xCB, 0x02] == output.deref());
 
         let out: u16 = from_bytes(output.deref()).unwrap();
@@ -98,7 +95,7 @@ mod test_heapless {
 
     #[test]
     fn de_u32() {
-        let output: Vec<u8, {varint_max::<u32>()}> = to_vec(&0xCDAB3412u32).unwrap();
+        let output: Vec<u8, { varint_max::<u32>() }> = to_vec(&0xCDAB3412u32).unwrap();
         assert_eq!(&[0x92, 0xE8, 0xAC, 0xED, 0x0C], output.deref());
 
         let out: u32 = from_bytes(output.deref()).unwrap();
@@ -107,7 +104,7 @@ mod test_heapless {
 
     #[test]
     fn de_u64() {
-        let output: Vec<u8, {varint_max::<u64>()}> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
+        let output: Vec<u8, { varint_max::<u64>() }> = to_vec(&0x1234_5678_90AB_CDEFu64).unwrap();
         assert!(&[0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x12] == output.deref());
 
         let out: u64 = from_bytes(output.deref()).unwrap();
@@ -116,7 +113,8 @@ mod test_heapless {
 
     #[test]
     fn de_u128() {
-        let output: Vec<u8, {varint_max::<u128>()}> = to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
+        let output: Vec<u8, { varint_max::<u128>() }> =
+            to_vec(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap();
         assert!(
             &[
                 0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x92, 0xDE, 0xB7, 0xDE, 0x8A, 0x92,
@@ -157,11 +155,9 @@ mod test_heapless {
 
         assert_eq!(
             &[
-                0xCD, 0xD7, 0x02,
-                0xFE,
-                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4, 0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24,
-                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12,
-                0xAC, 0xD9, 0xB2, 0xE5, 0x0A
+                0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4,
+                0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4,
+                0x90, 0x9A, 0x12, 0xAC, 0xD9, 0xB2, 0xE5, 0x0A
             ],
             output.deref()
         );
@@ -252,13 +248,15 @@ mod test_heapless {
         let out: BasicEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(out, BasicEnum::Bim);
 
-        let output: Vec<u8, {1 + varint_max::<u64>()}> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let output: Vec<u8, { 1 + varint_max::<u64>() }> =
+            to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
 
-        let output: Vec<u8, {1 + varint_max::<u16>()}> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        let output: Vec<u8, { 1 + varint_max::<u16>() }> =
+            to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(out, DataEnum::Bib(u16::max_value()));
@@ -382,7 +380,7 @@ mod test_heapless {
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     pub struct TupleStruct((u8, u16));
-    
+
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     pub struct DualTupleStruct(u8, u16);
 
@@ -397,7 +395,7 @@ mod test_heapless {
         assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: TupleStruct = from_bytes(output.deref()).unwrap();
         assert_eq!(out, TupleStruct((0xA0, 0x1234)));
-        
+
         let output: Vec<u8, 3> = to_vec(&DualTupleStruct(0xA0, 0x1234)).unwrap();
         assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: DualTupleStruct = from_bytes(output.deref()).unwrap();
@@ -465,7 +463,10 @@ mod test_heapless {
         input.insert(0x03, 0x07).unwrap();
         input.insert(0x04, 0x08).unwrap();
         let output: Vec<u8, 100> = to_vec(&input).unwrap();
-        assert_eq!(&[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08], output.deref());
+        assert_eq!(
+            &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
+            output.deref()
+        );
         let out: FnvIndexMap<u8, u8, 4> = from_bytes(output.deref()).unwrap();
         assert_eq!(input, out);
     }

@@ -36,7 +36,7 @@ pub struct FixintLE<T: sealed::Fixed>(pub T);
 pub struct FixintBE<T: sealed::Fixed>(pub T);
 
 mod sealed {
-    pub trait Fixed { }
+    pub trait Fixed {}
 }
 
 macro_rules! impl_fixint {

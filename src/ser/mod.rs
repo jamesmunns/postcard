@@ -16,8 +16,6 @@ extern crate alloc;
 
 use crate::ser::serializer::Serializer;
 
-use self::flavors::Encoder;
-
 pub mod flavors;
 pub(crate) mod serializer;
 
@@ -212,7 +210,9 @@ where
 {
     serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
         value,
-        AllocVec { vec: alloc::vec::Vec::new() },
+        AllocVec {
+            vec: alloc::vec::Vec::new(),
+        },
     )
 }
 
@@ -238,7 +238,9 @@ where
 {
     serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
         value,
-        Cobs::try_new(AllocVec { vec: alloc::vec::Vec::new() })?,
+        Cobs::try_new(AllocVec {
+            vec: alloc::vec::Vec::new(),
+        })?,
     )
 }
 
@@ -273,11 +275,12 @@ where
     T: Serialize + ?Sized,
     S: Flavor<Output = O>,
 {
-    let mut serializer = Serializer { output: Encoder { flavor: storage } };
+    let mut serializer = Serializer {
+        output: storage,
+    };
     value.serialize(&mut serializer)?;
     serializer
         .output
-        .flavor
         .release()
         .map_err(|_| Error::SerializeBufferFull)
 }
@@ -362,11 +365,9 @@ mod test {
 
         assert_eq!(
             &[
-                0xCD, 0xD7, 0x02,
-                0xFE,
-                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4, 0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24,
-                0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12,
-                0xAC, 0xD9, 0xB2, 0xE5, 0x0A
+                0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x92, 0xF4,
+                0xF2, 0xEE, 0xBC, 0xB5, 0xC8, 0xA1, 0xB4, 0x24, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4,
+                0x90, 0x9A, 0x12, 0xAC, 0xD9, 0xB2, 0xE5, 0x0A
             ],
             output.deref()
         );
@@ -463,13 +464,15 @@ mod test {
         let output: Vec<u8, 1> = to_vec(&BasicEnum::Bim).unwrap();
         assert_eq!(&[0x01], output.deref());
 
-        let output: Vec<u8, {1 + varint_max::<u64>()}> = to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let output: Vec<u8, { 1 + varint_max::<u64>() }> =
+            to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
 
-        let output: Vec<u8, {1 + varint_max::<u16>()}> = to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        let output: Vec<u8, { 1 + varint_max::<u16>() }> =
+            to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
 
         let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();

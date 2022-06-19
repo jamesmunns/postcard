@@ -6,10 +6,10 @@ use serde::de::{
     // EnumAccess, MapAccess, VariantAccess
 };
 
+use crate::de::flavors::{Flavor, Slice};
 use crate::error::{Error, Result};
 use crate::varint::varint_max;
 use core::marker::PhantomData;
-use crate::de::flavors::{Flavor, Slice};
 
 /// A structure for deserializing a postcard message. For now, Deserializer does not
 /// implement the same Flavor interface as the serializer does, as messages are typically
@@ -22,22 +22,31 @@ pub struct Deserializer<'de, F: Flavor<'de>> {
     _plt: PhantomData<&'de ()>,
 }
 
-impl<'de> Deserializer<'de, Slice<'de>> {
+impl<'de, F> Deserializer<'de, F>
+where
+    F: Flavor<'de> + 'de,
+{
     /// Obtain a Deserializer from a slice of bytes
-    pub fn from_bytes(input: &'de [u8]) -> Self {
+    pub fn from_flavor(flavor: F) -> Self {
         Deserializer {
-            flavor: Slice {
-                cursor: input.as_ptr(),
-                end: unsafe { input.as_ptr().add(input.len()) },
-                _pl: PhantomData,
-            },
+            flavor,
             _plt: PhantomData,
         }
     }
 
     /// Return the remaining (unused) bytes in the Deserializer
-    pub fn remaining(self) -> Result<&'de [u8]> {
+    pub fn remaining(self) -> Result<F::Remainder> {
         self.flavor.remaining()
+    }
+}
+
+impl<'de> Deserializer<'de, Slice<'de>> {
+    /// Obtain a Deserializer from a slice of bytes
+    pub fn from_bytes(input: &'de [u8]) -> Self {
+        Deserializer {
+            flavor: Slice::new(input),
+            _plt: PhantomData,
+        }
     }
 }
 
@@ -352,7 +361,7 @@ impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de
         }
         let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         // we pass the character through string conversion because
-        // this handles transforming the array of code units to a 
+        // this handles transforming the array of code units to a
         // codepoint. we can't use char::from_u32() because it expects
         // an already-processed codepoint.
         let character = core::str::from_utf8(&bytes)

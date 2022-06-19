@@ -6,7 +6,7 @@
 //! 1. The output medium of the serialization, e.g. whether the data is serialized to a `[u8]` slice, or a `heapless::Vec`.
 //! 2. The format of the serialization, such as encoding the serialized output in a COBS format, performing CRC32 checksumming while serializing, etc.
 //!
-//! Flavors are implemented using the `SerFlavor` trait, which acts as a "middleware" for receiving the bytes as serialized by `serde`.
+//! Flavors are implemented using the [`Flavor`] trait, which acts as a "middleware" for receiving the bytes as serialized by `serde`.
 //! Multiple flavors may be combined to obtain a desired combination of behavior and storage.
 //! When flavors are combined, it is expected that the storage flavor (such as `Slice` or `HVec`) is the innermost flavor.
 //!
@@ -22,6 +22,21 @@
 //!
 //! It is recommended to use the [`serialize_with_flavor()`](../fn.serialize_with_flavor.html) method for serialization. See it's documentation for information
 //! regarding usage and generic type parameters.
+//!
+//! ## When to use (multiple) flavors
+//!
+//! Combining flavors are nice for convenience, as they perform potentially multiple steps of
+//! serialization at one time.
+//!
+//! This can often be more memory efficient, as intermediate buffers are not typically required.
+//!
+//! ## When NOT to use (multiple) flavors
+//!
+//! The downside of passing serialization through multiple steps is that it is typically slower than
+//! performing each step serially. Said simply, "cobs encoding while serializing" is often slower
+//! than "serialize then cobs encode", due to the ability to handle longer "runs" of data in each
+//! stage. The downside is that if these stages can not be performed in-place on the buffer, you
+//! will need additional buffers for each stage.
 //!
 //! ## Examples
 //!
@@ -73,10 +88,9 @@
 
 use crate::error::{Error, Result};
 use cobs::{EncoderState, PushResult};
+use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
-use core::marker::PhantomData;
-use crate::varint::*;
 
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
@@ -87,7 +101,12 @@ pub use std_vec::*;
 #[cfg(feature = "alloc")]
 pub use alloc_vec::*;
 
-/// TODO
+/// The serialization Flavor trait
+///
+/// This is used as the primary way to encode serialized data into some kind of buffer,
+/// or modify that data in a middleware style pattern.
+///
+/// See the module level docs for an example of how flavors are used.
 pub trait Flavor {
     /// The `Output` type is what this storage "resolves" to when the serialization is complete,
     /// such as a slice or a Vec of some sort.
@@ -98,8 +117,7 @@ pub trait Flavor {
     /// at a time.
     #[inline]
     fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-        data.iter()
-            .try_for_each(|d| self.try_push(*d))
+        data.iter().try_for_each(|d| self.try_push(*d))
     }
 
     /// The try_push() trait method can be used to push a single byte to be modified and/or stored
@@ -107,54 +125,6 @@ pub trait Flavor {
 
     /// TODO
     fn release(self) -> core::result::Result<Self::Output, ()>;
-}
-
-/// TODO
-pub struct Encoder<F: Flavor> {
-    /// TODO
-    pub flavor: F,
-}
-
-impl<F: Flavor> Encoder<F> {
-    /// ...
-    #[inline]
-    pub(crate) fn try_push_varint_usize(&mut self, data: usize) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<usize>()];
-        let used_buf = varint_usize(data, &mut buf);
-        self.flavor.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    pub(crate) fn try_push_varint_u128(&mut self, data: u128) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u128>()];
-        let used_buf = varint_u128(data, &mut buf);
-        self.flavor.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    pub(crate) fn try_push_varint_u64(&mut self, data: u64) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u64>()];
-        let used_buf = varint_u64(data, &mut buf);
-        self.flavor.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    pub(crate) fn try_push_varint_u32(&mut self, data: u32) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u32>()];
-        let used_buf = varint_u32(data, &mut buf);
-        self.flavor.try_extend(used_buf)
-    }
-
-    /// ...
-    #[inline]
-    pub(crate) fn try_push_varint_u16(&mut self, data: u16) -> core::result::Result<(), ()> {
-        let mut buf = [0u8; varint_max::<u16>()];
-        let used_buf = varint_u16(data, &mut buf);
-        self.flavor.try_extend(used_buf)
-    }
 }
 
 ////////////////////////////////////////
@@ -167,7 +137,7 @@ pub struct Slice<'a> {
     start: *mut u8,
     cursor: *mut u8,
     end: *mut u8,
-    _pl: PhantomData<&'a [u8]>
+    _pl: PhantomData<&'a [u8]>,
 }
 
 impl<'a> Slice<'a> {
@@ -226,9 +196,7 @@ impl<'a> Index<usize> for Slice<'a> {
     fn index(&self, idx: usize) -> &u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
-        unsafe {
-            &*self.start.add(idx)
-        }
+        unsafe { &*self.start.add(idx) }
     }
 }
 
@@ -236,18 +204,16 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
-        unsafe {
-            &mut *self.start.add(idx)
-        }
+        unsafe { &mut *self.start.add(idx) }
     }
 }
 
 #[cfg(feature = "heapless")]
 mod heapless_vec {
-    use heapless::Vec;
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
+    use heapless::Vec;
 
     ////////////////////////////////////////
     // HVec
@@ -258,11 +224,12 @@ mod heapless_vec {
     #[derive(Default)]
     pub struct HVec<const B: usize> {
         /// TODO
-        pub vec: Vec<u8, B>
+        pub vec: Vec<u8, B>,
     }
 
     impl<const B: usize> HVec<B> {
-        /// TODO
+        /// Create a new, currently empty, [heapless::Vec] to be used for storing serialized
+        /// output data.
         pub fn new() -> Self {
             Self::default()
         }
@@ -303,29 +270,32 @@ mod heapless_vec {
 
 #[cfg(feature = "use-std")]
 mod std_vec {
-    /// TODO
+    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
+    ///
+    /// This type is only available when the (non-default) `use-std` feature is active
     pub type StdVec = super::alloc_vec::AllocVec;
 }
 
 #[cfg(feature = "alloc")]
 mod alloc_vec {
     extern crate alloc;
-    use alloc::vec::Vec;
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
+    use alloc::vec::Vec;
 
-    /// The `AllocVec` flavor is a wrapper type around an `alloc::vec::Vec`.
+    /// The `AllocVec` flavor is a wrapper type around an [alloc::vec::Vec].
     ///
     /// This type is only available when the (non-default) `alloc` feature is active
     #[derive(Default)]
     pub struct AllocVec {
-        /// TODO
-        pub vec: Vec<u8>
+        /// The vec to be used for serialization
+        pub vec: Vec<u8>,
     }
 
     impl AllocVec {
-        /// TODO
+        /// Create a new, currently empty, [alloc::vec::Vec] to be used for storing serialized
+        /// output data.
         pub fn new() -> Self {
             Self::default()
         }
