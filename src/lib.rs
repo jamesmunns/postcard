@@ -185,13 +185,14 @@ mod de;
 mod error;
 mod ser;
 mod varint;
+mod fixint;
 
 pub use accumulator::{CobsAccumulator, FeedResult};
 pub use de::deserializer::Deserializer;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
-pub use varint::Fixint;
+pub use fixint::{FixintBE, FixintLE};
 pub use ser::flavors as ser_flavors;
 pub use de::flavors as de_flavors;
 
