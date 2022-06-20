@@ -18,13 +18,13 @@ pub const fn varint_max<T: Sized>() -> usize {
 pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<usize>() {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
+        out[i] = value.to_le_bytes()[0];
+        if value < 128 {
             return &mut out[..=i];
         }
+
+        out[i] |= 0x80;
+        value >>= 7;
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
@@ -34,13 +34,13 @@ pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8
 pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u16>() {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
+        out[i] = value.to_le_bytes()[0];
+        if value < 128 {
             return &mut out[..=i];
         }
+
+        out[i] |= 0x80;
+        value >>= 7;
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
@@ -50,13 +50,13 @@ pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
 pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u32>() {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
+        out[i] = value.to_le_bytes()[0];
+        if value < 128 {
             return &mut out[..=i];
         }
+
+        out[i] |= 0x80;
+        value >>= 7;
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
@@ -66,13 +66,13 @@ pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
 pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u64>() {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
+        out[i] = value.to_le_bytes()[0];
+        if value < 128 {
             return &mut out[..=i];
         }
+
+        out[i] |= 0x80;
+        value >>= 7;
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
@@ -82,13 +82,13 @@ pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
 pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     let mut value = n;
     for i in 0..varint_max::<u128>() {
-        out[i] = (value & 0x7F) as u8;
-        value >>= 7;
-        if value != 0 {
-            out[i] |= 0x80;
-        } else {
+        out[i] = value.to_le_bytes()[0];
+        if value < 128 {
             return &mut out[..=i];
         }
+
+        out[i] |= 0x80;
+        value >>= 7;
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
