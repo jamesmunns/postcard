@@ -2,6 +2,7 @@ use core::{
     num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize},
     marker::PhantomData,
 };
+use crate::varint::varint_max;
 
 /// This trait is used to enforce the maximum size required to
 /// store the serialization of a given type.
@@ -20,23 +21,23 @@ impl MaxSize for i8 {
 }
 
 impl MaxSize for i16 {
-    const POSTCARD_MAX_SIZE: usize = 2;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for i32 {
-    const POSTCARD_MAX_SIZE: usize = 4;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for i64 {
-    const POSTCARD_MAX_SIZE: usize = 8;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for i128 {
-    const POSTCARD_MAX_SIZE: usize = 8;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for isize {
-    const POSTCARD_MAX_SIZE: usize = i64::POSTCARD_MAX_SIZE;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for u8 {
@@ -44,23 +45,23 @@ impl MaxSize for u8 {
 }
 
 impl MaxSize for u16 {
-    const POSTCARD_MAX_SIZE: usize = 2;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for u32 {
-    const POSTCARD_MAX_SIZE: usize = 4;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for u64 {
-    const POSTCARD_MAX_SIZE: usize = 8;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for u128 {
-    const POSTCARD_MAX_SIZE: usize = 8;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for usize {
-    const POSTCARD_MAX_SIZE: usize = u64::POSTCARD_MAX_SIZE;
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
 }
 
 impl MaxSize for f32 {

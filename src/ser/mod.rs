@@ -18,7 +18,6 @@ use crate::ser::serializer::Serializer;
 
 pub mod flavors;
 pub(crate) mod serializer;
-pub(crate) mod max_size;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
@@ -295,11 +294,13 @@ mod test {
     use core::ops::{Deref, DerefMut};
     use heapless::{FnvIndexMap, String};
     use serde::Deserialize;
+    use crate::max_size::MaxSize;
 
     #[test]
     fn ser_u8() {
         let output: Vec<u8, 1> = to_vec(&0x05u8).unwrap();
         assert!(&[5] == output.deref());
+        assert!(output.len() <= Vec::<u8, 1>::POSTCARD_MAX_SIZE);
     }
 
     #[test]
@@ -307,6 +308,7 @@ mod test {
         const SZ: usize = varint_max::<u16>();
         let output: Vec<u8, SZ> = to_vec(&0xA5C7u16).unwrap();
         assert_eq!(&[0xC7, 0xCB, 0x02], output.deref());
+        assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
     #[test]
@@ -314,6 +316,7 @@ mod test {
         const SZ: usize = varint_max::<u32>();
         let output: Vec<u8, SZ> = to_vec(&0xCDAB3412u32).unwrap();
         assert_eq!(&[0x92, 0xE8, 0xAC, 0xED, 0x0C], output.deref());
+        assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
     #[test]
@@ -324,6 +327,7 @@ mod test {
             &[0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x12],
             output.deref()
         );
+        assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
     #[test]
@@ -337,6 +341,7 @@ mod test {
             ],
             output.deref()
         );
+        assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
     #[derive(Serialize)]
@@ -348,13 +353,19 @@ mod test {
         tt: u32,
     }
 
+    impl MaxSize for BasicU8S {
+        const POSTCARD_MAX_SIZE: usize = {
+            u16::POSTCARD_MAX_SIZE
+            + u8::POSTCARD_MAX_SIZE
+            + u128::POSTCARD_MAX_SIZE
+            + u64::POSTCARD_MAX_SIZE
+            + u32::POSTCARD_MAX_SIZE
+        };
+    }
+
     #[test]
     fn ser_struct_unsigned() {
-        const SZ: usize = varint_max::<u16>()
-            + 1
-            + varint_max::<u128>()
-            + varint_max::<u64>()
-            + varint_max::<u32>();
+        const SZ: usize = BasicU8S::POSTCARD_MAX_SIZE;
         let output: Vec<u8, SZ> = to_vec(&BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
@@ -372,6 +383,7 @@ mod test {
             ],
             output.deref()
         );
+        assert!(output.len() <= BasicU8S::POSTCARD_MAX_SIZE);
     }
 
     #[test]
@@ -409,6 +421,7 @@ mod test {
         }
         let output: Vec<u8, 2048> = to_vec(input.deref()).unwrap();
         assert_eq!(&[0x80, 0x08], &output.deref()[..2]);
+        assert!(String::<1024>::POSTCARD_MAX_SIZE <= output.len());
 
         assert_eq!(output.len(), 1026);
         for ch in output.deref()[2..].chunks(4) {
@@ -513,6 +526,7 @@ mod test {
         let x: &[u8; 32] = &[0u8; 32];
         let output: Vec<u8, 128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 32);
+        assert!(<[u8; 32] as MaxSize>::POSTCARD_MAX_SIZE <= output.len());
 
         let x: &[u8] = &[0u8; 32];
         let output: Vec<u8, 128> = to_vec(x).unwrap();

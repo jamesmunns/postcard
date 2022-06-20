@@ -18,7 +18,7 @@ pub fn do_derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStr
     let sum = max_size_sum(&input.data, span).unwrap_or_else(syn::Error::into_compile_error);
 
     let expanded = quote! {
-        impl #impl_generics ::postcard::MaxSize for #name #ty_generics #where_clause {
+        impl #impl_generics ::postcard::experimental::max_size::MaxSize for #name #ty_generics #where_clause {
             const POSTCARD_MAX_SIZE: usize = #sum;
         }
     };
@@ -30,7 +30,7 @@ pub fn do_derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStr
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(::postcard::MaxSize));
+            type_param.bounds.push(parse_quote!(::postcard::experimental::max_size::MaxSize));
         }
     }
     generics
@@ -84,7 +84,7 @@ fn sum_fields(fields: &Fields) -> TokenStream {
 
             let recurse = fields.named.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned! { f.span() => <#ty as ::postcard::MaxSize>::POSTCARD_MAX_SIZE }
+                quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
             quote! {
@@ -94,7 +94,7 @@ fn sum_fields(fields: &Fields) -> TokenStream {
         syn::Fields::Unnamed(fields) => {
             let recurse = fields.unnamed.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned! { f.span() => <#ty as ::postcard::MaxSize>::POSTCARD_MAX_SIZE }
+                quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
             quote! {

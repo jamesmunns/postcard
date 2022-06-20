@@ -156,14 +156,70 @@ mod error;
 mod ser;
 mod varint;
 
-#[cfg(feature = "experimental-derive")]
-pub mod schema;
+// Still experimental! Don't make pub pub.
+pub(crate) mod max_size;
+mod schema;
 
-#[cfg(feature = "experimental-derive")]
-pub use ser::max_size::MaxSize;
+/// # Experimental Postcard Features
+///
+/// Items inside this module require various feature flags, and are not
+/// subject to SemVer stability. Items may be removed or deprecated at
+/// any point.
+///
+/// ## Derive
+///
+/// The `experimental-derive` feature enables two experimental features:
+///
+/// * Max size calculation
+/// * Message schema generation
+///
+/// ### Max Size Calculation
+///
+/// This features enables calculation of the Max serialized size of a message as
+/// an associated `usize` constant called `POSTCARD_MAX_SIZE`. It also provides a
+/// `#[derive(MaxSize)]` macro that can be used for calculating user types.
+///
+/// This is useful for determining the maximum buffer size needed when recieving
+/// or sending a message that has been serialized.
+///
+/// NOTE: This only covers the size of "plain" flavored messages, e.g. not with COBS
+/// or any other Flavors applied. The overhead for these flavors must be calculated
+/// separately.
+///
+/// Please report any missing types, or any incorrectly calculated values.
+///
+/// ### Message Schema Generation
+///
+/// This feature enables the generation of a schema of a given message at compile
+/// time. At the moment, this is only exposed as a [`NamedType`](crate::schema::NamedType)
+/// which is a recursive data structure describing the schema. In the future, it is planned
+/// to provide formatting functions that emit this as a human or machine readable schema.
+///
+/// NOTE: This only covers the schema of "plain" flavored messages, e.g. not with COBS
+/// or any other Flavors applied. The format of these flavors must be calculated
+/// separately.
+///
+/// Please report any missing types, or any incorrectly calculated schemas.
+pub mod experimental {
+    /// Compile time max-serialization size calculation
+    #[cfg(feature = "experimental-derive")]
+    pub mod max_size {
+        // NOTE: This is the trait...
+        pub use crate::max_size::MaxSize;
+        // NOTE: ...and this is the derive macro
+        pub use postcard_derive::MaxSize;
+    }
 
-#[cfg(feature = "experimental-derive")]
-pub use postcard_derive;
+    #[cfg(feature = "experimental-derive")]
+
+
+    /// Compile time Schema generation
+    #[cfg(feature = "experimental-derive")]
+    pub mod schema {
+        pub use crate::schema::*;
+        pub use postcard_derive::Schema;
+    }
+}
 
 pub use de::deserializer::Deserializer;
 pub use de::flavors as de_flavors;

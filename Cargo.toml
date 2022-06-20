@@ -51,6 +51,7 @@ optional = true
 
 [dependencies.postcard-derive]
 path = "postcard-derive"
+version = "0.1"
 optional = true
 
 [features]
@@ -60,6 +61,10 @@ use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
+
+# Experimental features!
+#
+# NOT subject to SemVer guarantees!
 experimental-derive = ["postcard-derive", "const_format"]
 
 [workspace]
