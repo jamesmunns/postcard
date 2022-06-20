@@ -2,7 +2,7 @@
 
 Portions of the [Serde Data Model] are included under the terms of the [CC-BY-SA 4.0 license].
 
-This specification describes the intended behavior of version 1.0 of postcard.
+This specification describes the intended behavior of version 1.0.0 of postcard.
 
 ## License
 
