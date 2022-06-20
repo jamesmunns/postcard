@@ -91,32 +91,6 @@ fn loopback() {
         ],
     );
 
-    // Slices
-    // TODO(AJM) - why aren't slices impl Deserialize?
-    // let sl_1: &[u8; 8] = &[0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
-    // test_one(
-    //     sl_1,
-    //     &[0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
-    // );
-
-    // AJM(TODO)
-    // let mut input: Vec<u8, U1024> = Vec::new();
-    // let mut output: ::std::vec::Vec<u8> = vec![];
-    // output.push(0x80);
-    // output.push(0x08); //  0x0800
-    // for i in 0..1024 {
-    //     input.push((i & 0xFF) as u8).unwrap();
-    //     output.push((i & 0xFF) as u8);
-    // }
-    // let x: &[u8] = input.deref();
-    // test_one(x, &output);
-
-    // TODO(AJM) - port de_str test
-    // test_one(
-    //     "hello, postcard!",
-    //     &[0x10, b'h', b'e', b'l', b'l', b'o', b',', b' ', b'p', b'o', b's', b't', b'c', b'a', b'r', b'd', b'!']
-    // );
-
     // Enums!
     test_one(BasicEnum::Bim, &[0x01]);
     test_one(
@@ -146,26 +120,9 @@ fn loopback() {
     // Tuples!
     test_one((0x12u8, 0xC7A5u16), &[0x12, 0xA5, 0x8F, 0x03]);
 
-    // TODO(AJM)
-    // test_one(
-    //     (1u8, 10u32, "Hello!"),
-    //     &[1u8, 0x0A, 0x00, 0x00, 0x00, 0x06, b'H', b'e', b'l', b'l', b'o', b'!']
-    // );
-
     // Structs!
     test_one(NewTypeStruct(5), &[0x05]);
     test_one(TupleStruct((0xA0, 0x1234)), &[0xA0, 0xB4, 0x24]);
-
-    // Ref Struct
-    // let message = "hElLo";
-    // let bytes = [0x01, 0x10, 0x02, 0x20];
-    // test_one(
-    //     RefStruct {
-    //         bytes: &bytes,
-    //         str_s: message,
-    //     },
-    //     &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',]
-    // );
 
     let mut input: Vec<u8, 4> = Vec::new();
     input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();

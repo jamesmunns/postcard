@@ -3,6 +3,7 @@ use core::fmt::{Display, Formatter};
 /// This is the error type used by Postcard
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[non_exhaustive]
 pub enum Error {
     /// This is a feature that PostCard will never implement
     WontImplement,

@@ -281,7 +281,7 @@ where
     value.serialize(&mut serializer)?;
     serializer
         .output
-        .release()
+        .finalize()
         .map_err(|_| Error::SerializeBufferFull)
 }
 
@@ -424,14 +424,16 @@ mod test {
 
         let res = varint_usize(usize::MAX, &mut buf);
 
-        // AJM TODO
-        if varint_max::<usize>() == 5 {
+        //
+        if varint_max::<usize>() == varint_max::<u32>() {
             assert_eq!(&[0xFF, 0xFF, 0xFF, 0xFF, 0x0F], res);
-        } else {
+        } else if varint_max::<usize>() == varint_max::<u64>() {
             assert_eq!(
                 &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
                 res
             );
+        } else {
+            panic!("Update this test for 16/128 bit targets!");
         }
     }
 

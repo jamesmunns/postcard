@@ -154,11 +154,28 @@ A type representing a named, tagged union variant, containing exactly one `struc
 
 ### Named and Anonymous types
 
-TODO
+The above discussion differentiates between "named types" and "anonymous types".
 
-### Tagged Unions
+"named types" are used to describe types that are bound to a name within the data type they
+are contained, such as a field of a `struct`.
 
-TODO
+"anonymous types" are used to describe types that are NOT bound to a name within the data type
+they are contained, such as a single element of a `tuple`.
+
+
+### `enum`s or Tagged Unions
+
+In the Rust language, the `enum` type (also known as "tagged unions" in other languages) describes a type that has
+a differing internal type based on a value known as a `discriminant`.
+
+In the serde data model (as well as the rust language) `discriminants` are always of the type `u32`.
+
+In the serde data model, the "internal type" of an `enum` can be one of any of the following:
+
+* `unit_variant`
+* `newtype_variant`
+* `tuple_variant`
+* `struct_variant`
 
 ## References
 

@@ -12,7 +12,7 @@ use serde::Deserialize;
 /// Deserialize a struct by reading chunks from a [`Read`]er.
 ///
 /// ```rust
-/// use postcard::{CobsAccumulator, FeedResult};
+/// use postcard::accumulator::{CobsAccumulator, FeedResult};
 /// use serde::Deserialize;
 /// use std::io::Read;
 ///

@@ -1,6 +1,6 @@
-//! # Flavors - Plugins for `postcard`
+//! # Serialization Flavors
 //!
-//! "Flavors" in `postcard` are used as modifiers to the serialization
+//! "Flavors" in `postcard` are used as modifiers to the serialization or deserialization
 //! process. Flavors typically modify one or both of the following:
 //!
 //! 1. The output medium of the serialization, e.g. whether the data is serialized to a `[u8]` slice, or a `heapless::Vec`.
@@ -123,8 +123,8 @@ pub trait Flavor {
     /// The try_push() trait method can be used to push a single byte to be modified and/or stored
     fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
 
-    /// TODO
-    fn release(self) -> core::result::Result<Self::Output, ()>;
+    /// Finalize the serialization process
+    fn finalize(self) -> core::result::Result<Self::Output, ()>;
 }
 
 ////////////////////////////////////////
@@ -183,7 +183,7 @@ impl<'a> Flavor for Slice<'a> {
         }
     }
 
-    fn release(self) -> core::result::Result<Self::Output, ()> {
+    fn finalize(self) -> core::result::Result<Self::Output, ()> {
         let used = (self.cursor as usize) - (self.start as usize);
         let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
         Ok(sli)
@@ -223,7 +223,7 @@ mod heapless_vec {
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
     #[derive(Default)]
     pub struct HVec<const B: usize> {
-        /// TODO
+        /// the contained data buffer
         pub vec: Vec<u8, B>,
     }
 
@@ -248,7 +248,7 @@ mod heapless_vec {
             self.vec.push(data).map_err(drop)
         }
 
-        fn release(self) -> core::result::Result<Vec<u8, B>, ()> {
+        fn finalize(self) -> core::result::Result<Vec<u8, B>, ()> {
             Ok(self.vec)
         }
     }
@@ -316,7 +316,7 @@ mod alloc_vec {
             Ok(())
         }
 
-        fn release(self) -> core::result::Result<Self::Output, ()> {
+        fn finalize(self) -> core::result::Result<Self::Output, ()> {
             Ok(self.vec)
         }
     }
@@ -399,10 +399,10 @@ where
         }
     }
 
-    fn release(mut self) -> core::result::Result<Self::Output, ()> {
+    fn finalize(mut self) -> core::result::Result<Self::Output, ()> {
         let (idx, mval) = self.cobs.finalize();
         self.flav[idx] = mval;
         self.flav.try_push(0)?;
-        self.flav.release()
+        self.flav.finalize()
     }
 }

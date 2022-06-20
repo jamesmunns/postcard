@@ -1,4 +1,4 @@
-use postcard::{CobsAccumulator, FeedResult};
+use postcard::accumulator::{CobsAccumulator, FeedResult};
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 

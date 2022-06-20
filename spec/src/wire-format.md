@@ -6,6 +6,12 @@ Postcard is responsible for translating between items that exist as part of [The
 
 This is commonly referred to as **Serialization**, or converting from Serde Data Model elements to a binary representation; or **Deserialization**, or converting from a binary representation to Serde Data Model elements.
 
+## Stability
+
+The Postcard wire format is considered stable as of v1.0.0 and above of Postcard. Breaking changes to the wire format would
+be considered a breaking change to the library, and would necessitate the library being revised to v2.0.0, along with a
+new version of this wire format specification addressing the v2.0.0 wire format.
+
 ## Non Self-Describing Format
 
 Postcard is **NOT** considered a "Self Describing Format", meaning that users (Serializers and Deserializers) of postcard data are expected to have a mutual understanding of the encoded data.
@@ -282,7 +288,7 @@ A `unit_variant` is an instance of a [Tagged Union], consisting of a `varint(u32
 
 ### 21 - `newtype_struct`
 
-A `newtype_struct` is encoded as the Serde Data Type it contains, with no additional data preceeding or following it.
+A `newtype_struct` is encoded as the Serde Data Type it contains, with no additional data preceding or following it.
 
 ### 22 - `newtype_variant`
 

@@ -5,14 +5,6 @@
 //! Postcard aims to be convenient for developers in constrained environments, while
 //! allowing for flexibility to customize behavior as needed.
 //!
-//! ## Run to 1.0
-//!
-//! Postcard will be reaching v1.0.0 in June 2022! Read the [announcement blog post](https://jamesmunns.com/blog/postcard-1-0-run/) for more details!
-//!
-//! You can also see the [preview specification](https://postcard.jamesmunns.com).
-//!
-//! > Work towards the Postcard Specification and portions of the Postcard 1.0 Release has been sponsored by Mozilla Corporation.
-//!
 //! ## Design Goals
 //!
 //! 1. Design primarily for `#![no_std]` usage, in embedded or other constrained contexts
@@ -21,25 +13,23 @@
 //! 4. Be resource efficient - memory usage, code size, developer time, and CPU time; in that order
 //! 5. Allow library users to customize the serialization and deserialization  behavior to fit their bespoke needs
 //!
+//! ## Format Stability
+//!
+//! As of v1.0.0, `postcard` has a documented and stable wire format. More information about this
+//! wire format can be found in the `spec/` folder of the Postcard repository, or viewed online
+//! at <https://postcard.jamesmunns.com>.
+//!
+//! Work towards the Postcard Specification and portions of the Postcard 1.0 Release
+//! has been sponsored by Mozilla Corporation.
+//!
 //! ## Variable Length Data
 //!
-//! Variable length data (such as slices) are prefixed by their length.
+//! All signed and unsigned integers larger than eight bits are encoded using a [Varint].
+//! This includes the length of array slices, as well as the discriminant of `enums`.
 //!
-//! Length is encoded as a [Varint]. This is done for two reasons: to minimize wasted bytes
-//! on the wire when sending slices with items less than 127 items (typical for embedded),
-//! and to reduce compatibility issues between 32-bit and 64-bit targets due to differing sizes
-//! of `usize`.
+//! For more information, see the [Varint] chapter of the wire specification.
 //!
-//! Similarly, `enum` descriminants are encoded as varints, meaning that any enum with less than
-//! 127 variants will encode its discriminant as a single byte (rather than a `u32`).
-//!
-//! Varints in `postcard` have a maximum value of the usize for that platform. In practice, this
-//! means that 64-bit targets should not send messages with slices containing `(1 << 32) - 1` items
-//! to 32-bit targets, which is uncommon in practice. Enum discriminants already have a fixed
-//! maximum value of `(1 << 32) - 1` as currently defined in Rust. Varints larger than the current platform's
-//! `usize` will cause the deserialization process to return an `Err`.
-//!
-//! [Varint]: https://developers.google.com/protocol-buffers/docs/encoding
+//! [Varint]: https://postcard.jamesmunns.com/wire-format.html#varint-encoded-integers
 //!
 //! ## Example - Serialization/Deserialization
 //!
@@ -119,42 +109,22 @@
 //! # }
 //! ```
 //!
-//! ## Example - Flavors
+//! ## Flavors
 //!
 //! `postcard` supports a system called `Flavors`, which are used to modify the way
 //! postcard serializes or processes serialized data. These flavors act as "plugins" or "middlewares"
-//! during the serialization process, and can be combined to obtain complex protocol formats.
+//! during the serialization or deserialization process, and can be combined to obtain complex protocol formats.
 //!
-//! Here, we serialize the given data, while simultaneously encoding it using COBS (a "modification flavor"),
-//! and placing the output in a byte slice (a "storage flavor").
-//!
-//! Users of `postcard` can define their own Flavors that can be combined with existing Flavors.
-//!
-//! ```rust
-//! use postcard::{
-//!     serialize_with_flavor,
-//!     ser_flavors::{Cobs, Slice},
-//! };
-//!
-//! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
-//! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
-//!     data,
-//!     Cobs::try_new(Slice::new(buffer)).unwrap(),
-//! ).unwrap();
-//!
-//! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
-//! ```
+//! See the documentation of the [Serialization Flavors][crate::ser_flavors] or [Deserialization Flavors][crate::de_flavors]
+//! for more information on usage
 //!
 //! ## Setup - `Cargo.toml`
 //!
 //! Don't forget to add [the `no-std` subset](https://serde.rs/no-std.html) of `serde` along with `postcard` to the `[dependencies]` section of your `Cargo.toml`!
 //!
-//! ``` toml
-//! # Cargo.toml
-//!
+//! ```toml
 //! [dependencies]
-//! postcard = "0.7.2"
+//! postcard = "1.0.0"
 //!
 //! # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
 //! # disabling default-features fixes this
@@ -180,19 +150,17 @@
 #![cfg_attr(not(any(test, feature = "use-std")), no_std)]
 #![warn(missing_docs)]
 
-mod accumulator;
+pub mod accumulator;
 mod de;
 mod error;
-mod fixint;
+pub mod fixint;
 mod ser;
 mod varint;
 
-pub use accumulator::{CobsAccumulator, FeedResult};
 pub use de::deserializer::Deserializer;
 pub use de::flavors as de_flavors;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
-pub use fixint::{FixintBE, FixintLE};
 pub use ser::flavors as ser_flavors;
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_cobs};
 
