@@ -153,9 +153,17 @@
 pub mod accumulator;
 mod de;
 mod error;
-pub mod fixint;
 mod ser;
 mod varint;
+
+#[cfg(feature = "experimental-derive")]
+pub mod schema;
+
+#[cfg(feature = "experimental-derive")]
+pub use ser::max_size::MaxSize;
+
+#[cfg(feature = "experimental-derive")]
+pub use postcard_derive;
 
 pub use de::deserializer::Deserializer;
 pub use de::flavors as de_flavors;

@@ -26,6 +26,10 @@ all-features = true
 
 [dependencies]
 
+[dependencies.const_format]
+version = "0.2.24"
+optional = true
+
 [dependencies.heapless]
 version = "0.7.0"
 default-features = false
@@ -45,6 +49,10 @@ default-features = false
 version = "0.3.0"
 optional = true
 
+[dependencies.postcard-derive]
+path = "postcard-derive"
+optional = true
+
 [features]
 default = ["heapless-cas"]
 
@@ -52,3 +60,7 @@ use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
+experimental-derive = ["postcard-derive", "const_format"]
+
+[workspace]
+members = ["postcard-derive"]
