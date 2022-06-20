@@ -2,7 +2,17 @@
 
 Changes will be described here.
 
-## 1.0.0-alpha.1 -> 1.0.0-alpha.2
+## 1.0.0-alpha.3 -> 1.0.0-alpha.4
+
+* Updated the signature of deserialization `Flavor` trait
+* Added documentation and tests
+* Removed the `Encoder` wrapper type to better match serialization and deserialization types
+* Renamed `ser_flavor::Flavor::release` to `finalize` for consistency
+* Re-organized some public items and modules
+* Made `Error` non-exhaustive
+* Added a `fixint` type to avoid varints
+
+## 1.0.0-alpha.2 -> 1.0.0-alpha.3
 
 * Moved back to `cobs` from `postcard-cobs`
     * This fixed a number of upstream issues, including removal of panicking branches
