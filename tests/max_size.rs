@@ -29,7 +29,12 @@ mod tests {
         assert_eq!(Bar::POSTCARD_MAX_SIZE, 4);
         let mut buf = [0u8; 128];
         let used = to_slice(&Bar::A(0xFFFF), &mut buf).unwrap();
-        assert!(used.len() <= Bar::POSTCARD_MAX_SIZE, "FAIL {} > {}", used.len(), Bar::POSTCARD_MAX_SIZE);
+        assert!(
+            used.len() <= Bar::POSTCARD_MAX_SIZE,
+            "FAIL {} > {}",
+            used.len(),
+            Bar::POSTCARD_MAX_SIZE
+        );
 
         #[derive(MaxSize)]
         enum Baz {}
@@ -42,7 +47,7 @@ mod tests {
         #[allow(dead_code)]
         #[derive(MaxSize)]
         struct Foo {
-            a: &'static u32
+            a: &'static u32,
         }
     }
 
@@ -94,6 +99,3 @@ mod tests {
     //     }
     // }
 }
-
-
-

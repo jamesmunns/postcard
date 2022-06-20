@@ -116,15 +116,15 @@ pub trait Flavor {
     /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
     /// at a time.
     #[inline]
-    fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+    fn try_extend(&mut self, data: &[u8]) -> Result<()> {
         data.iter().try_for_each(|d| self.try_push(*d))
     }
 
     /// The try_push() trait method can be used to push a single byte to be modified and/or stored
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()>;
+    fn try_push(&mut self, data: u8) -> Result<()>;
 
     /// Finalize the serialization process
-    fn finalize(self) -> core::result::Result<Self::Output, ()>;
+    fn finalize(self) -> Result<Self::Output>;
 }
 
 ////////////////////////////////////////
@@ -156,9 +156,9 @@ impl<'a> Flavor for Slice<'a> {
     type Output = &'a mut [u8];
 
     #[inline(always)]
-    fn try_push(&mut self, b: u8) -> core::result::Result<(), ()> {
+    fn try_push(&mut self, b: u8) -> Result<()> {
         if self.cursor == self.end {
-            Err(())
+            Err(Error::SerializeBufferFull)
         } else {
             unsafe {
                 self.cursor.write(b);
@@ -169,11 +169,11 @@ impl<'a> Flavor for Slice<'a> {
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> core::result::Result<(), ()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
         let remain = (self.end as usize) - (self.cursor as usize);
         let blen = b.len();
         if blen > remain {
-            Err(())
+            Err(Error::SerializeBufferFull)
         } else {
             unsafe {
                 core::ptr::copy_nonoverlapping(b.as_ptr(), self.cursor, blen);
@@ -183,7 +183,7 @@ impl<'a> Flavor for Slice<'a> {
         }
     }
 
-    fn finalize(self) -> core::result::Result<Self::Output, ()> {
+    fn finalize(self) -> Result<Self::Output> {
         let used = (self.cursor as usize) - (self.start as usize);
         let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
         Ok(sli)
@@ -213,6 +213,7 @@ mod heapless_vec {
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
+    use crate::{Error, Result};
     use heapless::Vec;
 
     ////////////////////////////////////////
@@ -224,7 +225,7 @@ mod heapless_vec {
     #[derive(Default)]
     pub struct HVec<const B: usize> {
         /// the contained data buffer
-        pub vec: Vec<u8, B>,
+        vec: Vec<u8, B>,
     }
 
     impl<const B: usize> HVec<B> {
@@ -239,16 +240,18 @@ mod heapless_vec {
         type Output = Vec<u8, B>;
 
         #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
-            self.vec.extend_from_slice(data)
+        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+            self.vec
+                .extend_from_slice(data)
+                .map_err(|_| Error::SerializeBufferFull)
         }
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
-            self.vec.push(data).map_err(drop)
+        fn try_push(&mut self, data: u8) -> Result<()> {
+            self.vec.push(data).map_err(|_| Error::SerializeBufferFull)
         }
 
-        fn finalize(self) -> core::result::Result<Vec<u8, B>, ()> {
+        fn finalize(self) -> Result<Vec<u8, B>> {
             Ok(self.vec)
         }
     }
@@ -282,6 +285,7 @@ mod alloc_vec {
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
+    use crate::Result;
     use alloc::vec::Vec;
 
     /// The `AllocVec` flavor is a wrapper type around an [alloc::vec::Vec].
@@ -290,7 +294,7 @@ mod alloc_vec {
     #[derive(Default)]
     pub struct AllocVec {
         /// The vec to be used for serialization
-        pub vec: Vec<u8>,
+        vec: Vec<u8>,
     }
 
     impl AllocVec {
@@ -305,18 +309,18 @@ mod alloc_vec {
         type Output = Vec<u8>;
 
         #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> core::result::Result<(), ()> {
+        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
             self.vec.extend_from_slice(data);
             Ok(())
         }
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+        fn try_push(&mut self, data: u8) -> Result<()> {
             self.vec.push(data);
             Ok(())
         }
 
-        fn finalize(self) -> core::result::Result<Self::Output, ()> {
+        fn finalize(self) -> Result<Self::Output> {
             Ok(self.vec)
         }
     }
@@ -383,7 +387,7 @@ where
     type Output = <B as Flavor>::Output;
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> core::result::Result<(), ()> {
+    fn try_push(&mut self, data: u8) -> Result<()> {
         use PushResult::*;
         match self.cobs.push(data) {
             AddSingle(n) => self.flav.try_push(n),
@@ -399,7 +403,7 @@ where
         }
     }
 
-    fn finalize(mut self) -> core::result::Result<Self::Output, ()> {
+    fn finalize(mut self) -> Result<Self::Output> {
         let (idx, mval) = self.cobs.finalize();
         self.flav[idx] = mval;
         self.flav.try_push(0)?;

@@ -2,6 +2,17 @@
 
 Changes will be described here.
 
+## 1.0.0 -> Unreleased
+
+* Nothing, yet!
+
+## 1.0.0-alpha.4 -> 1.0.0
+
+* Added experimental derive features
+* Made Flavor fields private again
+* Optimized varint encoding
+* Use crate `Result` for `Flavor`s
+
 ## 1.0.0-alpha.3 -> 1.0.0-alpha.4
 
 * Updated the signature of deserialization `Flavor` trait

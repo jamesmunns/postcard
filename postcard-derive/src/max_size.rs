@@ -30,7 +30,9 @@ pub fn do_derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStr
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(::postcard::experimental::max_size::MaxSize));
+            type_param
+                .bounds
+                .push(parse_quote!(::postcard::experimental::max_size::MaxSize));
         }
     }
     generics

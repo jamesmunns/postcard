@@ -1,9 +1,4 @@
-use serde::de::{
-    self,
-    DeserializeSeed,
-    IntoDeserializer,
-    Visitor,
-};
+use serde::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
 
 use crate::de::flavors::{Flavor, Slice};
 use crate::error::{Error, Result};
@@ -362,7 +357,7 @@ impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de
         // this handles transforming the array of code units to a
         // codepoint. we can't use char::from_u32() because it expects
         // an already-processed codepoint.
-        let character = core::str::from_utf8(&bytes)
+        let character = core::str::from_utf8(bytes)
             .map_err(|_| Error::DeserializeBadChar)?
             .chars()
             .next()

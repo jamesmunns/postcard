@@ -1,8 +1,11 @@
-use core::{
-    num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize},
-    marker::PhantomData,
-};
 use crate::varint::varint_max;
+use core::{
+    marker::PhantomData,
+    num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
+    },
+};
 
 /// This trait is used to enforce the maximum size required to
 /// store the serialization of a given type.
@@ -161,19 +164,32 @@ impl<A: MaxSize, B: MaxSize> MaxSize for (A, B) {
 }
 
 impl<A: MaxSize, B: MaxSize, C: MaxSize> MaxSize for (A, B, C) {
-    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE;
+    const POSTCARD_MAX_SIZE: usize =
+        A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE;
 }
 
 impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize> MaxSize for (A, B, C, D) {
-    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE + D::POSTCARD_MAX_SIZE;
+    const POSTCARD_MAX_SIZE: usize =
+        A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE + D::POSTCARD_MAX_SIZE;
 }
 
 impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize> MaxSize for (A, B, C, D, E) {
-    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE + D::POSTCARD_MAX_SIZE + E::POSTCARD_MAX_SIZE;
+    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE
+        + B::POSTCARD_MAX_SIZE
+        + C::POSTCARD_MAX_SIZE
+        + D::POSTCARD_MAX_SIZE
+        + E::POSTCARD_MAX_SIZE;
 }
 
-impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize, F: MaxSize> MaxSize for (A, B, C, D, E, F) {
-    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE + B::POSTCARD_MAX_SIZE + C::POSTCARD_MAX_SIZE + D::POSTCARD_MAX_SIZE + E::POSTCARD_MAX_SIZE + F::POSTCARD_MAX_SIZE;
+impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize, F: MaxSize> MaxSize
+    for (A, B, C, D, E, F)
+{
+    const POSTCARD_MAX_SIZE: usize = A::POSTCARD_MAX_SIZE
+        + B::POSTCARD_MAX_SIZE
+        + C::POSTCARD_MAX_SIZE
+        + D::POSTCARD_MAX_SIZE
+        + E::POSTCARD_MAX_SIZE
+        + F::POSTCARD_MAX_SIZE;
 }
 
 #[cfg(feature = "heapless")]

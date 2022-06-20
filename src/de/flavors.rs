@@ -174,7 +174,6 @@ mod test {
     use super::*;
     use serde::{Deserialize, Serialize};
 
-
     struct Checksum<'de, F>
     where
         F: Flavor<'de> + 'de,

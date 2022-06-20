@@ -208,12 +208,7 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(
-        value,
-        AllocVec {
-            vec: alloc::vec::Vec::new(),
-        },
-    )
+    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec::new())
 }
 
 /// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
@@ -238,9 +233,7 @@ where
 {
     serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
         value,
-        Cobs::try_new(AllocVec {
-            vec: alloc::vec::Vec::new(),
-        })?,
+        Cobs::try_new(AllocVec::new())?,
     )
 }
 
@@ -275,9 +268,7 @@ where
     T: Serialize + ?Sized,
     S: Flavor<Output = O>,
 {
-    let mut serializer = Serializer {
-        output: storage,
-    };
+    let mut serializer = Serializer { output: storage };
     value.serialize(&mut serializer)?;
     serializer
         .output
@@ -289,12 +280,12 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::max_size::MaxSize;
     use crate::varint::{varint_max, varint_usize};
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
     use heapless::{FnvIndexMap, String};
     use serde::Deserialize;
-    use crate::max_size::MaxSize;
 
     #[test]
     fn ser_u8() {
@@ -356,10 +347,10 @@ mod test {
     impl MaxSize for BasicU8S {
         const POSTCARD_MAX_SIZE: usize = {
             u16::POSTCARD_MAX_SIZE
-            + u8::POSTCARD_MAX_SIZE
-            + u128::POSTCARD_MAX_SIZE
-            + u64::POSTCARD_MAX_SIZE
-            + u32::POSTCARD_MAX_SIZE
+                + u8::POSTCARD_MAX_SIZE
+                + u128::POSTCARD_MAX_SIZE
+                + u64::POSTCARD_MAX_SIZE
+                + u32::POSTCARD_MAX_SIZE
         };
     }
 
