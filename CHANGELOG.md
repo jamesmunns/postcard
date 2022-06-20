@@ -2,7 +2,7 @@
 
 Changes will be described here.
 
-## 1.0.0-alpha.1 -> 1.0.0-alpha.2
+## 1.0.0-alpha.2 -> 1.0.0-alpha.3
 
 * Moved back to `cobs` from `postcard-cobs`
     * This fixed a number of upstream issues, including removal of panicking branches
