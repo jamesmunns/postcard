@@ -2,7 +2,7 @@ use serde::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
 
 use crate::de::flavors::{Flavor, Slice};
 use crate::error::{Error, Result};
-use crate::varint::varint_max;
+use crate::varint::{max_of_last_byte, varint_max};
 use core::marker::PhantomData;
 
 /// A `serde` compatible deserializer, generic over “Flavors” of deserializing plugins.
@@ -59,20 +59,18 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     #[inline]
     fn try_take_varint_u16(&mut self) -> Result<u16> {
         let mut out = 0;
-        let mut check = u16::MAX;
         for i in 0..varint_max::<u16>() {
             let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u16;
             out |= carry << (7 * i);
 
             if (val & 0x80) == 0 {
-                if carry > check {
+                if i == varint_max::<u16>() - 1 && val > max_of_last_byte::<u16>() {
                     return Err(Error::DeserializeBadVarint);
                 } else {
                     return Ok(out);
                 }
             }
-            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }
@@ -80,20 +78,18 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     #[inline]
     fn try_take_varint_u32(&mut self) -> Result<u32> {
         let mut out = 0;
-        let mut check = u32::MAX;
         for i in 0..varint_max::<u32>() {
             let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u32;
             out |= carry << (7 * i);
 
             if (val & 0x80) == 0 {
-                if carry > check {
+                if i == varint_max::<u32>() - 1 && val > max_of_last_byte::<u32>() {
                     return Err(Error::DeserializeBadVarint);
                 } else {
                     return Ok(out);
                 }
             }
-            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }
@@ -101,20 +97,18 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     #[inline]
     fn try_take_varint_u64(&mut self) -> Result<u64> {
         let mut out = 0;
-        let mut check = u64::MAX;
         for i in 0..varint_max::<u64>() {
             let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u64;
             out |= carry << (7 * i);
 
             if (val & 0x80) == 0 {
-                if carry > check {
+                if i == varint_max::<u64>() - 1 && val > max_of_last_byte::<u64>() {
                     return Err(Error::DeserializeBadVarint);
                 } else {
                     return Ok(out);
                 }
             }
-            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }
@@ -122,20 +116,18 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     #[inline]
     fn try_take_varint_u128(&mut self) -> Result<u128> {
         let mut out = 0;
-        let mut check = u128::MAX;
         for i in 0..varint_max::<u128>() {
             let val = self.flavor.pop()?;
             let carry = (val & 0x7F) as u128;
             out |= carry << (7 * i);
 
             if (val & 0x80) == 0 {
-                if carry > check {
+                if i == varint_max::<u128>() - 1 && val > max_of_last_byte::<u128>() {
                     return Err(Error::DeserializeBadVarint);
                 } else {
                     return Ok(out);
                 }
             }
-            check >>= 7;
         }
         Err(Error::DeserializeBadVarint)
     }

@@ -1,3 +1,4 @@
+/// Returns the maximum number of bytes required to encode T.
 pub const fn varint_max<T: Sized>() -> usize {
     const BITS_PER_BYTE: usize = 8;
     const BITS_PER_VARINT_BYTE: usize = 7;
@@ -12,6 +13,13 @@ pub const fn varint_max<T: Sized>() -> usize {
 
     // Apply division, using normal "round down" integer division
     roundup_bits / BITS_PER_VARINT_BYTE
+}
+
+/// Returns the maximum value stored in the last encoded byte.
+pub const fn max_of_last_byte<T: Sized>() -> u8 {
+    let max_bits = core::mem::size_of::<T>() * 8;
+    let extra_bits = max_bits % 7;
+    (1 << extra_bits) - 1
 }
 
 #[inline]
