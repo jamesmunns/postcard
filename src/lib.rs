@@ -63,6 +63,7 @@ pub mod experimental {
     }
 
     #[cfg(feature = "experimental-derive")]
+    pub use crate::ser::serialized_size;
 
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]

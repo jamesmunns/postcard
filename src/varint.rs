@@ -14,6 +14,19 @@ pub const fn varint_max<T: Sized>() -> usize {
     roundup_bits / BITS_PER_VARINT_BYTE
 }
 
+pub fn varint_size_usize(n: usize) -> usize {
+    let mut value = n;
+    for i in 0..varint_max::<usize>() {
+        if value < 128 {
+            return i + 1;
+        }
+
+        value >>= 7;
+    }
+    debug_assert_eq!(value, 0);
+    varint_max::<usize>()
+}
+
 #[inline]
 pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
     let mut value = n;
@@ -28,6 +41,19 @@ pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
+}
+
+pub fn varint_size_u16(n: u16) -> usize {
+    let mut value = n;
+    for i in 0..varint_max::<u16>() {
+        if value < 128 {
+            return i + 1;
+        }
+
+        value >>= 7;
+    }
+    debug_assert_eq!(value, 0);
+    varint_max::<u16>()
 }
 
 #[inline]
@@ -46,6 +72,19 @@ pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
     &mut out[..]
 }
 
+pub fn varint_size_u32(n: u32) -> usize {
+    let mut value = n;
+    for i in 0..varint_max::<u32>() {
+        if value < 128 {
+            return i + 1;
+        }
+
+        value >>= 7;
+    }
+    debug_assert_eq!(value, 0);
+    varint_max::<u32>()
+}
+
 #[inline]
 pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
     let mut value = n;
@@ -62,6 +101,19 @@ pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
     &mut out[..]
 }
 
+pub fn varint_size_u64(n: u64) -> usize {
+    let mut value = n;
+    for i in 0..varint_max::<u64>() {
+        if value < 128 {
+            return i + 1;
+        }
+
+        value >>= 7;
+    }
+    debug_assert_eq!(value, 0);
+    varint_max::<u64>()
+}
+
 #[inline]
 pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
     let mut value = n;
@@ -76,6 +128,19 @@ pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
     }
     debug_assert_eq!(value, 0);
     &mut out[..]
+}
+
+pub fn varint_size_u128(n: u128) -> usize {
+    let mut value = n;
+    for i in 0..varint_max::<u128>() {
+        if value < 128 {
+            return i + 1;
+        }
+
+        value >>= 7;
+    }
+    debug_assert_eq!(value, 0);
+    varint_max::<u128>()
 }
 
 #[inline]
