@@ -18,6 +18,7 @@ use crate::ser::serializer::Serializer;
 
 pub mod flavors;
 pub(crate) mod serializer;
+mod size;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
@@ -276,6 +277,16 @@ where
         .map_err(|_| Error::SerializeBufferFull)
 }
 
+/// Compute the size of the postcard serialization of `T`.
+#[cfg(any(test, feature = "experimental-derive"))]
+pub fn serialized_size<T>(value: &T) -> Result<usize>
+where
+    T: Serialize + ?Sized,
+{
+    let mut sizer = size::Sizer { total: 0 };
+    value.serialize(&mut sizer).map(|_| sizer.total)
+}
+
 #[cfg(feature = "heapless")]
 #[cfg(test)]
 mod test {
@@ -291,6 +302,7 @@ mod test {
     fn ser_u8() {
         let output: Vec<u8, 1> = to_vec(&0x05u8).unwrap();
         assert!(&[5] == output.deref());
+        assert!(output.len() == serialized_size(&0x05u8).unwrap());
         assert!(output.len() <= Vec::<u8, 1>::POSTCARD_MAX_SIZE);
     }
 
@@ -299,6 +311,7 @@ mod test {
         const SZ: usize = varint_max::<u16>();
         let output: Vec<u8, SZ> = to_vec(&0xA5C7u16).unwrap();
         assert_eq!(&[0xC7, 0xCB, 0x02], output.deref());
+        assert!(output.len() == serialized_size(&0xA5C7u16).unwrap());
         assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
@@ -307,6 +320,7 @@ mod test {
         const SZ: usize = varint_max::<u32>();
         let output: Vec<u8, SZ> = to_vec(&0xCDAB3412u32).unwrap();
         assert_eq!(&[0x92, 0xE8, 0xAC, 0xED, 0x0C], output.deref());
+        assert!(output.len() == serialized_size(&0xCDAB3412u32).unwrap());
         assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
@@ -318,6 +332,7 @@ mod test {
             &[0xEF, 0x9B, 0xAF, 0x85, 0x89, 0xCF, 0x95, 0x9A, 0x12],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&0x1234_5678_90AB_CDEFu64).unwrap());
         assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
 
@@ -331,6 +346,10 @@ mod test {
                 0x9E, 0xAB, 0xB4, 0x24,
             ],
             output.deref()
+        );
+        assert!(
+            output.len()
+                == serialized_size(&0x1234_5678_90AB_CDEF_1234_5678_90AB_CDEFu128).unwrap()
         );
         assert!(output.len() <= Vec::<u8, SZ>::POSTCARD_MAX_SIZE);
     }
@@ -357,14 +376,14 @@ mod test {
     #[test]
     fn ser_struct_unsigned() {
         const SZ: usize = BasicU8S::POSTCARD_MAX_SIZE;
-        let output: Vec<u8, SZ> = to_vec(&BasicU8S {
+        let input = BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
             ote: 0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA,
             sf: 0x1234_4321_ABCD_DCBA,
             tt: 0xACAC_ACAC,
-        })
-        .unwrap();
+        };
+        let output: Vec<u8, SZ> = to_vec(&input).unwrap();
 
         assert_eq!(
             &[
@@ -374,6 +393,7 @@ mod test {
             ],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&input).unwrap());
         assert!(output.len() <= BasicU8S::POSTCARD_MAX_SIZE);
     }
 
@@ -385,6 +405,7 @@ mod test {
             &[0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&input).unwrap());
 
         let mut input: Vec<u8, 1024> = Vec::new();
         for i in 0..1024 {
@@ -405,6 +426,7 @@ mod test {
         let output: Vec<u8, 17> = to_vec(input).unwrap();
         assert_eq!(0x10, output.deref()[0]);
         assert_eq!(input.as_bytes(), &output.deref()[1..]);
+        assert!(output.len() == serialized_size(&input).unwrap());
 
         let mut input: String<1024> = String::new();
         for _ in 0..256 {
@@ -468,48 +490,60 @@ mod test {
 
     #[test]
     fn enums() {
-        let output: Vec<u8, 1> = to_vec(&BasicEnum::Bim).unwrap();
+        let input = BasicEnum::Bim;
+        let output: Vec<u8, 1> = to_vec(&input).unwrap();
         assert_eq!(&[0x01], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, { 1 + varint_max::<u64>() }> =
-            to_vec(&DataEnum::Bim(u64::max_value())).unwrap();
+        let input = DataEnum::Bim(u64::max_value());
+        let output: Vec<u8, { 1 + varint_max::<u64>() }> = to_vec(&input).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, { 1 + varint_max::<u16>() }> =
-            to_vec(&DataEnum::Bib(u16::max_value())).unwrap();
+        let input = DataEnum::Bib(u16::max_value());
+        let output: Vec<u8, { 1 + varint_max::<u16>() }> = to_vec(&input).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(u8::max_value())).unwrap();
+        let input = DataEnum::Bap(u8::max_value());
+        let output: Vec<u8, 2> = to_vec(&input).unwrap();
         assert_eq!(&[0x02, 0xFF], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, 8> = to_vec(&DataEnum::Kim(EnumStruct {
+        let input = DataEnum::Kim(EnumStruct {
             eight: 0xF0,
             sixt: 0xACAC,
-        }))
-        .unwrap();
+        });
+        let output: Vec<u8, 8> = to_vec(&input).unwrap();
         assert_eq!(&[0x03, 0xF0, 0xAC, 0xD9, 0x02], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, 8> = to_vec(&DataEnum::Chi {
+        let input = DataEnum::Chi {
             a: 0x0F,
             b: 0xC7C7C7C7,
-        })
-        .unwrap();
+        };
+        let output: Vec<u8, 8> = to_vec(&input).unwrap();
         assert_eq!(&[0x04, 0x0F, 0xC7, 0x8F, 0x9F, 0xBE, 0x0C], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
+        let input = DataEnum::Sho(0x6969, 0x07);
+        let output: Vec<u8, 8> = to_vec(&input).unwrap();
         assert_eq!(&[0x05, 0xE9, 0xD2, 0x01, 0x07], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
     }
 
     #[test]
     fn tuples() {
-        let output: Vec<u8, 128> = to_vec(&(1u8, 10u32, "Hello!")).unwrap();
+        let input = (1u8, 10u32, "Hello!");
+        let output: Vec<u8, 128> = to_vec(&input).unwrap();
         assert_eq!(
             &[1u8, 0x0A, 0x06, b'H', b'e', b'l', b'l', b'o', b'!'],
             output.deref()
-        )
+        );
+        assert!(output.len() == serialized_size(&input).unwrap());
     }
 
     #[test]
@@ -517,11 +551,13 @@ mod test {
         let x: &[u8; 32] = &[0u8; 32];
         let output: Vec<u8, 128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 32);
+        assert!(output.len() == serialized_size(&x).unwrap());
         assert!(<[u8; 32] as MaxSize>::POSTCARD_MAX_SIZE <= output.len());
 
         let x: &[u8] = &[0u8; 32];
         let output: Vec<u8, 128> = to_vec(x).unwrap();
         assert_eq!(output.len(), 33);
+        assert!(output.len() == serialized_size(&x).unwrap());
     }
 
     #[derive(Serialize)]
@@ -532,11 +568,15 @@ mod test {
 
     #[test]
     fn structs() {
-        let output: Vec<u8, 1> = to_vec(&NewTypeStruct(5)).unwrap();
+        let input = NewTypeStruct(5);
+        let output: Vec<u8, 1> = to_vec(&input).unwrap();
         assert_eq!(&[0x05], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
-        let output: Vec<u8, 3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
+        let input = TupleStruct((0xA0, 0x1234));
+        let output: Vec<u8, 3> = to_vec(&input).unwrap();
         assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
     }
 
     #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
@@ -549,22 +589,24 @@ mod test {
     fn ref_struct() {
         let message = "hElLo";
         let bytes = [0x01, 0x10, 0x02, 0x20];
-        let output: Vec<u8, 11> = to_vec(&RefStruct {
+        let input = RefStruct {
             bytes: &bytes,
             str_s: message,
-        })
-        .unwrap();
+        };
+        let output: Vec<u8, 11> = to_vec(&input).unwrap();
 
         assert_eq!(
             &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&input).unwrap());
     }
 
     #[test]
     fn unit() {
         let output: Vec<u8, 1> = to_vec(&()).unwrap();
         assert_eq!(output.len(), 0);
+        assert!(output.len() == serialized_size(&()).unwrap());
     }
 
     #[test]
@@ -573,11 +615,13 @@ mod test {
         input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
         let output: Vec<u8, 5> = to_vec(&input).unwrap();
         assert_eq!(&[0x04, 0x01, 0x02, 0x03, 0x04], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
         let mut input: String<8> = String::new();
         write!(&mut input, "helLO!").unwrap();
         let output: Vec<u8, 7> = to_vec(&input).unwrap();
         assert_eq!(&[0x06, b'h', b'e', b'l', b'L', b'O', b'!'], output.deref());
+        assert!(output.len() == serialized_size(&input).unwrap());
 
         let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
         input.insert(0x01, 0x05).unwrap();
@@ -589,6 +633,7 @@ mod test {
             &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
             output.deref()
         );
+        assert!(output.len() == serialized_size(&input).unwrap());
     }
 
     #[test]
