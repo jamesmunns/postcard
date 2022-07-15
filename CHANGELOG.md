@@ -2,9 +2,17 @@
 
 Changes will be described here.
 
-## 1.0.0 -> Unreleased
+## 1.0.1 -> Unreleased
 
-* Nothing, yet!
+* Nothing yet!
+
+## 1.0.0 -> 1.0.1
+
+* [Fixed deserialization] of `i128`, which was using the "new style" varint serialization, but the incorrect, "old style" fixed deserialization.
+    * This is considered a defect, and not a breaking change, as it brings the code back in line with the specification behavior.
+    * Version 1.0.0 will be yanked due to this defect.
+
+[Fixed deserialization]: https://github.com/jamesmunns/postcard/commit/70ea33a1ac7f82632697f4578002267eaf9095f5
 
 ## 1.0.0-alpha.4 -> 1.0.0
 
