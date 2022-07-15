@@ -5,6 +5,7 @@
 pub mod accumulator;
 mod de;
 mod error;
+pub mod fixint;
 mod ser;
 mod varint;
 
@@ -61,8 +62,6 @@ pub mod experimental {
         // NOTE: ...and this is the derive macro
         pub use postcard_derive::MaxSize;
     }
-
-    #[cfg(feature = "experimental-derive")]
 
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
