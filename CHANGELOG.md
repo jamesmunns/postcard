@@ -2,9 +2,15 @@
 
 Changes will be described here.
 
-## 1.0.1 -> Unreleased
+## 1.0.2 -> Unreleased
 
 * Nothing yet!
+
+## 1.0.1 -> 1.0.2
+
+* Correct exporting of experimental Schema proc macro ([PR#73])
+
+[PR#73]: https://github.com/jamesmunns/postcard/pull/73
 
 ## 1.0.0 -> 1.0.1
 
