@@ -1,5 +1,7 @@
 # Postcard
 
+[![Documentation](https://docs.rs/postcard/badge.svg)](https://docs.rs/postcard)
+
 Postcard is a `#![no_std]` focused serializer and deserializer for Serde.
 
 Postcard aims to be convenient for developers in constrained environments, while
