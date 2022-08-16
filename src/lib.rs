@@ -10,7 +10,7 @@ mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
-mod schema;
+pub(crate) mod schema;
 
 /// # Experimental Postcard Features
 ///
@@ -62,12 +62,12 @@ pub mod experimental {
         pub use postcard_derive::MaxSize;
     }
 
-    #[cfg(feature = "experimental-derive")]
-
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
     pub mod schema {
-        pub use crate::schema::*;
+        // NOTE: This is the trait...
+        pub use crate::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
+        // NOTE: ...and this is the derive macro
         pub use postcard_derive::Schema;
     }
 }
