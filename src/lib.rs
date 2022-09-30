@@ -5,6 +5,7 @@
 pub mod accumulator;
 mod de;
 mod error;
+pub mod fixint;
 mod ser;
 mod varint;
 
