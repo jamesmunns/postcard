@@ -19,8 +19,8 @@ pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
         .unwrap_or_else(syn::Error::into_compile_error);
 
     let expanded = quote! {
-        impl #impl_generics ::postcard::schema::Schema for #name #ty_generics #where_clause {
-            const SCHEMA: &'static ::postcard::schema::NamedType = #ty;
+        impl #impl_generics ::postcard::experimental::schema::Schema for #name #ty_generics #where_clause {
+            const SCHEMA: &'static ::postcard::experimental::schema::NamedType = #ty;
         }
     };
 
@@ -35,21 +35,21 @@ fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, s
             let ty = data.variants.iter().map(|v| generate_variants(&v.fields));
 
             quote! {
-                &::postcard::schema::SdmTy::Enum(&[
-                    #( &::postcard::schema::NamedVariant { name: #name, ty: #ty } ),*
+                &::postcard::experimental::schema::SdmTy::Enum(&[
+                    #( &::postcard::experimental::schema::NamedVariant { name: #name, ty: #ty } ),*
                 ])
             }
         }
         Data::Union(_) => {
             return Err(syn::Error::new(
                 span,
-                "unions are not supported by `postcard::Schema`",
+                "unions are not supported by `postcard::experimental::schema`",
             ))
         }
     };
 
     Ok(quote! {
-        &::postcard::schema::NamedType {
+        &::postcard::experimental::schema::NamedType {
             name: #name,
             ty: #ty,
         }
@@ -62,23 +62,23 @@ fn generate_struct(fields: &Fields) -> TokenStream {
             let fields = fields.named.iter().map(|f| {
                 let ty = &f.ty;
                 let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => &::postcard::schema::NamedValue { name: #name, ty: <#ty as ::postcard::schema::Schema>::SCHEMA })
+                quote_spanned!(f.span() => &::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
             });
-            quote! { &::postcard::schema::SdmTy::Struct(&[
+            quote! { &::postcard::experimental::schema::SdmTy::Struct(&[
                 #( #fields ),*
             ]) }
         }
         syn::Fields::Unnamed(fields) => {
             let fields = fields.unnamed.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned!(f.span() => <#ty as ::postcard::schema::Schema>::SCHEMA)
+                quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA)
             });
-            quote! { &::postcard::schema::SdmTy::TupleStruct(&[
+            quote! { &::postcard::experimental::schema::SdmTy::TupleStruct(&[
                 #( #fields ),*
             ]) }
         }
         syn::Fields::Unit => {
-            quote! { &::postcard::schema::SdmTy::UnitStruct }
+            quote! { &::postcard::experimental::schema::SdmTy::UnitStruct }
         }
     }
 }
@@ -89,23 +89,23 @@ fn generate_variants(fields: &Fields) -> TokenStream {
             let fields = fields.named.iter().map(|f| {
                 let ty = &f.ty;
                 let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => ::postcard::schema::NamedValue { name: #name, ty: <#ty as ::postcard::schema::Schema>::SCHEMA })
+                quote_spanned!(f.span() => ::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
             });
-            quote! { &::postcard::schema::SdmTy::StructVariant(&[
+            quote! { &::postcard::experimental::schema::SdmTy::StructVariant(&[
                 #( #fields ),*
             ]) }
         }
         syn::Fields::Unnamed(fields) => {
             let fields = fields.unnamed.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned!(f.span() => <#ty as ::postcard::schema::Schema>::SCHEMA)
+                quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA)
             });
-            quote! { &::postcard::schema::SdmTy::TupleVariant(&[
+            quote! { &::postcard::experimental::schema::SdmTy::TupleVariant(&[
                 #( #fields ),*
             ]) }
         }
         syn::Fields::Unit => {
-            quote! { &::postcard::schema::SdmTy::UnitVariant }
+            quote! { &::postcard::experimental::schema::SdmTy::UnitVariant }
         }
     }
 }
@@ -116,7 +116,7 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         if let GenericParam::Type(ref mut type_param) = *param {
             type_param
                 .bounds
-                .push(parse_quote!(::postcard::schema::Schema));
+                .push(parse_quote!(::postcard::experimental::schema::Schema));
         }
     }
     generics

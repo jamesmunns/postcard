@@ -44,6 +44,18 @@ impl<'de> Deserializer<'de, Slice<'de>> {
 }
 
 impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
+    #[cfg(target_pointer_width = "8")]
+    #[inline(always)]
+    fn try_take_varint_usize(&mut self) -> Result<usize> {
+        self.try_take_varint_u8().map(|u| u as usize)
+    }
+
+    #[cfg(target_pointer_width = "16")]
+    #[inline(always)]
+    fn try_take_varint_usize(&mut self) -> Result<usize> {
+        self.try_take_varint_u16().map(|u| u as usize)
+    }
+
     #[cfg(target_pointer_width = "32")]
     #[inline(always)]
     fn try_take_varint_usize(&mut self) -> Result<usize> {
@@ -272,9 +284,8 @@ impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de
     where
         V: Visitor<'de>,
     {
-        let mut buf = [0u8; 16];
-        buf[..].copy_from_slice(self.flavor.try_take_n(16)?);
-        visitor.visit_i128(i128::from_le_bytes(buf))
+        let v = self.try_take_varint_u128()?;
+        visitor.visit_i128(de_zig_zag_i128(v))
     }
 
     #[inline]
@@ -589,4 +600,8 @@ fn de_zig_zag_i32(n: u32) -> i32 {
 
 fn de_zig_zag_i64(n: u64) -> i64 {
     ((n >> 1) as i64) ^ (-((n & 0b1) as i64))
+}
+
+fn de_zig_zag_i128(n: u128) -> i128 {
+    ((n >> 1) as i128) ^ (-((n & 0b1) as i128))
 }

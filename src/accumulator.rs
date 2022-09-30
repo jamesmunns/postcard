@@ -101,9 +101,23 @@ impl<const N: usize> CobsAccumulator<N> {
 
     /// Appends data to the internal buffer and attempts to deserialize the accumulated data into
     /// `T`.
+    #[inline]
     pub fn feed<'a, T>(&mut self, input: &'a [u8]) -> FeedResult<'a, T>
     where
         T: for<'de> Deserialize<'de>,
+    {
+        self.feed_ref(input)
+    }
+
+    /// Appends data to the internal buffer and attempts to deserialize the accumulated data into
+    /// `T`.
+    /// 
+    /// This differs from feed, as it allows the `T` to reference data within the internal buffer, but 
+    /// mutably borrows the accumulator for the lifetime of the deserialization.
+    /// If `T` does not require the reference, the borrow of `self` ends at the end of the function.
+    pub fn feed_ref<'de, 'a, T>(&'de mut self, input: &'a [u8]) -> FeedResult<'a, T>
+    where
+        T: Deserialize<'de>,
     {
         if input.is_empty() {
             return FeedResult::Consumed;
@@ -181,4 +195,94 @@ fn loop_test() {
     } else {
         panic!()
     }
+}
+
+#[test]
+fn double_loop_test() {
+    #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+    struct Demo {
+        a: u32,
+        b: u8,
+    }
+
+    let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
+
+    let mut ser = crate::to_vec_cobs::<_,128>(&Demo { a: 10, b: 20 }).unwrap();
+    let ser2 = crate::to_vec_cobs::<_,128>(&Demo { a: 256854231, b: 115 }).unwrap();
+    ser.extend(ser2);
+
+    let (demo1,ser) = if let FeedResult::Success { data, remaining } = cobs_buf.feed(&ser[..]) {
+        (data,remaining)
+    } else {
+        panic!()
+    };
+
+    assert_eq!(Demo { a: 10, b: 20 }, demo1);
+
+    let demo2 = if let FeedResult::Success { data, remaining } = cobs_buf.feed(ser) {
+        assert_eq!(remaining.len(), 0);
+        data
+    } else {
+        panic!()
+    };
+
+    assert_eq!(Demo { a: 10, b: 20 }, demo1);
+    assert_eq!(Demo { a: 256854231, b: 115 }, demo2);
+}
+
+#[test]
+fn loop_test_ref() {
+    #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+    struct Demo<'a> {
+        a: u32,
+        b: u8,
+        c: &'a str
+    }
+
+    let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
+
+    let ser = crate::to_vec_cobs::<_,128>(&Demo { a: 10, b: 20, c : "test" }).unwrap();
+
+    if let FeedResult::Success { data, remaining } = cobs_buf.feed_ref(&ser[..]) {
+        assert_eq!(Demo { a: 10, b: 20, c : "test" }, data);
+        assert_eq!(remaining.len(), 0);
+    } else {
+        panic!()
+    }
+}
+
+#[test]
+fn double_loop_test_ref() {
+    #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+    struct Demo<'a> {
+        a: u32,
+        b: u8,
+        c: &'a str
+    }
+
+    let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
+
+    let mut ser = crate::to_vec_cobs::<_,128>(&Demo { a: 10, b: 20, c : "test" }).unwrap();
+    let ser2 = crate::to_vec_cobs::<_,128>(&Demo { a: 256854231, b: 115, c : "different test" }).unwrap();
+    ser.extend(ser2);
+
+    let (data,ser) = if let FeedResult::Success { data, remaining } = cobs_buf.feed_ref(&ser[..]) {
+        (data,remaining)
+    } else {
+        panic!()
+    };
+
+    assert!(Demo { a: 10, b: 20, c : "test" } == data);
+    
+    let demo2 = if let FeedResult::Success { data, remaining } = cobs_buf.feed_ref(ser) {
+        assert!(remaining.is_empty());
+        data
+    } else {
+        panic!()
+    };
+
+    // Uncommenting the below line causes the test to no-longer compile, as cobs_buf would then be mutably borrowed twice
+    //assert!(Demo { a: 10, b: 20, c : "test" } == data);
+
+    assert!(Demo { a: 256854231, b: 115, c : "different test" } == demo2);
 }

@@ -1,67 +1,106 @@
 //! # Fixed Size Integers
 //!
 //! In some cases, the use of variably length encoded data may not be
-//! preferrable. These wrappers "opt out" of variable length encoding.
+//! preferrable. These modules, for use with `#[serde(with = ...)]`
+//! "opt out" of variable length encoding.
 //!
-//! A wrapper is explicitly not provided for `usize` or `isize`, as
+//! Support explicitly not provided for `usize` or `isize`, as
 //! these types would not be portable between systems of different
 //! pointer widths.
 //!
 //! Although all data in Postcard is typically encoded in little-endian
-//! order, these wrappers provide a choice to the user to encode the data
+//! order, these modules provide a choice to the user to encode the data
 //! in either little or big endian form, which may be useful for zero-copy
 //! applications.
+
 use serde::{Deserialize, Serialize, Serializer};
 
-/// Type wrapper that disables varint serialization/deserialization
-/// for the wrapped integer. The contained integer will always be serialized
-/// in the same way as a fixed size array, in **Little Endian** order on
-/// the wire.
+/// Use with the `#[serde(with = "postcard::fixint::le")]` field attribute.
+/// Disables varint serialization/deserialization for the specified integer
+/// field. The integer will always be serialized in the same way as a fixed
+/// size array, in **Little Endian** order on the wire.
 ///
-/// The type remains as a standard, "native endian", integer while in-memory.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
-#[repr(transparent)]
-pub struct FixintLE<T: sealed::Fixed>(pub T);
+/// ```rust
+/// # use serde::Serialize;
+/// #[derive(Serialize)]
+/// pub struct DefinitelyLittleEndian {
+///     #[serde(with = "postcard::fixint::le")]
+///     x: u16,
+/// }
+/// ```
+pub mod le {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Type wrapper that disables varint serialization/deserialization
-/// for the wrapped integer. The contained integer will always be serialized
-/// in the same way as a fixed size array, in **Big Endian** order on
-/// the wire.
-///
-/// The type remains as a standard, "native endian", integer while in-memory.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
-#[repr(transparent)]
-pub struct FixintBE<T: sealed::Fixed>(pub T);
+    use super::LE;
 
-mod sealed {
-    pub trait Fixed {}
+    /// Serialize the integer value as a little-endian fixed-size array.
+    pub fn serialize<S, T>(val: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Copy,
+        LE<T>: Serialize,
+    {
+        LE(*val).serialize(serializer)
+    }
+
+    /// Deserialize the integer value from a little-endian fixed-size array.
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+        LE<T>: Deserialize<'de>,
+    {
+        LE::<T>::deserialize(deserializer).map(|x| x.0)
+    }
 }
+
+/// Use with the `#[serde(with = "postcard::fixint::be")]` field attribute.
+/// Disables varint serialization/deserialization for the specified integer
+/// field. The integer will always be serialized in the same way as a fixed
+/// size array, in **Big Endian** order on the wire.
+///
+/// ```rust
+/// # use serde::Serialize;
+/// #[derive(Serialize)]
+/// pub struct DefinitelyBigEndian {
+///     #[serde(with = "postcard::fixint::be")]
+///     x: u16,
+/// }
+/// ```
+pub mod be {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::BE;
+
+    /// Serialize the integer value as a big-endian fixed-size array.
+    pub fn serialize<S, T>(val: &T, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+        T: Copy,
+        BE<T>: Serialize,
+    {
+        BE(*val).serialize(serializer)
+    }
+
+    /// Deserialize the integer value from a big-endian fixed-size array.
+    pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+    where
+        D: Deserializer<'de>,
+        BE<T>: Deserialize<'de>,
+    {
+        BE::<T>::deserialize(deserializer).map(|x| x.0)
+    }
+}
+
+#[doc(hidden)]
+pub struct LE<T>(T);
+
+#[doc(hidden)]
+pub struct BE<T>(T);
 
 macro_rules! impl_fixint {
     ($( $int:ty ),*) => {
         $(
-            // Sealed trait to avoid misuse
-            impl sealed::Fixed for $int { }
-
-            // Little Endian Wrappers
-
-            impl From<$int> for FixintLE<$int> {
-                #[inline]
-                fn from(x: $int) -> Self {
-                    Self(x)
-                }
-            }
-
-            impl From<FixintLE<$int>> for $int {
-                #[inline]
-                fn from(x: FixintLE<$int>) -> $int {
-                    x.0
-                }
-            }
-
-            impl Serialize for FixintLE<$int> {
+            impl Serialize for LE<$int> {
                 #[inline]
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -71,7 +110,7 @@ macro_rules! impl_fixint {
                 }
             }
 
-            impl<'de> Deserialize<'de> for FixintLE<$int> {
+            impl<'de> Deserialize<'de> for LE<$int> {
                 #[inline]
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
@@ -83,23 +122,7 @@ macro_rules! impl_fixint {
                 }
             }
 
-            // Big Endian Wrappers
-
-            impl From<$int> for FixintBE<$int> {
-                #[inline]
-                fn from(x: $int) -> Self {
-                    Self(x)
-                }
-            }
-
-            impl From<FixintBE<$int>> for $int {
-                #[inline]
-                fn from(x: FixintBE<$int>) -> $int {
-                    x.0
-                }
-            }
-
-            impl Serialize for FixintBE<$int> {
+            impl Serialize for BE<$int> {
                 #[inline]
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -109,7 +132,7 @@ macro_rules! impl_fixint {
                 }
             }
 
-            impl<'de> Deserialize<'de> for FixintBE<$int> {
+            impl<'de> Deserialize<'de> for BE<$int> {
                 #[inline]
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
@@ -125,3 +148,42 @@ macro_rules! impl_fixint {
 }
 
 impl_fixint![i16, i32, i64, i128, u16, u32, u64, u128];
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+
+    #[test]
+    fn test_little_endian() {
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyLE {
+            #[serde(with = "crate::fixint::le")]
+            x: u16,
+        }
+
+        let input = DefinitelyLE { x: 0xABCD };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xCD, 0xAB]);
+
+        let deserialized: DefinitelyLE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[test]
+    fn test_big_endian() {
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyBE {
+            #[serde(with = "crate::fixint::be")]
+            x: u16,
+        }
+
+        let input = DefinitelyBE { x: 0xABCD };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xAB, 0xCD]);
+
+        let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+}

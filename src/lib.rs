@@ -5,12 +5,13 @@
 pub mod accumulator;
 mod de;
 mod error;
+pub mod fixint;
 mod ser;
 mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
-mod schema;
+pub(crate) mod schema;
 
 /// # Experimental Postcard Features
 ///
@@ -68,7 +69,9 @@ pub mod experimental {
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
     pub mod schema {
-        pub use crate::schema::*;
+        // NOTE: This is the trait...
+        pub use crate::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
+        // NOTE: ...and this is the derive macro
         pub use postcard_derive::Schema;
     }
 }
@@ -101,5 +104,14 @@ mod test {
         assert_eq!(used, &mut [0xFF, 0xFF, 0xFF, 0xFF, 0x0F]);
         let deser: Result<u32, crate::Error> = crate::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0x1F]);
         assert_eq!(deser, Err(crate::Error::DeserializeBadVarint));
+    }
+
+    #[test]
+    fn signed_int128() {
+        let x = -19490127978232325886905073712831_i128;
+        let mut buf = [0u8; 32];
+        let used = crate::to_slice(&x, &mut buf).unwrap();
+        let deser: i128 = crate::from_bytes(used).unwrap();
+        assert_eq!(deser, x);
     }
 }
