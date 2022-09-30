@@ -250,6 +250,14 @@ impl<T: Schema> Schema for std::vec::Vec<T> {
     };
 }
 
+#[cfg(feature = "use-std")]
+impl Schema for std::string::String {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "String",
+        ty: &SdmTy::String,
+    };
+}
+
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
 extern crate alloc;
 
@@ -258,5 +266,13 @@ impl<T: Schema> Schema for alloc::vec::Vec<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Vec<T>",
         ty: &SdmTy::Seq(T::SCHEMA),
+    };
+}
+
+#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+impl Schema for alloc::string::String {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "String",
+        ty: &SdmTy::String,
     };
 }
