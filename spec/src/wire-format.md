@@ -78,11 +78,11 @@ For example, the following 16-bit unsigned numbers would be encoded as follows:
 
 ### Signed Integer Encoding
 
-Signed integers are typically "natively" encoded using a [Two's Compliment] form, meaning that the most significant bit is used
+Signed integers are typically "natively" encoded using a [Two's Complement] form, meaning that the most significant bit is used
 to offset the value by a large negative shift. If this form was used directly for encoding signed integer values, it would
 have the negative effect that negative values would ALWAYS take the maximum encoded length to store on the wire.
 
-[Two's Compliment]: https://en.wikipedia.org/wiki/Two%27s_complement
+[Two's Complement]: https://en.wikipedia.org/wiki/Two%27s_complement
 
 For this reason, signed integers, when encoded as a `varint`, are first [Zigzag encoded]. Zigzag encoding stores the sign bit in the
 LEAST significant bit of the integer, rather than the MOST significant bit.
@@ -102,10 +102,10 @@ For example, the following 16-bit signed numbers would be encoded as follows:
 | -64       | `0xFF_C0` | `0x00_7F`         | `[0x7F]`              | 1         |
 | 64        | `0x00_40` | `0x00_80`         | `[0x80, 0x01]`        | 2         |
 | -65       | `0xFF_BF` | `0x00_81`         | `[0x81, 0x01]`        | 2         |
-| 32767     | `0x7F_FF` | `0xFF_FE`         | `[0xFF, 0xFF, 0x02]`  | 3         |
+| 32767     | `0x7F_FF` | `0xFF_FE`         | `[0xFE, 0xFF, 0x03]`  | 3         |
 | -32768    | `0x80_00` | `0xFF_FF`         | `[0xFF, 0xFF, 0x03]`  | 3         |
 
-`*`: This column is represented as a sixteen bit, two's compliment form
+`*`: This column is represented as a sixteen bit, two's complement form
 
 ### Maximum Encoded Length
 
@@ -196,7 +196,7 @@ All other values are considered an error.
 
 ### 2 - `i8`
 
-An `i8` is stored as a single byte, in two's compliment form.
+An `i8` is stored as a single byte, in two's complement form.
 
 All values are considered valid.
 
