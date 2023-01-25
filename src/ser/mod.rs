@@ -277,7 +277,6 @@ where
 }
 
 /// Compute the size of the postcard serialization of `T`.
-#[cfg(any(test, feature = "experimental-derive"))]
 pub fn serialized_size<T>(value: &T) -> Result<usize>
 where
     T: Serialize + ?Sized,

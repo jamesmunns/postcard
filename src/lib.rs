@@ -57,13 +57,13 @@ pub mod experimental {
     /// Compile time max-serialization size calculation
     #[cfg(feature = "experimental-derive")]
     pub mod max_size {
-        pub use crate::ser::serialized_size;
-
         // NOTE: This is the trait...
         pub use crate::max_size::MaxSize;
         // NOTE: ...and this is the derive macro
         pub use postcard_derive::MaxSize;
     }
+
+    pub use crate::ser::serialized_size;
 
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
