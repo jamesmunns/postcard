@@ -411,7 +411,17 @@ where
     }
 }
 
-/// The `Size` flavor is a measurement flavor, storing the serialized bytes length into a plain.
+/// The `Size` flavor is a measurement flavor, which accumulates the number of bytes needed to
+/// serialize the data.
+///
+/// ```
+/// use postcard::{serialize_with_flavor, ser_flavors};
+///
+/// let value = false;
+/// let size = serialize_with_flavor(&value, ser_flavors::Size::default()).unwrap();
+///
+/// assert_eq!(size, 1);
+/// ```
 #[derive(Default)]
 pub struct Size {
     size: usize,
