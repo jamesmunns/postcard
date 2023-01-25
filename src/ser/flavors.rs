@@ -410,3 +410,29 @@ where
         self.flav.finalize()
     }
 }
+
+/// The `Size` flavor is a measurement flavor, storing the serialized bytes length into a plain.
+#[derive(Default)]
+pub struct Size {
+    size: usize,
+}
+
+impl Flavor for Size {
+    type Output = usize;
+
+    #[inline(always)]
+    fn try_push(&mut self, _b: u8) -> Result<()> {
+        self.size += 1;
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+        self.size += b.len();
+        Ok(())
+    }
+
+    fn finalize(self) -> Result<Self::Output> {
+        Ok(self.size)
+    }
+}

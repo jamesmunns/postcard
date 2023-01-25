@@ -18,7 +18,6 @@ use crate::ser::serializer::Serializer;
 
 pub mod flavors;
 pub(crate) mod serializer;
-mod size;
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
@@ -283,8 +282,7 @@ pub fn serialized_size<T>(value: &T) -> Result<usize>
 where
     T: Serialize + ?Sized,
 {
-    let mut sizer = size::Sizer::default();
-    value.serialize(&mut sizer).map(|_| sizer.size())
+    serialize_with_flavor::<T, flavors::Size, usize>(value, flavors::Size::default())
 }
 
 #[cfg(feature = "heapless")]
