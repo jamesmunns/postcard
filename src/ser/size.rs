@@ -5,9 +5,17 @@ use crate::ser::serializer::{zig_zag_i128, zig_zag_i16, zig_zag_i32, zig_zag_i64
 use crate::varint::*;
 
 /// A `Serializer` to compute the size of a serialization.
+#[derive(Default)]
 pub struct Sizer {
     /// The number of bytes needed in total.
-    pub total: usize,
+    total: usize,
+}
+
+impl Sizer {
+    /// The number of bytes needed to store the serializations so far.
+    pub fn size(&self) -> usize {
+        self.total
+    }
 }
 
 impl<'a> ser::Serializer for &'a mut Sizer {

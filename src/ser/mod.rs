@@ -283,8 +283,8 @@ pub fn serialized_size<T>(value: &T) -> Result<usize>
 where
     T: Serialize + ?Sized,
 {
-    let mut sizer = size::Sizer { total: 0 };
-    value.serialize(&mut sizer).map(|_| sizer.total)
+    let mut sizer = size::Sizer::default();
+    value.serialize(&mut sizer).map(|_| sizer.size())
 }
 
 #[cfg(feature = "heapless")]
