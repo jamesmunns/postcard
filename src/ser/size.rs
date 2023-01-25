@@ -4,7 +4,9 @@ use crate::error::{Error, Result};
 use crate::ser::serializer::{zig_zag_i128, zig_zag_i16, zig_zag_i32, zig_zag_i64};
 use crate::varint::*;
 
+/// A `Serializer` to compute the size of a serialization.
 pub struct Sizer {
+    /// The number of bytes needed in total.
     pub total: usize,
 }
 
