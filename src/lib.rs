@@ -63,6 +63,8 @@ pub mod experimental {
         pub use postcard_derive::MaxSize;
     }
 
+    pub use crate::ser::serialized_size;
+
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
     pub mod schema {

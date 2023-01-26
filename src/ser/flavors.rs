@@ -410,3 +410,39 @@ where
         self.flav.finalize()
     }
 }
+
+/// The `Size` flavor is a measurement flavor, which accumulates the number of bytes needed to
+/// serialize the data.
+///
+/// ```
+/// use postcard::{serialize_with_flavor, ser_flavors};
+///
+/// let value = false;
+/// let size = serialize_with_flavor(&value, ser_flavors::Size::default()).unwrap();
+///
+/// assert_eq!(size, 1);
+/// ```
+#[derive(Default)]
+pub struct Size {
+    size: usize,
+}
+
+impl Flavor for Size {
+    type Output = usize;
+
+    #[inline(always)]
+    fn try_push(&mut self, _b: u8) -> Result<()> {
+        self.size += 1;
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+        self.size += b.len();
+        Ok(())
+    }
+
+    fn finalize(self) -> Result<Self::Output> {
+        Ok(self.size)
+    }
+}
