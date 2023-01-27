@@ -151,7 +151,7 @@ impl MaxSize for NonZeroUsize {
     const POSTCARD_MAX_SIZE: usize = usize::POSTCARD_MAX_SIZE;
 }
 
-impl<T: MaxSize> MaxSize for PhantomData<T> {
+impl<T> MaxSize for PhantomData<T> {
     const POSTCARD_MAX_SIZE: usize = 0;
 }
 
