@@ -132,7 +132,7 @@ impl<const N: usize> CobsAccumulator<N> {
             let (take, release) = input.split_at(n + 1);
 
             // Does it fit?
-            if (self.idx + n) <= N {
+            if (self.idx + take.len()) <= N {
                 // Aw yiss - add to array
                 self.extend_unchecked(take);
 
@@ -285,4 +285,22 @@ fn double_loop_test_ref() {
     //assert!(Demo { a: 10, b: 20, c : "test" } == data);
 
     assert!(Demo { a: 256854231, b: 115, c : "different test" } == demo2);
+}
+
+#[test]
+fn extend_unchecked_in_bounds_test() {
+    // Test bug present in revision abcb407:
+    // extend_unchecked may be passed slice with size 1 greater than accumulator buffer causing panic
+
+    #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+    struct Demo {
+        data: [u8; 10],
+    }
+
+    // Accumulator has 1 byte less space than encoded message
+    let mut acc: CobsAccumulator<11> = CobsAccumulator::new();
+    let mut data = crate::to_vec_cobs::<_, 128>(&Demo { data: [0xcc; 10] }).unwrap();
+    assert_eq!(data.len(), 12); // 1 byte for offset + 1 sentinel byte appended
+
+    assert!(matches!(acc.feed::<Demo>(&data[..]), FeedResult::OverFull(_)));
 }
