@@ -67,7 +67,7 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a[embedded_io::blocking::Write].
+/// Deserialize a message of type `T` from a [embedded_io::blocking::Read].
 #[cfg(feature = "embedded-io")]
 pub fn from_eio<'a, T, R>(val: (&'a mut R, &'a mut [u8])) -> Result<(T, (&'a mut R, &'a mut [u8]))>
 where
@@ -80,7 +80,7 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a[embedded_io::blocking::Write].
+/// Deserialize a message of type `T` from a[std::io::Read].
 #[cfg(feature = "use-std")]
 pub fn from_io<'a, 'b, T, R>(
     val: (&'a mut R, &'b mut [u8]),
