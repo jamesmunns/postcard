@@ -65,7 +65,7 @@ version = "1.0.12"
 optional = true
 
 [features]
-default = ["heapless-cas", "use-std", "embedded-io"]
+default = ["heapless-cas", "use-std"]
 
 use-std = ["serde/std", "alloc", "embedded-io/std"]
 heapless-cas = ["heapless", "heapless/cas"]
