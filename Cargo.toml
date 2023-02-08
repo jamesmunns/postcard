@@ -18,7 +18,6 @@ keywords = [
 ]
 documentation = "https://docs.rs/postcard/"
 
-
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
@@ -45,7 +44,11 @@ version = "0.2.3"
 default-features = false
 
 [dependencies.defmt]
-version = "0.3.0"
+version = "0.3"
+optional = true
+
+[dependencies.embedded-io]
+version = "0.4"
 optional = true
 
 [dependencies.postcard-derive]
@@ -62,9 +65,9 @@ version = "1.0.12"
 optional = true
 
 [features]
-default = ["heapless-cas"]
+default = ["heapless-cas", "use-std", "embedded-io"]
 
-use-std = ["serde/std", "alloc"]
+use-std = ["serde/std", "alloc", "embedded-io/std"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]

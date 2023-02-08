@@ -255,6 +255,50 @@ where
     )
 }
 
+/// Serialize a `T` to a [embedded_io::blocking::Write],
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_eio;
+/// let mut buf: [u8; 32] = [0; 32];
+/// let mut writer: &mut [u8] = &mut buf;
+///
+/// let ser = to_eio(&true, &mut writer).unwrap();
+/// to_eio("Hi!", ser).unwrap();
+/// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
+/// ```
+#[cfg(feature = "embedded-io")]
+pub fn to_eio<'a, 'b, T, W>(value: &'b T, writer: &'a mut W) -> Result<&'a mut W>
+where
+    T: Serialize + ?Sized,
+    W: embedded_io::blocking::Write,
+{
+    serialize_with_flavor::<T, _, _>(value, writer)
+}
+
+/// Serialize a `T` to a [std::io::Write],
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_io;
+/// let mut buf: [u8; 32] = [0; 32];
+/// let mut writer: &mut [u8] = &mut buf;
+///
+/// let ser = to_io(&true, &mut writer).unwrap();
+/// to_io("Hi!", ser).unwrap();
+/// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
+/// ```
+#[cfg(feature = "use-std")]
+pub fn to_io<'a, 'b, T, W>(value: &'b T, writer: &'a mut W) -> Result<&'a mut W>
+where
+    T: Serialize + ?Sized,
+    W: std::io::Write,
+{
+    let mut adapter = embedded_io::adapters::FromStd::new(writer);
+    serialize_with_flavor::<T, _, _>(value, &mut adapter)?;
+    Ok(adapter.into_inner())
+}
+
 /// Conveniently serialize a `T` to the given slice, with the resulting slice containing
 /// data followed by a 32-bit CRC. The CRC bytes are included in the output buffer.
 ///

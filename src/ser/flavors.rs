@@ -212,6 +212,38 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
+#[cfg(feature = "embedded-io")]
+mod io {
+
+    use super::Flavor;
+    use crate::{Error, Result};
+
+    impl<T> Flavor for T
+    where
+        T: embedded_io::blocking::Write,
+    {
+        type Output = T;
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> Result<()> {
+            self.write_all(&[data])
+                .map_err(|_| Error::SerializeBufferFull)?;
+            Ok(())
+        }
+
+        #[inline(always)]
+        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+            self.write_all(b).map_err(|_| Error::SerializeBufferFull)?;
+            Ok(())
+        }
+
+        fn finalize(mut self) -> Result<Self::Output> {
+            self.flush().map_err(|_| Error::SerializeBufferFull)?;
+            Ok(self)
+        }
+    }
+}
+
 #[cfg(feature = "heapless")]
 mod heapless_vec {
     use super::Flavor;

@@ -163,6 +163,182 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
+/// Support for [std::io] or [embedded-io] traits
+#[cfg(any(feature = "embedded-io", feature = "use-std"))]
+pub mod io {
+    use crate::{Error, Result};
+    use core::marker::PhantomData;
+
+    struct SlidingBuffer<'de> {
+        cursor: *mut u8,
+        end: *const u8,
+        _pl: PhantomData<&'de [u8]>,
+    }
+
+    impl<'de> SlidingBuffer<'de> {
+        pub fn new(sli: &'de mut [u8]) -> Self {
+            Self {
+                cursor: sli.as_mut_ptr(),
+                end: unsafe { sli.as_ptr().add(sli.len()) },
+                _pl: PhantomData,
+            }
+        }
+
+        #[inline]
+        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8]> {
+            let remain = (self.end as usize) - (self.cursor as usize);
+            let buff = if remain < ct {
+                return Err(Error::DeserializeUnexpectedEnd);
+            } else {
+                unsafe {
+                    let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
+                    self.cursor = self.cursor.add(ct);
+                    sli
+                }
+            };
+
+            Ok(buff)
+        }
+
+        fn complete(self) -> Result<&'de mut [u8]> {
+            let remain = (self.end as usize) - (self.cursor as usize);
+            unsafe { Ok(core::slice::from_raw_parts_mut(self.cursor, remain)) }
+        }
+    }
+
+    /// Support for [embedded_io] traits
+    #[cfg(feature = "embedded-io")]
+    pub mod eio {
+        use super::super::Flavor;
+        use super::SlidingBuffer;
+        use crate::{Error, Result};
+
+        /// Wrapper over a [embedded_io::blocking::Read] and a sliding buffer to implement the [Flavor] trait
+        pub struct EIOReader<'de, T>
+        where
+            T: embedded_io::blocking::Read,
+        {
+            reader: T,
+            buff: SlidingBuffer<'de>,
+        }
+
+        impl<'de, T> EIOReader<'de, T>
+        where
+            T: embedded_io::blocking::Read,
+        {
+            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+                Self {
+                    reader,
+                    buff: SlidingBuffer::new(buff),
+                }
+            }
+        }
+
+        impl<'de, T> Flavor<'de> for EIOReader<'de, T>
+        where
+            T: embedded_io::blocking::Read + 'de,
+        {
+            type Remainder = (T, &'de mut [u8]);
+            type Source = &'de [u8];
+
+            #[inline]
+            fn pop(&mut self) -> Result<u8> {
+                let mut val = [0; 1];
+                self.reader
+                    .read(&mut val)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(val[0])
+            }
+
+            #[inline]
+            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+                let buff = self.buff.take_n(ct)?;
+                self.reader
+                    .read_exact(buff)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(buff)
+            }
+
+            /// Return the remaining (unused) bytes in the Deserializer
+            fn finalize(self) -> Result<(T, &'de mut [u8])> {
+                let buf = self.buff.complete()?;
+                Ok((self.reader, buf))
+            }
+        }
+    }
+
+    /// Support for [std::io] traits
+    #[cfg(feature = "use-std")]
+    pub mod io {
+        use super::super::Flavor;
+        use super::SlidingBuffer;
+        use crate::{Error, Result};
+
+        /// Wrapper over a [std::io::Read] and a sliding buffer to implement the [Flavor] trait
+        pub struct IOReader<'de, T>
+        where
+            T: std::io::Read,
+        {
+            reader: T,
+            buff: SlidingBuffer<'de>,
+        }
+
+        impl<'de, T> IOReader<'de, T>
+        where
+            T: std::io::Read,
+        {
+            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+                Self {
+                    reader,
+                    buff: SlidingBuffer::new(buff),
+                }
+            }
+        }
+
+        impl<'de, T> Flavor<'de> for IOReader<'de, T>
+        where
+            T: std::io::Read + 'de,
+        {
+            type Remainder = (T, &'de mut [u8]);
+            type Source = &'de [u8];
+
+            #[inline]
+            fn pop(&mut self) -> Result<u8> {
+                let mut val = [0; 1];
+                self.reader
+                    .read(&mut val)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(val[0])
+            }
+
+            #[inline]
+            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+                let buff = self.buff.take_n(ct)?;
+                self.reader
+                    .read_exact(buff)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(buff)
+            }
+
+            /// Return the remaining (unused) bytes in the Deserializer
+            fn finalize(self) -> Result<(T, &'de mut [u8])> {
+                let buf = self.buff.complete()?;
+                Ok((self.reader, buf))
+            }
+        }
+    }
+}
+
+// This is a terrible checksum implementation to make sure that we can effectively
+// use the deserialization flavor. This is kept as a test (and not published)
+// because an 8-bit checksum is not ACTUALLY useful for almost anything.
+//
+// You could certainly do something similar with a CRC32, cryptographic sig,
+// or something else
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde::{Deserialize, Serialize};
 ////////////////////////////////////////
 // CRC
 ////////////////////////////////////////

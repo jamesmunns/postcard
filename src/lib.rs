@@ -88,8 +88,17 @@ pub use ser::{serialize_with_flavor, serializer::Serializer, to_slice, to_slice_
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
 
+#[cfg(feature = "embedded-io")]
+pub use ser::to_eio;
+
+#[cfg(feature = "embedded-io")]
+pub use de::from_eio;
+
 #[cfg(feature = "use-std")]
-pub use ser::{to_stdvec, to_stdvec_cobs};
+pub use ser::{to_io, to_stdvec, to_stdvec_cobs};
+
+#[cfg(feature = "use-std")]
+pub use de::from_io;
 
 #[cfg(feature = "alloc")]
 pub use ser::{to_allocvec, to_allocvec_cobs};
