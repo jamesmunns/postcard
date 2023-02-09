@@ -69,10 +69,10 @@ where
 
 /// Deserialize a message of type `T` from a [embedded_io::blocking::Read].
 #[cfg(feature = "embedded-io")]
-pub fn from_eio<'a, T, R>(val: (&'a mut R, &'a mut [u8])) -> Result<(T, (&'a mut R, &'a mut [u8]))>
+pub fn from_eio<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
     T: Deserialize<'a>,
-    R: embedded_io::blocking::Read,
+    R: embedded_io::blocking::Read + 'a,
 {
     let flavor = flavors::io::eio::EIOReader::new(val.0, val.1);
     let mut deserializer = Deserializer::from_flavor(flavor);
@@ -82,13 +82,10 @@ where
 
 /// Deserialize a message of type `T` from a[std::io::Read].
 #[cfg(feature = "use-std")]
-pub fn from_io<'a, 'b, T, R>(
-    val: (&'a mut R, &'b mut [u8]),
-) -> Result<(T, (&'a mut R, &'b mut [u8]))>
+pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
-    'a: 'b,
-    T: Deserialize<'b>,
-    R: std::io::Read,
+    T: Deserialize<'a>,
+    R: std::io::Read + 'a,
 {
     let flavor = flavors::io::io::IOReader::new(val.0, val.1);
     let mut deserializer = Deserializer::from_flavor(flavor);

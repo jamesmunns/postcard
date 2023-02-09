@@ -69,7 +69,7 @@ default = ["heapless-cas"]
 
 use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
-alloc = ["serde/alloc"]
+alloc = ["serde/alloc", "embedded-io/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
 
