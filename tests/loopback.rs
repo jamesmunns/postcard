@@ -196,7 +196,7 @@ fn std_io_loopback() {
     }
 
     test_io(DataEnum::Sho(0x6969, 0x07), &[0x05, 0xE9, 0xD2, 0x01, 0x07]);
-    test_one(
+    test_io(
         BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
@@ -233,7 +233,7 @@ fn std_eio_loopback() {
     }
 
     test_io(DataEnum::Sho(0x6969, 0x07), &[0x05, 0xE9, 0xD2, 0x01, 0x07]);
-    test_one(
+    test_io(
         BasicU8S {
             st: 0xABCD,
             ei: 0xFE,
