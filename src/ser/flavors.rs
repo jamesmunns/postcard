@@ -212,13 +212,67 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
+/// Wrapper over a [std::iter::Extend<u8>] that implements the flavor trait
+pub struct ExtendFlavor<T> {
+    iter: T,
+}
+
+impl<T> ExtendFlavor<T>
+where
+    T: core::iter::Extend<u8>,
+{
+    /// Create a new [Self] flavor from a given [std::iter::Extend<u8>]
+    pub fn new(iter: T) -> Self {
+        Self { iter }
+    }
+}
+
+impl<T> Flavor for ExtendFlavor<T>
+where
+    T: core::iter::Extend<u8>,
+{
+    type Output = T;
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> Result<()> {
+        self.iter.extend([data]);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+        self.iter.extend(b.iter().cloned());
+        Ok(())
+    }
+
+    fn finalize(self) -> Result<Self::Output> {
+        Ok(self.iter)
+    }
+}
+
+/// Support for the [embedded-io] traits
 #[cfg(feature = "embedded-io")]
-mod io {
+pub mod eio {
 
     use super::Flavor;
     use crate::{Error, Result};
 
-    impl<T> Flavor for T
+    /// Wrapper over a [embedded_io::blocking::Write] that implements the flavor trait
+    pub struct WriteFlavor<T> {
+        writer: T,
+    }
+
+    impl<T> WriteFlavor<T>
+    where
+        T: embedded_io::blocking::Write,
+    {
+        /// Create a new [Self] flavor from a given [std::io::Write]
+        pub fn new(writer: T) -> Self {
+            Self { writer }
+        }
+    }
+
+    impl<T> Flavor for WriteFlavor<T>
     where
         T: embedded_io::blocking::Write,
     {
@@ -226,20 +280,78 @@ mod io {
 
         #[inline(always)]
         fn try_push(&mut self, data: u8) -> Result<()> {
-            self.write_all(&[data])
+            self.writer
+                .write_all(&[data])
                 .map_err(|_| Error::SerializeBufferFull)?;
             Ok(())
         }
 
         #[inline(always)]
         fn try_extend(&mut self, b: &[u8]) -> Result<()> {
-            self.write_all(b).map_err(|_| Error::SerializeBufferFull)?;
+            self.writer
+                .write_all(b)
+                .map_err(|_| Error::SerializeBufferFull)?;
             Ok(())
         }
 
         fn finalize(mut self) -> Result<Self::Output> {
-            self.flush().map_err(|_| Error::SerializeBufferFull)?;
-            Ok(self)
+            self.writer
+                .flush()
+                .map_err(|_| Error::SerializeBufferFull)?;
+            Ok(self.writer)
+        }
+    }
+}
+
+/// Support for the [std::io] traits
+#[cfg(feature = "use-std")]
+pub mod io {
+
+    use super::Flavor;
+    use crate::{Error, Result};
+
+    /// Wrapper over a [std::io::Write] that implements the flavor trait
+    pub struct WriteFlavor<T> {
+        writer: T,
+    }
+
+    impl<T> WriteFlavor<T>
+    where
+        T: std::io::Write,
+    {
+        /// Create a new [Self] flavor from a given [std::io::Write]
+        pub fn new(writer: T) -> Self {
+            Self { writer }
+        }
+    }
+
+    impl<T> Flavor for WriteFlavor<T>
+    where
+        T: std::io::Write,
+    {
+        type Output = T;
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> Result<()> {
+            self.writer
+                .write_all(&[data])
+                .map_err(|_| Error::SerializeBufferFull)?;
+            Ok(())
+        }
+
+        #[inline(always)]
+        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+            self.writer
+                .write_all(b)
+                .map_err(|_| Error::SerializeBufferFull)?;
+            Ok(())
+        }
+
+        fn finalize(mut self) -> Result<Self::Output> {
+            self.writer
+                .flush()
+                .map_err(|_| Error::SerializeBufferFull)?;
+            Ok(self.writer)
         }
     }
 }

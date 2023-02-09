@@ -255,6 +255,25 @@ where
     )
 }
 
+/// Serialize a `T` to a [core::iter::Extend],
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_extend;
+/// let mut vec = Vec::new();
+///
+/// let ser = to_extend(&true, vec).unwrap();
+/// let vec = to_extend("Hi!", ser).unwrap();
+/// assert_eq!(&vec[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
+/// ```
+pub fn to_extend<'a, T, W>(value: &'a T, writer: W) -> Result<W>
+where
+    T: Serialize + ?Sized,
+    W: core::iter::Extend<u8>,
+{
+    serialize_with_flavor::<T, _, _>(value, flavors::ExtendFlavor::new(writer))
+}
+
 /// Serialize a `T` to a [embedded_io::blocking::Write],
 /// ## Example
 ///
@@ -268,12 +287,12 @@ where
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "embedded-io")]
-pub fn to_eio<'a, 'b, T, W>(value: &'b T, writer: &'a mut W) -> Result<&'a mut W>
+pub fn to_eio<'b, T, W>(value: &'b T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: embedded_io::blocking::Write,
 {
-    serialize_with_flavor::<T, _, _>(value, writer)
+    serialize_with_flavor::<T, _, _>(value, flavors::eio::WriteFlavor::new(writer))
 }
 
 /// Serialize a `T` to a [std::io::Write],
@@ -289,14 +308,12 @@ where
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_io<'a, 'b, T, W>(value: &'b T, writer: &'a mut W) -> Result<&'a mut W>
+pub fn to_io<'b, T, W>(value: &'b T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: std::io::Write,
 {
-    let mut adapter = embedded_io::adapters::FromStd::new(writer);
-    serialize_with_flavor::<T, _, _>(value, &mut adapter)?;
-    Ok(adapter.into_inner())
+    serialize_with_flavor::<T, _, _>(value, flavors::io::WriteFlavor::new(writer))
 }
 
 /// Conveniently serialize a `T` to the given slice, with the resulting slice containing
