@@ -4,7 +4,12 @@ Changes will be described here.
 
 ## 1.0.3 -> Unreleased
 
+* Nothing yet!
+
+## 1.0.3 -> 1.0.4
+
 * fix cobs accumulator out-of-bounds index when data is 1 byte too long ([PR#90])
+* Move cobs accumulator tests into a `cfg(test)` module
 
 [PR#90]: https://github.com/jamesmunns/postcard/pull/90
 
