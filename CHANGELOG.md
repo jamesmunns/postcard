@@ -2,9 +2,33 @@
 
 Changes will be described here.
 
-## 1.0.2 -> Unreleased
+## 1.0.3 -> Unreleased
 
 * Nothing yet!
+
+## 1.0.2 -> 1.0.3
+
+* PhantomData's T doesn't need MaxSize impl ([PR#87])
+* Add function for computing the postcard serialized size of a value. ([PR#86])
+* Fix typos & encoding example in wire doc ([PR#83])
+* Optimize varint decode ([PR#62])
+* Bump postcard-derive version ([PR#74])
+* add std::string::String and alloc::string::String ([PR#76])
+* Make fixints usable through serde field attributes instead of wrappers ([PR#69])
+* Add support for 16-bit and 8-bit architectures ([PR#64])
+* Add feed_ref to cobs_accumulator ([PR#70])
+* Add a link to doc.rs documentation in README ([PR#72])
+
+[PR#87]: https://github.com/jamesmunns/postcard/pull/87
+[PR#86]: https://github.com/jamesmunns/postcard/pull/86
+[PR#83]: https://github.com/jamesmunns/postcard/pull/83
+[PR#62]: https://github.com/jamesmunns/postcard/pull/62
+[PR#74]: https://github.com/jamesmunns/postcard/pull/74
+[PR#76]: https://github.com/jamesmunns/postcard/pull/76
+[PR#69]: https://github.com/jamesmunns/postcard/pull/69
+[PR#64]: https://github.com/jamesmunns/postcard/pull/64
+[PR#70]: https://github.com/jamesmunns/postcard/pull/70
+[PR#72]: https://github.com/jamesmunns/postcard/pull/72
 
 ## 1.0.1 -> 1.0.2
 
