@@ -4,7 +4,9 @@ Changes will be described here.
 
 ## 1.0.3 -> Unreleased
 
-* Nothing yet!
+* fix cobs accumulator out-of-bounds index when data is 1 byte too long ([PR#90])
+
+[PR#90]: https://github.com/jamesmunns/postcard/pull/90
 
 ## 1.0.2 -> 1.0.3
 
