@@ -1,3 +1,4 @@
+mod all_fields_with;
 mod max_size;
 mod schema;
 
@@ -11,4 +12,12 @@ pub fn derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStream
 #[proc_macro_derive(Schema)]
 pub fn derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     schema::do_derive_schema(item)
+}
+
+#[proc_macro_attribute]
+pub fn all_fields_with(
+    attr: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    all_fields_with::all_fields_with(attr, input)
 }

@@ -244,4 +244,48 @@ mod tests {
         let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
         assert_eq!(deserialized, input);
     }
+
+    #[cfg(feature = "experimental-derive")]
+    #[test]
+    fn test_all_fields_with_be() {
+        #[postcard_derive::all_fields_with("crate::fixint::be")]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyBE {
+            x: u16,
+            y: u32,
+        }
+
+        let input = DefinitelyBE {
+            x: 0xABCD,
+            y: 0xEF123456,
+        };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56]);
+
+        let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[cfg(feature = "experimental-derive")]
+    #[test]
+    fn test_all_fields_with_le() {
+        #[postcard_derive::all_fields_with("crate::fixint::le")]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyLE {
+            x: u16,
+            y: u32,
+        }
+
+        let input = DefinitelyLE {
+            x: 0xABCD,
+            y: 0xEF123456,
+        };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xCD, 0xAB, 0x56, 0x34, 0x12, 0xEF]);
+
+        let deserialized: DefinitelyLE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
 }
