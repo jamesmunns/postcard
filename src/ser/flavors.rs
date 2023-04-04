@@ -236,7 +236,7 @@ mod heapless_vec {
         }
     }
 
-    impl<'a, const B: usize> Flavor for HVec<B> {
+    impl<const B: usize> Flavor for HVec<B> {
         type Output = Vec<u8, B>;
 
         #[inline(always)]
@@ -380,7 +380,7 @@ where
     }
 }
 
-impl<'a, B> Flavor for Cobs<B>
+impl<B> Flavor for Cobs<B>
 where
     B: Flavor + IndexMut<usize, Output = u8>,
 {
@@ -409,6 +409,77 @@ where
         self.flav.try_push(0)?;
         self.flav.finalize()
     }
+}
+
+////////////////////////////////////////
+// CRC
+////////////////////////////////////////
+
+/// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
+/// the serialized data. The output of this flavor receives the CRC appended to the bytes.
+///
+/// CRCs are used for error detection when reading data back.
+///
+/// The `crc` feature requires enabling to use this module.
+///
+/// More on CRCs: https://en.wikipedia.org/wiki/Cyclic_redundancy_check.
+#[cfg(feature = "crc")]
+pub mod crc {
+    use crc::Digest;
+    use crc::Width;
+
+    use super::Flavor;
+    use crate::Result;
+
+    /// Manages CRC modifications as a flavor.
+    pub struct CrcModifier<'a, B, W>
+    where
+        B: Flavor,
+        W: Width,
+    {
+        flav: B,
+        digest: Digest<'a, W>,
+    }
+
+    impl<'a, B, W> CrcModifier<'a, B, W>
+    where
+        B: Flavor,
+        W: Width,
+    {
+        /// Create a new CRC modifier Flavor.
+        pub fn new(bee: B, digest: Digest<'a, W>) -> Self {
+            Self { flav: bee, digest }
+        }
+    }
+
+    macro_rules! impl_flavor {
+        ($( $int:ty ),*) => {
+            $(
+                impl<'a, B> Flavor for CrcModifier<'a, B, $int>
+                where
+                    B: Flavor,
+                {
+                    type Output = <B as Flavor>::Output;
+
+                    #[inline(always)]
+                    fn try_push(&mut self, data: u8) -> Result<()> {
+                        self.digest.update(&[data]);
+                        self.flav.try_push(data)
+                    }
+
+                    fn finalize(mut self) -> Result<Self::Output> {
+                        let crc = self.digest.finalize();
+                        for byte in crc.to_le_bytes() {
+                            self.flav.try_push(byte)?;
+                        }
+                        self.flav.finalize()
+                    }
+                }
+            )*
+        };
+    }
+
+    impl_flavor![u8, u16, u32, u64, u128];
 }
 
 /// The `Size` flavor is a measurement flavor, which accumulates the number of bytes needed to

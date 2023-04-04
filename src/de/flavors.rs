@@ -163,120 +163,107 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
-// This is a terrible checksum implementation to make sure that we can effectively
-// use the deserialization flavor. This is kept as a test (and not published)
-// because an 8-bit checksum is not ACTUALLY useful for almost anything.
-//
-// You could certainly do something similar with a CRC32, cryptographic sig,
-// or something else
-#[cfg(test)]
-mod test {
-    use super::*;
-    use serde::{Deserialize, Serialize};
+////////////////////////////////////////
+// CRC
+////////////////////////////////////////
 
-    struct Checksum<'de, F>
+/// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
+/// the serialized data. The flavor will check the CRC assuming that it has been appended to the bytes.
+///
+/// CRCs are used for error detection when reading data back.
+///
+/// The `crc` feature requires enabling to use this module.
+///
+/// More on CRCs: https://en.wikipedia.org/wiki/Cyclic_redundancy_check.
+#[cfg(feature = "crc")]
+pub mod crc {
+    use core::convert::TryInto;
+
+    use crc::Digest;
+    use crc::Width;
+
+    use super::Flavor;
+    use crate::Error;
+    use crate::Result;
+
+    /// Manages CRC modifications as a flavor.
+    pub struct CrcModifier<'de, B, W>
     where
-        F: Flavor<'de> + 'de,
+        B: Flavor<'de>,
+        W: Width,
     {
-        flav: F,
-        checksum: u8,
-        _plt: PhantomData<&'de ()>,
+        flav: B,
+        digest: Digest<'de, W>,
     }
 
-    impl<'de, F> Checksum<'de, F>
+    impl<'de, B, W> CrcModifier<'de, B, W>
     where
-        F: Flavor<'de> + 'de,
+        B: Flavor<'de>,
+        W: Width,
     {
-        pub fn from_flav(flav: F) -> Self {
-            Self {
-                flav,
-                checksum: 0,
-                _plt: PhantomData,
-            }
+        /// Create a new Crc modifier Flavor.
+        pub fn new(bee: B, digest: Digest<'de, W>) -> Self {
+            Self { flav: bee, digest }
         }
     }
 
-    impl<'de, F> Flavor<'de> for Checksum<'de, F>
-    where
-        F: Flavor<'de> + 'de,
-    {
-        type Remainder = (<F as Flavor<'de>>::Remainder, u8);
-        type Source = F;
+    macro_rules! impl_flavor {
+        ($( $int:ty ),*) => {
+            $(
+                impl<'de, B> Flavor<'de> for CrcModifier<'de, B, $int>
+                where
+                    B: Flavor<'de>,
+                {
+                    type Remainder = B::Remainder;
 
-        fn pop(&mut self) -> Result<u8> {
-            match self.flav.pop() {
-                Ok(u) => {
-                    self.checksum = self.checksum.wrapping_add(u);
-                    Ok(u)
+                    type Source = B::Source;
+
+                    #[inline]
+                    fn pop(&mut self) -> Result<u8> {
+                        match self.flav.pop() {
+                            Ok(byte) => {
+                                self.digest.update(&[byte]);
+                                Ok(byte)
+                            }
+                            e @ Err(_) => e,
+                        }
+                    }
+
+                    #[inline]
+                    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+                        match self.flav.try_take_n(ct) {
+                            Ok(bytes) => {
+                                self.digest.update(bytes);
+                                Ok(bytes)
+                            }
+                            e @ Err(_) => e,
+                        }
+                    }
+
+                    fn finalize(mut self) -> Result<Self::Remainder> {
+                        match self.flav.try_take_n(core::mem::size_of::<$int>()) {
+                            Ok(prev_crc_bytes) => match self.flav.finalize() {
+                                Ok(remainder) => {
+                                    let crc = self.digest.finalize();
+                                    let le_bytes = prev_crc_bytes
+                                        .try_into()
+                                        .map_err(|_| Error::DeserializeBadEncoding)?;
+                                    let prev_crc = <$int>::from_le_bytes(le_bytes);
+                                    if crc == prev_crc {
+                                        Ok(remainder)
+                                    } else {
+                                        Err(Error::DeserializeBadEncoding)
+                                    }
+                                }
+                                e @ Err(_) => e,
+                            },
+                            Err(e) => Err(e),
+                        }
+                    }
                 }
-                Err(e) => Err(e),
-            }
-        }
-        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-            match self.flav.try_take_n(ct) {
-                Ok(u) => {
-                    u.iter().for_each(|u| {
-                        self.checksum = self.checksum.wrapping_add(*u);
-                    });
-                    Ok(u)
-                }
-                Err(e) => Err(e),
-            }
-        }
-        fn finalize(self) -> Result<Self::Remainder> {
-            Ok((self.flav.finalize()?, self.checksum))
-        }
-    }
-
-    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-    pub struct SomeData<'a> {
-        #[serde(borrow)]
-        sli: &'a [u8],
-        sts: &'a str,
-        foo: u64,
-        bar: u128,
-    }
-
-    #[test]
-    fn smoke() {
-        const EXPECTED: &[u8] = &[
-            4, 255, 1, 34, 51, 19, 116, 104, 105, 115, 32, 105, 115, 32, 97, 32, 103, 111, 111,
-            100, 32, 116, 101, 115, 116, 170, 213, 170, 213, 170, 213, 170, 213, 170, 1, 255, 255,
-            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 127,
-        ];
-
-        // Calculate simple 8-bit checksum
-        let mut check: u8 = 0;
-        EXPECTED.iter().for_each(|u| check = check.wrapping_add(*u));
-
-        let mut buf = [0u8; 256];
-        let data = SomeData {
-            sli: &[0xFF, 0x01, 0x22, 0x33],
-            sts: "this is a good test",
-            foo: (u64::MAX / 3) * 2,
-            bar: u128::MAX / 4,
+            )*
         };
-        let used = crate::to_slice(&data, &mut buf).unwrap();
-        assert_eq!(used, EXPECTED);
-        let used = used.len();
-
-        // Put the checksum at the end
-        buf[used] = check;
-
-        let mut deser = crate::de::Deserializer::from_flavor(Checksum::from_flav(Slice::new(&buf)));
-
-        let t = SomeData::<'_>::deserialize(&mut deser).unwrap();
-        assert_eq!(t, data);
-
-        // Normally, you'd probably expect the check
-        let (rem, cksm) = deser.finalize().unwrap();
-
-        // The pre-calculated checksum we stuffed at the end is the
-        // first "unused" byte
-        assert_eq!(rem[0], check);
-
-        // the one we calculated during serialization matches the
-        // pre-calculated one
-        assert_eq!(cksm, check);
     }
+
+    impl_flavor![u8, u16, u32, u64, u128];
 }
