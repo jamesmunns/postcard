@@ -56,6 +56,9 @@ optional = true
 version = "3.0.1"
 optional = true
 
+[dependencies.paste]
+version = "1.0.12"
+
 [features]
 default = ["heapless-cas"]
 

@@ -101,6 +101,9 @@ pub use std_vec::*;
 #[cfg(feature = "alloc")]
 pub use alloc_vec::*;
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 /// The serialization Flavor trait
 ///
 /// This is used as the primary way to encode serialized data into some kind of buffer,
@@ -422,14 +425,21 @@ where
 ///
 /// The `crc` feature requires enabling to use this module.
 ///
-/// More on CRCs: https://en.wikipedia.org/wiki/Cyclic_redundancy_check.
-#[cfg(feature = "crc")]
+/// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
+#[cfg(feature = "use-crc")]
 pub mod crc {
     use crc::Digest;
     use crc::Width;
+    use serde::Serialize;
 
+    #[cfg(feature = "alloc")]
+    use super::alloc;
     use super::Flavor;
+    use super::Slice;
+
+    use crate::serialize_with_flavor;
     use crate::Result;
+    use paste::paste;
 
     /// Manages CRC modifications as a flavor.
     pub struct CrcModifier<'a, B, W>
@@ -455,24 +465,70 @@ pub mod crc {
     macro_rules! impl_flavor {
         ($( $int:ty ),*) => {
             $(
-                impl<'a, B> Flavor for CrcModifier<'a, B, $int>
-                where
-                    B: Flavor,
-                {
-                    type Output = <B as Flavor>::Output;
+                paste! {
+                    impl<'a, B> Flavor for CrcModifier<'a, B, $int>
+                    where
+                        B: Flavor,
+                    {
+                        type Output = <B as Flavor>::Output;
 
-                    #[inline(always)]
-                    fn try_push(&mut self, data: u8) -> Result<()> {
-                        self.digest.update(&[data]);
-                        self.flav.try_push(data)
+                        #[inline(always)]
+                        fn try_push(&mut self, data: u8) -> Result<()> {
+                            self.digest.update(&[data]);
+                            self.flav.try_push(data)
+                        }
+
+                        fn finalize(mut self) -> Result<Self::Output> {
+                            let crc = self.digest.finalize();
+                            for byte in crc.to_le_bytes() {
+                                self.flav.try_push(byte)?;
+                            }
+                            self.flav.finalize()
+                        }
                     }
 
-                    fn finalize(mut self) -> Result<Self::Output> {
-                        let crc = self.digest.finalize();
-                        for byte in crc.to_le_bytes() {
-                            self.flav.try_push(byte)?;
-                        }
-                        self.flav.finalize()
+                    /// Serialize a `T` to the given slice, with the resulting slice containing
+                    /// data followed by a CRC. The CRC bytes are included in the output buffer.
+                    ///
+                    /// When successful, this function returns the slice containing the
+                    /// serialized and encoded message.
+                    pub fn [<to_slice_ $int>]<'a, 'b, T>(
+                        value: &'b T,
+                        buf: &'a mut [u8],
+                        digest: Digest<'a, u32>,
+                    ) -> Result<&'a mut [u8]>
+                    where
+                        T: Serialize + ?Sized,
+                    {
+                        serialize_with_flavor(value, CrcModifier::new(Slice::new(buf), digest))
+                    }
+
+                    /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+                    /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
+                    /// Requires the (default) `heapless` feature.
+                    #[cfg(feature = "heapless")]
+                    pub fn [<to_vec_ $int>]<'a, T, const B: usize>(
+                        value: &T,
+                        digest: Digest<'a, u32>,
+                    ) -> Result<heapless::Vec<u8, B>>
+                    where
+                        T: Serialize + ?Sized,
+                    {
+                        use super::HVec;
+
+                        serialize_with_flavor(value, CrcModifier::new(HVec::default(), digest))
+                    }
+
+                    /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+                    /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
+                    #[cfg(feature = "alloc")]
+                    pub fn [<to_allocvec_ $int>]<'a, T>(value: &T, digest: Digest<'a, u32>) -> Result<alloc::vec::Vec<u8>>
+                    where
+                        T: Serialize + ?Sized,
+                    {
+                        use super::AllocVec;
+
+                        serialize_with_flavor(value, CrcModifier::new(AllocVec::new(), digest))
                     }
                 }
             )*

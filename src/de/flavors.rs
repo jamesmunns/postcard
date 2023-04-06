@@ -174,17 +174,22 @@ impl<'de> Flavor<'de> for Slice<'de> {
 ///
 /// The `crc` feature requires enabling to use this module.
 ///
-/// More on CRCs: https://en.wikipedia.org/wiki/Cyclic_redundancy_check.
-#[cfg(feature = "crc")]
+/// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
+#[cfg(feature = "use-crc")]
 pub mod crc {
     use core::convert::TryInto;
 
     use crc::Digest;
     use crc::Width;
+    use serde::Deserialize;
 
     use super::Flavor;
+    use super::Slice;
+
+    use crate::Deserializer;
     use crate::Error;
     use crate::Result;
+    use paste::paste;
 
     /// Manages CRC modifications as a flavor.
     pub struct CrcModifier<'de, B, W>
@@ -210,55 +215,82 @@ pub mod crc {
     macro_rules! impl_flavor {
         ($( $int:ty ),*) => {
             $(
-                impl<'de, B> Flavor<'de> for CrcModifier<'de, B, $int>
-                where
-                    B: Flavor<'de>,
-                {
-                    type Remainder = B::Remainder;
+                paste! {
+                    impl<'de, B> Flavor<'de> for CrcModifier<'de, B, $int>
+                    where
+                        B: Flavor<'de>,
+                    {
+                        type Remainder = B::Remainder;
 
-                    type Source = B::Source;
+                        type Source = B::Source;
 
-                    #[inline]
-                    fn pop(&mut self) -> Result<u8> {
-                        match self.flav.pop() {
-                            Ok(byte) => {
-                                self.digest.update(&[byte]);
-                                Ok(byte)
-                            }
-                            e @ Err(_) => e,
-                        }
-                    }
-
-                    #[inline]
-                    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-                        match self.flav.try_take_n(ct) {
-                            Ok(bytes) => {
-                                self.digest.update(bytes);
-                                Ok(bytes)
-                            }
-                            e @ Err(_) => e,
-                        }
-                    }
-
-                    fn finalize(mut self) -> Result<Self::Remainder> {
-                        match self.flav.try_take_n(core::mem::size_of::<$int>()) {
-                            Ok(prev_crc_bytes) => match self.flav.finalize() {
-                                Ok(remainder) => {
-                                    let crc = self.digest.finalize();
-                                    let le_bytes = prev_crc_bytes
-                                        .try_into()
-                                        .map_err(|_| Error::DeserializeBadEncoding)?;
-                                    let prev_crc = <$int>::from_le_bytes(le_bytes);
-                                    if crc == prev_crc {
-                                        Ok(remainder)
-                                    } else {
-                                        Err(Error::DeserializeBadEncoding)
-                                    }
+                        #[inline]
+                        fn pop(&mut self) -> Result<u8> {
+                            match self.flav.pop() {
+                                Ok(byte) => {
+                                    self.digest.update(&[byte]);
+                                    Ok(byte)
                                 }
                                 e @ Err(_) => e,
-                            },
-                            Err(e) => Err(e),
+                            }
                         }
+
+                        #[inline]
+                        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+                            match self.flav.try_take_n(ct) {
+                                Ok(bytes) => {
+                                    self.digest.update(bytes);
+                                    Ok(bytes)
+                                }
+                                e @ Err(_) => e,
+                            }
+                        }
+
+                        fn finalize(mut self) -> Result<Self::Remainder> {
+                            match self.flav.try_take_n(core::mem::size_of::<$int>()) {
+                                Ok(prev_crc_bytes) => match self.flav.finalize() {
+                                    Ok(remainder) => {
+                                        let crc = self.digest.finalize();
+                                        let le_bytes = prev_crc_bytes
+                                            .try_into()
+                                            .map_err(|_| Error::DeserializeBadEncoding)?;
+                                        let prev_crc = <$int>::from_le_bytes(le_bytes);
+                                        if crc == prev_crc {
+                                            Ok(remainder)
+                                        } else {
+                                            Err(Error::DeserializeBadEncoding)
+                                        }
+                                    }
+                                    e @ Err(_) => e,
+                                },
+                                Err(e) => Err(e),
+                            }
+                        }
+                    }
+
+                    /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
+                    /// of the byte slice is not returned.
+                    pub fn [<from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, u32>) -> Result<T>
+                    where
+                        T: Deserialize<'a>,
+                    {
+                        let flav = CrcModifier::new(Slice::new(s), digest);
+                        let mut deserializer = Deserializer::from_flavor(flav);
+                        let r = T::deserialize(&mut deserializer)?;
+                        let _ = deserializer.finalize()?;
+                        Ok(r)
+                    }
+
+                    /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
+                    /// of the byte slice is returned for further usage
+                    pub fn [<take_from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, u32>) -> Result<(T, &'a [u8])>
+                    where
+                        T: Deserialize<'a>,
+                    {
+                        let flav = CrcModifier::new(Slice::new(s), digest);
+                        let mut deserializer = Deserializer::from_flavor(flav);
+                        let t = T::deserialize(&mut deserializer)?;
+                        Ok((t, deserializer.finalize()?))
                     }
                 }
             )*

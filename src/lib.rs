@@ -91,6 +91,21 @@ pub use ser::{to_stdvec, to_stdvec_cobs};
 #[cfg(feature = "alloc")]
 pub use ser::{to_allocvec, to_allocvec_cobs};
 
+#[cfg(feature = "use-crc")]
+pub use {
+    de::{from_bytes_crc32, take_from_bytes_crc32},
+    ser::to_slice_crc32,
+};
+
+#[cfg(all(feature = "use-crc", feature = "heapless"))]
+pub use ser::to_vec_crc32;
+
+#[cfg(all(feature = "use-crc", feature = "use-std"))]
+pub use ser::to_stdvec_crc32;
+
+#[cfg(all(feature = "use-crc", feature = "alloc"))]
+pub use ser::to_allocvec_crc32;
+
 #[cfg(test)]
 mod test {
     #[test]
