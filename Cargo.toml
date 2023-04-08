@@ -58,6 +58,7 @@ optional = true
 
 [dependencies.paste]
 version = "1.0.12"
+optional = true
 
 [features]
 default = ["heapless-cas"]
@@ -66,7 +67,7 @@ use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
-use-crc = ["crc"]
+use-crc = ["crc", "paste"]
 
 # Experimental features!
 #
