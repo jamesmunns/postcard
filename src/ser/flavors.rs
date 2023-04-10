@@ -143,10 +143,11 @@ pub struct Slice<'a> {
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
+        let ptr = buf.as_mut_ptr();
         Slice {
-            start: buf.as_mut_ptr(),
-            cursor: buf.as_mut_ptr(),
-            end: unsafe { buf.as_mut_ptr().add(buf.len()) },
+            start: ptr,
+            cursor: ptr,
+            end: unsafe { ptr.add(buf.len()) },
             _pl: PhantomData,
         }
     }
