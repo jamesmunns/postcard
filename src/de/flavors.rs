@@ -270,7 +270,7 @@ pub mod crc {
 
                     /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
                     /// of the byte slice is not returned.
-                    pub fn [<from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, u32>) -> Result<T>
+                    pub fn [<from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<T>
                     where
                         T: Deserialize<'a>,
                     {
@@ -283,7 +283,7 @@ pub mod crc {
 
                     /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
                     /// of the byte slice is returned for further usage
-                    pub fn [<take_from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, u32>) -> Result<(T, &'a [u8])>
+                    pub fn [<take_from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<(T, &'a [u8])>
                     where
                         T: Deserialize<'a>,
                     {

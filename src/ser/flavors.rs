@@ -495,7 +495,7 @@ pub mod crc {
                     pub fn [<to_slice_ $int>]<'a, 'b, T>(
                         value: &'b T,
                         buf: &'a mut [u8],
-                        digest: Digest<'a, u32>,
+                        digest: Digest<'a, $int>,
                     ) -> Result<&'a mut [u8]>
                     where
                         T: Serialize + ?Sized,
@@ -509,7 +509,7 @@ pub mod crc {
                     #[cfg(feature = "heapless")]
                     pub fn [<to_vec_ $int>]<'a, T, const B: usize>(
                         value: &T,
-                        digest: Digest<'a, u32>,
+                        digest: Digest<'a, $int>,
                     ) -> Result<heapless::Vec<u8, B>>
                     where
                         T: Serialize + ?Sized,
@@ -522,7 +522,7 @@ pub mod crc {
                     /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "alloc")]
-                    pub fn [<to_allocvec_ $int>]<'a, T>(value: &T, digest: Digest<'a, u32>) -> Result<alloc::vec::Vec<u8>>
+                    pub fn [<to_allocvec_ $int>]<'a, T>(value: &T, digest: Digest<'a, $int>) -> Result<alloc::vec::Vec<u8>>
                     where
                         T: Serialize + ?Sized,
                     {
