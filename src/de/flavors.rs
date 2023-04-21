@@ -358,4 +358,13 @@ pub mod crc {
     {
         take_from_bytes_width(s, digest)
     }
+
+    /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
+    /// of the byte slice is returned for further usage
+    pub fn take_from_bytes_u8<'a, T>(s: &'a [u8], digest: Digest<'a, u8>) -> Result<(T, &'a [u8])>
+    where
+        T: Deserialize<'a>,
+    {
+        take_from_bytes_width(s, digest)
+    }
 }
