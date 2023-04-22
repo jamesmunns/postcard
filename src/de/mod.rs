@@ -20,7 +20,7 @@ where
 
 /// Deserialize a message of type `T` from a cobs-encoded byte slice. The
 /// unused portion (if any) of the byte slice is not returned.
-/// The used portion of the input slice is modified during deserialization (even if an error is returned). 
+/// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<T>
 where
@@ -32,7 +32,7 @@ where
 
 /// Deserialize a message of type `T` from a cobs-encoded byte slice. The
 /// unused portion (if any) of the byte slice is returned for further usage.
-/// The used portion of the input slice is modified during deserialization (even if an error is returned). 
+/// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
 where
@@ -66,6 +66,22 @@ where
     let t = T::deserialize(&mut deserializer)?;
     Ok((t, deserializer.finalize()?))
 }
+
+/// Conveniently deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
+/// of the byte slice is not returned.
+///
+/// See the `de_flavors::crc` module for the complete set of functions.
+/// 
+#[cfg(feature = "use-crc")]
+pub use flavors::crc::from_bytes_u32 as from_bytes_crc32;
+
+/// Conveniently deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
+/// of the byte slice is returned for further usage
+///
+/// See the `de_flavors::crc` module for the complete set of functions.
+/// 
+#[cfg(feature = "use-crc")]
+pub use flavors::crc::take_from_bytes_u32 as take_from_bytes_crc32;
 
 ////////////////////////////////////////////////////////////////////////////////
 

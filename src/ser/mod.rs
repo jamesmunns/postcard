@@ -237,6 +237,107 @@ where
     )
 }
 
+/// Conveniently serialize a `T` to the given slice, with the resulting slice containing
+/// data followed by a 32-bit CRC. The CRC bytes are included in the output buffer.
+///
+/// When successful, this function returns the slice containing the
+/// serialized and encoded message.
+///
+/// ## Example
+///
+/// ```rust
+/// use crc::{Crc, CRC_32_ISCSI};
+///
+/// let mut buf = [0; 9];
+///
+/// let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
+/// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+/// let used = postcard::to_slice_crc32(data, &mut buf, crc.digest()).unwrap();
+/// assert_eq!(used, &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+/// ```
+///
+/// See the `ser_flavors::crc` module for the complete set of functions.
+/// 
+#[cfg(feature = "use-crc")]
+pub use flavors::crc::to_slice_u32 as to_slice_crc32;
+
+/// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
+/// Requires the (default) `heapless` feature.
+///
+/// ## Example
+///
+/// ```rust
+/// use crc::{Crc, CRC_32_ISCSI};
+/// use heapless::Vec;
+/// use core::ops::Deref;
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+/// let ser: Vec<u8, 32> = postcard::to_vec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8, 32> = postcard::to_vec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30, 0xCC, 0x4B, 0x4A, 0xDA]);
+/// ```
+///
+/// See the `ser_flavors::crc` module for the complete set of functions.
+/// 
+#[cfg(all(feature = "use-crc", feature = "heapless"))]
+pub use flavors::crc::to_vec_u32 as to_vec_crc32;
+
+/// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
+///
+/// ## Example
+///
+/// ```rust
+/// use crc::{Crc, CRC_32_ISCSI};
+/// use core::ops::Deref;
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+/// let ser: Vec<u8> = postcard::to_stdvec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8> = postcard::to_stdvec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30, 0xCC, 0x4B, 0x4A, 0xDA]);
+/// ```
+///
+/// See the `ser_flavors::crc` module for the complete set of functions.
+/// 
+#[cfg(all(feature = "use-crc", feature = "use-std"))]
+pub use flavors::crc::to_allocvec_u32 as to_stdvec_crc32;
+
+/// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
+///
+/// ## Example
+///
+/// ```rust
+/// use crc::{Crc, CRC_32_ISCSI};
+/// use core::ops::Deref;
+///
+/// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+/// let ser: Vec<u8> = postcard::to_allocvec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+///
+/// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let ser: Vec<u8> = postcard::to_allocvec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30, 0xCC, 0x4B, 0x4A, 0xDA]);
+/// ```
+///
+/// See the `ser_flavors::crc` module for the complete set of functions.
+///
+#[cfg(all(feature = "use-crc", feature = "alloc"))]
+pub use flavors::crc::to_allocvec_u32 as to_allocvec_crc32;
+
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
 ///
 /// * `T`: This is the type that is being serialized
