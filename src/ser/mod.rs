@@ -257,7 +257,7 @@ where
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-/// 
+///
 #[cfg(feature = "use-crc")]
 pub use flavors::crc::to_slice_u32 as to_slice_crc32;
 
@@ -284,7 +284,7 @@ pub use flavors::crc::to_slice_u32 as to_slice_crc32;
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-/// 
+///
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
 pub use flavors::crc::to_vec_u32 as to_vec_crc32;
 
@@ -309,7 +309,7 @@ pub use flavors::crc::to_vec_u32 as to_vec_crc32;
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-/// 
+///
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
 pub use flavors::crc::to_allocvec_u32 as to_stdvec_crc32;
 

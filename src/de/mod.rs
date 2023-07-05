@@ -71,7 +71,7 @@ where
 /// of the byte slice is not returned.
 ///
 /// See the `de_flavors::crc` module for the complete set of functions.
-/// 
+///
 #[cfg(feature = "use-crc")]
 pub use flavors::crc::from_bytes_u32 as from_bytes_crc32;
 
@@ -79,7 +79,7 @@ pub use flavors::crc::from_bytes_u32 as from_bytes_crc32;
 /// of the byte slice is returned for further usage
 ///
 /// See the `de_flavors::crc` module for the complete set of functions.
-/// 
+///
 #[cfg(feature = "use-crc")]
 pub use flavors::crc::take_from_bytes_u32 as take_from_bytes_crc32;
 
