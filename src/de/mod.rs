@@ -72,6 +72,7 @@ where
 ///
 /// See the `de_flavors::crc` module for the complete set of functions.
 #[cfg(feature = "use-crc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
 #[inline]
 pub fn from_bytes_crc32<'a, T>(s: &'a [u8], digest: crc::Digest<'a, u32>) -> Result<T>
 where
@@ -85,6 +86,7 @@ where
 ///
 /// See the `de_flavors::crc` module for the complete set of functions.
 #[cfg(feature = "use-crc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
 #[inline]
 pub fn take_from_bytes_crc32<'a, T>(
     s: &'a [u8],

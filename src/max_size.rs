@@ -193,11 +193,13 @@ impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize, F: MaxSize> Max
 }
 
 #[cfg(feature = "heapless")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
 impl<T: MaxSize, const N: usize> MaxSize for heapless::Vec<T, N> {
     const POSTCARD_MAX_SIZE: usize = <[T; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
 
 #[cfg(feature = "heapless")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
 impl<const N: usize> MaxSize for heapless::String<N> {
     const POSTCARD_MAX_SIZE: usize = <[u8; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
