@@ -55,10 +55,7 @@
 //!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Slice, &mut [u8]>(
-//!     data,
-//!     Slice::new(buffer)
-//! ).unwrap();
+//! let res = serialize_with_flavor(data, Slice::new(buffer)).unwrap();
 //!
 //! assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 //! ```
@@ -78,7 +75,7 @@
 //!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+//! let res = serialize_with_flavor::<[u8], Cobs<Slice>>(
 //!     data,
 //!     Cobs::try_new(Slice::new(buffer)).unwrap(),
 //! ).unwrap();

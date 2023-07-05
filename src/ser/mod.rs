@@ -49,10 +49,7 @@ pub fn to_slice_cobs<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a m
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<Slice<'a>>, &'a mut [u8]>(
-        value,
-        Cobs::try_new(Slice::new(buf))?,
-    )
+    serialize_with_flavor(value, Cobs::try_new(Slice::new(buf))?)
 }
 
 /// Serialize a `T` to the given slice, with the resulting slice containing
@@ -86,7 +83,7 @@ pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
+    serialize_with_flavor(value, Slice::new(buf))
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -120,7 +117,7 @@ pub fn to_vec_cobs<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<HVec<B>>, Vec<u8, B>>(value, Cobs::try_new(HVec::default())?)
+    serialize_with_flavor(value, Cobs::try_new(HVec::default())?)
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
@@ -153,7 +150,7 @@ pub fn to_vec<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
+    serialize_with_flavor(value, HVec::default())
 }
 
 /// Serialize a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
@@ -208,7 +205,7 @@ pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec::new())
+    serialize_with_flavor(value, AllocVec::new())
 }
 
 /// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
@@ -231,10 +228,7 @@ pub fn to_allocvec_cobs<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Cobs<AllocVec>, alloc::vec::Vec<u8>>(
-        value,
-        Cobs::try_new(AllocVec::new())?,
-    )
+    serialize_with_flavor(value, Cobs::try_new(AllocVec::new())?)
 }
 
 /// Conveniently serialize a `T` to the given slice, with the resulting slice containing
@@ -338,11 +332,10 @@ pub use flavors::crc::to_allocvec_u32 as to_stdvec_crc32;
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
 pub use flavors::crc::to_allocvec_u32 as to_allocvec_crc32;
 
-/// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
+/// `serialize_with_flavor()` has two generic parameters:
 ///
 /// * `T`: This is the type that is being serialized
-/// * `S`: This is the Storage that is used during serialization
-/// * `O`: This is the resulting storage type that is returned containing the serialized data
+/// * `S`: This is the Storage that is used during serialization, and determines the return type as well
 ///
 /// For more information about how Flavors work, please see the
 /// [`flavors` module documentation](./flavors/index.html).
@@ -357,17 +350,17 @@ pub use flavors::crc::to_allocvec_u32 as to_allocvec_crc32;
 ///
 /// let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 /// let buffer = &mut [0u8; 32];
-/// let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
+/// let res = serialize_with_flavor(
 ///     data,
 ///     Cobs::try_new(Slice::new(buffer)).unwrap(),
 /// ).unwrap();
 ///
 /// assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
-pub fn serialize_with_flavor<T, S, O>(value: &T, storage: S) -> Result<O>
+pub fn serialize_with_flavor<T, S>(value: &T, storage: S) -> Result<S::Output>
 where
     T: Serialize + ?Sized,
-    S: Flavor<Output = O>,
+    S: Flavor,
 {
     let mut serializer = Serializer { output: storage };
     value.serialize(&mut serializer)?;
@@ -382,7 +375,7 @@ pub fn serialized_size<T>(value: &T) -> Result<usize>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, flavors::Size, usize>(value, flavors::Size::default())
+    serialize_with_flavor(value, flavors::Size::default())
 }
 
 #[cfg(feature = "heapless")]
