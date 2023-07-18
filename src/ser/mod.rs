@@ -91,7 +91,7 @@ where
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
-/// `0x00` byte is included in the output `Vec`. Requires the (default) `heapless` feature.
+/// `0x00` byte is included in the output `Vec`.
 ///
 /// ## Example
 ///
@@ -125,7 +125,7 @@ where
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
-/// data in a serialized format. Requires the (default) `heapless` feature.
+/// data in a serialized format.
 ///
 /// ## Example
 ///
@@ -158,7 +158,7 @@ where
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
-/// Serialize a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
+/// Serialize a `T` to a `std::vec::Vec<u8>`.
 ///
 /// ## Example
 ///
@@ -181,7 +181,7 @@ where
     to_allocvec(value)
 }
 
-/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
+/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -206,7 +206,7 @@ where
     to_allocvec_cobs(value)
 }
 
-/// Serialize a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
+/// Serialize a `T` to an `alloc::vec::Vec<u8>`.
 ///
 /// ## Example
 ///
@@ -228,7 +228,7 @@ where
     serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec::new())
 }
 
-/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
+/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -291,7 +291,6 @@ where
 
 /// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
-/// Requires the (default) `heapless` feature.
 ///
 /// ## Example
 ///

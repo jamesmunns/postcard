@@ -507,7 +507,6 @@ pub mod crc {
 
                     /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
-                    /// Requires the (default) `heapless` feature.
                     #[cfg(feature = "heapless")]
                     #[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
                     pub fn [<to_vec_ $int>]<'a, T, const B: usize>(
