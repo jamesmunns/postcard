@@ -2,9 +2,23 @@
 
 Changes will be described here.
 
-## 1.0.3 -> Unreleased
+## 1.0.5 -> Unreleased
 
 * Nothing yet!
+
+## 1.0.4 -> 1.0.5
+
+* improved documentation of the cobs decoding by @gutzchi in https://github.com/jamesmunns/postcard/pull/97
+* Fix strict provenance use of pointers by @jamesmunns in https://github.com/jamesmunns/postcard/pull/100
+* Introduces CRCs by @huntc in https://github.com/jamesmunns/postcard/pull/98
+* Format with rustfmt to eliminate trailing whitespaces by @dtolnay in https://github.com/jamesmunns/postcard/pull/104
+* Fix documentation of re-exports that have dedicated doc comment by @dtolnay in https://github.com/jamesmunns/postcard/pull/107
+
+## New Contributors
+
+* @gutzchi made their first contribution in https://github.com/jamesmunns/postcard/pull/97
+
+**Full Changelog**: https://github.com/jamesmunns/postcard/compare/v1.0.4...v1.0.5
 
 ## 1.0.3 -> 1.0.4
 
