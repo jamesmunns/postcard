@@ -170,6 +170,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
+#[inline]
 pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
@@ -193,6 +194,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
+#[inline]
 pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
@@ -268,6 +270,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(feature = "use-crc")]
+#[inline]
 pub fn to_slice_crc32<'a, 'b, T>(
     value: &'b T,
     buf: &'a mut [u8],
@@ -303,6 +306,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
+#[inline]
 pub fn to_vec_crc32<'a, T, const B: usize>(
     value: &T,
     digest: crc::Digest<'a, u32>,
@@ -335,6 +339,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
+#[inline]
 pub fn to_stdvec_crc32<'a, T>(value: &T, digest: crc::Digest<'a, u32>) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
@@ -364,6 +369,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
+#[inline]
 pub fn to_allocvec_crc32<'a, T>(
     value: &T,
     digest: crc::Digest<'a, u32>,
