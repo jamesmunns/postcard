@@ -170,7 +170,12 @@ where
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
-pub use to_allocvec as to_stdvec;
+pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    to_allocvec(value)
+}
 
 /// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
 ///
@@ -188,7 +193,12 @@ pub use to_allocvec as to_stdvec;
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
-pub use to_allocvec_cobs as to_stdvec_cobs;
+pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    to_allocvec_cobs(value)
+}
 
 /// Serialize a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
 ///
@@ -257,9 +267,17 @@ where
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-///
 #[cfg(feature = "use-crc")]
-pub use flavors::crc::to_slice_u32 as to_slice_crc32;
+pub fn to_slice_crc32<'a, 'b, T>(
+    value: &'b T,
+    buf: &'a mut [u8],
+    digest: crc::Digest<'a, u32>,
+) -> Result<&'a mut [u8]>
+where
+    T: Serialize + ?Sized,
+{
+    flavors::crc::to_slice_u32(value, buf, digest)
+}
 
 /// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
@@ -284,9 +302,16 @@ pub use flavors::crc::to_slice_u32 as to_slice_crc32;
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-///
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
-pub use flavors::crc::to_vec_u32 as to_vec_crc32;
+pub fn to_vec_crc32<'a, T, const B: usize>(
+    value: &T,
+    digest: crc::Digest<'a, u32>,
+) -> Result<heapless::Vec<u8, B>>
+where
+    T: Serialize + ?Sized,
+{
+    flavors::crc::to_vec_u32(value, digest)
+}
 
 /// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
@@ -309,9 +334,13 @@ pub use flavors::crc::to_vec_u32 as to_vec_crc32;
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-///
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
-pub use flavors::crc::to_allocvec_u32 as to_stdvec_crc32;
+pub fn to_stdvec_crc32<'a, T>(value: &T, digest: crc::Digest<'a, u32>) -> Result<std::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    flavors::crc::to_allocvec_u32(value, digest)
+}
 
 /// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
@@ -334,9 +363,16 @@ pub use flavors::crc::to_allocvec_u32 as to_stdvec_crc32;
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-///
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
-pub use flavors::crc::to_allocvec_u32 as to_allocvec_crc32;
+pub fn to_allocvec_crc32<'a, T>(
+    value: &T,
+    digest: crc::Digest<'a, u32>,
+) -> Result<alloc::vec::Vec<u8>>
+where
+    T: Serialize + ?Sized,
+{
+    flavors::crc::to_allocvec_u32(value, digest)
+}
 
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
 ///
