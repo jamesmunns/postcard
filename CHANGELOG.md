@@ -2,9 +2,13 @@
 
 Changes will be described here.
 
-## 1.0.5 -> Unreleased
+## 1.0.6 -> Unreleased
 
 * Nothing yet!
+
+## 1.0.5 -> 1.0.6
+
+* Add cfg information to docs by @dtolnay in https://github.com/jamesmunns/postcard/pull/108
 
 ## 1.0.4 -> 1.0.5
 
