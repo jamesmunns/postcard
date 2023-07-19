@@ -91,7 +91,7 @@ where
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data in a serialized then COBS encoded format. The terminating sentinel
-/// `0x00` byte is included in the output `Vec`. Requires the (default) `heapless` feature.
+/// `0x00` byte is included in the output `Vec`.
 ///
 /// ## Example
 ///
@@ -116,6 +116,7 @@ where
 /// assert_eq!(ser.deref(), &[0x02, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
 #[cfg(feature = "heapless")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
 pub fn to_vec_cobs<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
@@ -124,7 +125,7 @@ where
 }
 
 /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
-/// data in a serialized format. Requires the (default) `heapless` feature.
+/// data in a serialized format.
 ///
 /// ## Example
 ///
@@ -149,6 +150,7 @@ where
 /// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30]);
 /// ```
 #[cfg(feature = "heapless")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
 pub fn to_vec<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
 where
     T: Serialize + ?Sized,
@@ -156,7 +158,7 @@ where
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
 
-/// Serialize a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
+/// Serialize a `T` to a `std::vec::Vec<u8>`.
 ///
 /// ## Example
 ///
@@ -170,6 +172,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "use-std")))]
 #[inline]
 pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
@@ -178,7 +181,7 @@ where
     to_allocvec(value)
 }
 
-/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`. Requires the `use-std` feature.
+/// Serialize and COBS encode a `T` to a `std::vec::Vec<u8>`.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -194,6 +197,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "use-std")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "use-std")))]
 #[inline]
 pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
@@ -202,7 +206,7 @@ where
     to_allocvec_cobs(value)
 }
 
-/// Serialize a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
+/// Serialize a `T` to an `alloc::vec::Vec<u8>`.
 ///
 /// ## Example
 ///
@@ -216,6 +220,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
 pub fn to_allocvec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
@@ -223,7 +228,7 @@ where
     serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec::new())
 }
 
-/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`. Requires the `alloc` feature.
+/// Serialize and COBS encode a `T` to an `alloc::vec::Vec<u8>`.
 ///
 /// The terminating sentinel `0x00` byte is included in the output.
 ///
@@ -239,6 +244,7 @@ where
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
 #[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
 pub fn to_allocvec_cobs<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
@@ -270,6 +276,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(feature = "use-crc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
 #[inline]
 pub fn to_slice_crc32<'a, 'b, T>(
     value: &'b T,
@@ -284,7 +291,6 @@ where
 
 /// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
-/// Requires the (default) `heapless` feature.
 ///
 /// ## Example
 ///
@@ -306,6 +312,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
+#[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "heapless"))))]
 #[inline]
 pub fn to_vec_crc32<'a, T, const B: usize>(
     value: &T,
@@ -339,6 +346,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
+#[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "use-std"))))]
 #[inline]
 pub fn to_stdvec_crc32<'a, T>(value: &T, digest: crc::Digest<'a, u32>) -> Result<std::vec::Vec<u8>>
 where
@@ -369,6 +377,7 @@ where
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
+#[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "alloc"))))]
 #[inline]
 pub fn to_allocvec_crc32<'a, T>(
     value: &T,
