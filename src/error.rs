@@ -1,3 +1,6 @@
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 use core::fmt::{Display, Formatter};
 
 /// This is the error type used by Postcard
@@ -30,9 +33,9 @@ pub enum Error {
     /// The original data was not well encoded
     DeserializeBadEncoding,
     /// Serde Serialization Error
-    SerdeSerCustom,
+    SerdeSerCustom(Message),
     /// Serde Deserialization Error
-    SerdeDeCustom,
+    SerdeDeCustom(Message),
     /// Error while processing `collect_str` during serialization
     CollectStrError,
 }
@@ -60,11 +63,35 @@ impl Display for Error {
                 DeserializeBadOption => "Found an Option discriminant that wasn't 0 or 1",
                 DeserializeBadEnum => "Found an enum discriminant that was > u32::max_value()",
                 DeserializeBadEncoding => "The original data was not well encoded",
-                SerdeSerCustom => "Serde Serialization Error",
-                SerdeDeCustom => "Serde Deserialization Error",
+                SerdeSerCustom(message) =>
+                    return write!(f, "Serde Serialization Error: {}", message),
+                SerdeDeCustom(message) =>
+                    return write!(f, "Serde Deserialization Error: {}", message),
                 CollectStrError => "Error while processing `collect_str` during serialization",
             }
         )
+    }
+}
+
+/// A custom error message
+///
+/// Only contains an actual message when the `alloc` feature is enabled, otherwise it is empty.
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub struct Message {
+    #[cfg(feature = "alloc")]
+    message: alloc::string::String,
+}
+
+impl Display for Message {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        #[cfg(feature = "alloc")]
+        let result = f.write_str(&self.message);
+
+        #[cfg(not(feature = "alloc"))]
+        let result =
+            f.write_str("[Message not stored unless postcard is built with the `alloc` feature]");
+
+        result
     }
 }
 
@@ -72,20 +99,44 @@ impl Display for Error {
 pub type Result<T> = ::core::result::Result<T, Error>;
 
 impl serde::ser::Error for Error {
-    fn custom<T>(_msg: T) -> Self
+    fn custom<T>(msg: T) -> Self
     where
         T: Display,
     {
-        Error::SerdeSerCustom
+        #[cfg(feature = "alloc")]
+        {
+            use core::fmt::Write;
+            let mut message = alloc::string::String::new();
+            write!(message, "{}", msg).unwrap();
+            Error::SerdeSerCustom(Message { message })
+        }
+
+        #[cfg(not(feature = "alloc"))]
+        {
+            let _ = msg;
+            Error::SerdeSerCustom(Message {})
+        }
     }
 }
 
 impl serde::de::Error for Error {
-    fn custom<T>(_msg: T) -> Self
+    fn custom<T>(msg: T) -> Self
     where
         T: Display,
     {
-        Error::SerdeDeCustom
+        #[cfg(feature = "alloc")]
+        {
+            use core::fmt::Write;
+            let mut message = alloc::string::String::new();
+            write!(message, "{}", msg).unwrap();
+            Error::SerdeSerCustom(Message { message })
+        }
+
+        #[cfg(not(feature = "alloc"))]
+        {
+            let _ = msg;
+            Error::SerdeSerCustom(Message {})
+        }
     }
 }
 
