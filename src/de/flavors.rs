@@ -259,7 +259,7 @@ pub mod crc {
                                         if crc == prev_crc {
                                             Ok(remainder)
                                         } else {
-                                            Err(Error::DeserializeBadEncoding)
+                                            Err(Error::DeserializeBadCrc)
                                         }
                                     }
                                     e @ Err(_) => e,

@@ -29,6 +29,8 @@ pub enum Error {
     DeserializeBadEnum,
     /// The original data was not well encoded
     DeserializeBadEncoding,
+    /// Bad CRC while deserializing
+    DeserializeBadCrc,
     /// Serde Serialization Error
     SerdeSerCustom,
     /// Serde Deserialization Error
@@ -60,6 +62,7 @@ impl Display for Error {
                 DeserializeBadOption => "Found an Option discriminant that wasn't 0 or 1",
                 DeserializeBadEnum => "Found an enum discriminant that was > u32::max_value()",
                 DeserializeBadEncoding => "The original data was not well encoded",
+                DeserializeBadCrc => "Bad CRC while deserializing",
                 SerdeSerCustom => "Serde Serialization Error",
                 SerdeDeCustom => "Serde Deserialization Error",
                 CollectStrError => "Error while processing `collect_str` during serialization",
