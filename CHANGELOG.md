@@ -2,9 +2,12 @@
 
 Changes will be described here.
 
-## 1.0.6 -> Unreleased
+## 1.0.7 -> Unreleased
 
-* Nothing yet!
+## 1.0.6 -> 1.0.7
+
+* Fix off-by-one in varint size calculation by @Palladinium in https://github.com/jamesmunns/postcard/pull/111
+* Add specific error for Crc errors by @CBJamo in https://github.com/jamesmunns/postcard/pull/112
 
 ## 1.0.5 -> 1.0.6
 
