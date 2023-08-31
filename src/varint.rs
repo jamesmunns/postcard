@@ -6,10 +6,10 @@ pub const fn varint_max<T: Sized>() -> usize {
     // How many data bits do we need for this type?
     let bits = core::mem::size_of::<T>() * BITS_PER_BYTE;
 
-    // We add (BITS_PER_BYTE - 1), to ensure any integer divisions
+    // We add (BITS_PER_VARINT_BYTE - 1), to ensure any integer divisions
     // with a remainder will always add exactly one full byte, but
     // an evenly divided number of bits will be the same
-    let roundup_bits = bits + (BITS_PER_BYTE - 1);
+    let roundup_bits = bits + (BITS_PER_VARINT_BYTE - 1);
 
     // Apply division, using normal "round down" integer division
     roundup_bits / BITS_PER_VARINT_BYTE
