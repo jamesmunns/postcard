@@ -329,16 +329,6 @@ pub mod io {
     }
 }
 
-// This is a terrible checksum implementation to make sure that we can effectively
-// use the deserialization flavor. This is kept as a test (and not published)
-// because an 8-bit checksum is not ACTUALLY useful for almost anything.
-//
-// You could certainly do something similar with a CRC32, cryptographic sig,
-// or something else
-#[cfg(test)]
-mod test {
-    use super::*;
-    use serde::{Deserialize, Serialize};
 ////////////////////////////////////////
 // CRC
 ////////////////////////////////////////
