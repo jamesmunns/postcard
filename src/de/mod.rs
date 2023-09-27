@@ -67,6 +67,32 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
+/// Deserialize a message of type `T` from a [embedded_io::blocking::Read].
+#[cfg(feature = "embedded-io")]
+pub fn from_eio<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
+where
+    T: Deserialize<'a>,
+    R: embedded_io::blocking::Read + 'a,
+{
+    let flavor = flavors::io::eio::EIOReader::new(val.0, val.1);
+    let mut deserializer = Deserializer::from_flavor(flavor);
+    let t = T::deserialize(&mut deserializer)?;
+    Ok((t, deserializer.finalize()?))
+}
+
+/// Deserialize a message of type `T` from a[std::io::Read].
+#[cfg(feature = "use-std")]
+pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
+where
+    T: Deserialize<'a>,
+    R: std::io::Read + 'a,
+{
+    let flavor = flavors::io::io::IOReader::new(val.0, val.1);
+    let mut deserializer = Deserializer::from_flavor(flavor);
+    let t = T::deserialize(&mut deserializer)?;
+    Ok((t, deserializer.finalize()?))
+}
+
 /// Conveniently deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
 /// of the byte slice is not returned.
 ///
