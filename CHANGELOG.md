@@ -2,7 +2,13 @@
 
 Changes will be described here.
 
-## 1.0.7 -> Unreleased
+## 1.0.8 -> Unreleased
+
+* None yet!
+
+## 1.0.7 -> 1.0.8
+
+* Add IO traits support by @xgroleau in https://github.com/jamesmunns/postcard/pull/91
 
 ## 1.0.6 -> 1.0.7
 
