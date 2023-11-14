@@ -10,6 +10,14 @@ pub mod fixint;
 mod ser;
 mod varint;
 
+pub use cobs;
+#[cfg(feature = "crc")]
+pub use crc;
+pub use heapless;
+#[cfg(feature = "crc")]
+pub use paste;
+pub use serde;
+
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
 pub(crate) mod schema;
