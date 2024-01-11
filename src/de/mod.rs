@@ -67,12 +67,12 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a [embedded_io::blocking::Read].
-#[cfg(feature = "embedded-io")]
+/// Deserialize a message of type `T` from a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read).
+#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub fn from_eio<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
     T: Deserialize<'a>,
-    R: embedded_io::blocking::Read + 'a,
+    R: crate::eio::Read + 'a,
 {
     let flavor = flavors::io::eio::EIOReader::new(val.0, val.1);
     let mut deserializer = Deserializer::from_flavor(flavor);

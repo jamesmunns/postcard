@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "1.0.8"
+version = "1.0.9"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2018"
 readme = "README.md"
@@ -47,8 +47,14 @@ default-features = false
 version = "0.3"
 optional = true
 
-[dependencies.embedded-io]
+[dependencies.embedded-io-04]
+package = "embedded-io"
 version = "0.4"
+optional = true
+
+[dependencies.embedded-io-06]
+package = "embedded-io"
+version = "0.6"
 optional = true
 
 [dependencies.postcard-derive]
@@ -67,9 +73,17 @@ optional = true
 [features]
 default = ["heapless-cas"]
 
+# Enables support for `embedded-io` traits
+# This feature will track the latest `embedded-io` when major releases are made
+embedded-io = ["dep:embedded-io-04"]
+
+# Specific versions of `embedded-io` can be selected through the features below
+embedded-io-04 = ["dep:embedded-io-04"]
+embedded-io-06 = ["dep:embedded-io-06"]
+
 use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]
-alloc = ["serde/alloc", "embedded-io/alloc"]
+alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
 

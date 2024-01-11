@@ -210,7 +210,10 @@ fn std_io_loopback() {
     );
 }
 
-#[cfg(all(feature = "embedded-io", feature = "alloc"))]
+#[cfg(all(
+    any(feature = "embedded-io-04", feature = "embedded-io-06"),
+    feature = "alloc"
+))]
 #[test]
 fn std_eio_loopback() {
     use postcard::from_eio;

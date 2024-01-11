@@ -163,8 +163,12 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
-/// Support for [std::io] or [embedded-io] traits
-#[cfg(any(feature = "embedded-io", feature = "use-std"))]
+/// Support for [std::io] or `embedded-io` traits
+#[cfg(any(
+    feature = "embedded-io-04",
+    feature = "embedded-io-06",
+    feature = "use-std"
+))]
 pub mod io {
     use crate::{Error, Result};
     use core::marker::PhantomData;
@@ -206,17 +210,17 @@ pub mod io {
         }
     }
 
-    /// Support for [embedded_io] traits
-    #[cfg(feature = "embedded-io")]
+    /// Support for [`embedded_io`](crate::eio::embedded_io) traits
+    #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
     pub mod eio {
         use super::super::Flavor;
         use super::SlidingBuffer;
         use crate::{Error, Result};
 
-        /// Wrapper over a [embedded_io::blocking::Read] and a sliding buffer to implement the [Flavor] trait
+        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [Flavor] trait
         pub struct EIOReader<'de, T>
         where
-            T: embedded_io::blocking::Read,
+            T: crate::eio::Read,
         {
             reader: T,
             buff: SlidingBuffer<'de>,
@@ -224,7 +228,7 @@ pub mod io {
 
         impl<'de, T> EIOReader<'de, T>
         where
-            T: embedded_io::blocking::Read,
+            T: crate::eio::Read,
         {
             pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
@@ -236,7 +240,7 @@ pub mod io {
 
         impl<'de, T> Flavor<'de> for EIOReader<'de, T>
         where
-            T: embedded_io::blocking::Read + 'de,
+            T: crate::eio::Read + 'de,
         {
             type Remainder = (T, &'de mut [u8]);
             type Source = &'de [u8];
