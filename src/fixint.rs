@@ -92,14 +92,28 @@ pub mod be {
 }
 
 #[doc(hidden)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct LE<T>(T);
 
 #[doc(hidden)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct BE<T>(T);
 
 macro_rules! impl_fixint {
     ($( $int:ty ),*) => {
         $(
+            impl From<LE<$int>> for $int {
+                fn from(val: LE<$int>) -> $int {
+                    val.0
+                }
+            }
+
+            impl From<$int> for LE<$int> {
+                fn from(val: $int) -> LE<$int> {
+                    LE(val)
+                }
+            }
+
             impl Serialize for LE<$int> {
                 #[inline]
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -119,6 +133,18 @@ macro_rules! impl_fixint {
                     <_ as Deserialize>::deserialize(deserializer)
                         .map(<$int>::from_le_bytes)
                         .map(Self)
+                }
+            }
+
+            impl From<BE<$int>> for $int {
+                fn from(val: BE<$int>) -> $int {
+                    val.0
+                }
+            }
+
+            impl From<$int> for BE<$int> {
+                fn from(val: $int) -> BE<$int> {
+                    BE(val)
                 }
             }
 
@@ -184,6 +210,82 @@ mod tests {
         assert_eq!(serialized, &[0xAB, 0xCD]);
 
         let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[test]
+    fn test_little_endian_wrapper() {
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyLE {
+            x: crate::fixint::LE<u16>,
+        }
+
+        let input = DefinitelyLE { x: 0xABCD.into() };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xCD, 0xAB]);
+
+        let deserialized: DefinitelyLE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[test]
+    fn test_big_endian_wrapper() {
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyBE {
+            x: crate::fixint::BE<u16>,
+        }
+
+        let input = DefinitelyBE { x: 0xABCD.into() };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xAB, 0xCD]);
+
+        let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[cfg(feature = "experimental-derive")]
+    #[test]
+    fn test_all_fields_with_be() {
+        #[postcard_derive::all_fields_with("crate::fixint::be")]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyBE {
+            x: u16,
+            y: u32,
+        }
+
+        let input = DefinitelyBE {
+            x: 0xABCD,
+            y: 0xEF123456,
+        };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xAB, 0xCD, 0xEF, 0x12, 0x34, 0x56]);
+
+        let deserialized: DefinitelyBE = crate::from_bytes(serialized).unwrap();
+        assert_eq!(deserialized, input);
+    }
+
+    #[cfg(feature = "experimental-derive")]
+    #[test]
+    fn test_all_fields_with_le() {
+        #[postcard_derive::all_fields_with("crate::fixint::le")]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+        pub struct DefinitelyLE {
+            x: u16,
+            y: u32,
+        }
+
+        let input = DefinitelyLE {
+            x: 0xABCD,
+            y: 0xEF123456,
+        };
+        let mut buf = [0; 32];
+        let serialized = crate::to_slice(&input, &mut buf).unwrap();
+        assert_eq!(serialized, &[0xCD, 0xAB, 0x56, 0x34, 0x12, 0xEF]);
+
+        let deserialized: DefinitelyLE = crate::from_bytes(serialized).unwrap();
         assert_eq!(deserialized, input);
     }
 }
