@@ -250,23 +250,23 @@ where
     }
 }
 
-/// Support for the [embedded-io] traits
-#[cfg(feature = "embedded-io")]
+/// Support for the [`embedded-io`](crate::eio::embedded_io) traits
+#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub mod eio {
 
     use super::Flavor;
     use crate::{Error, Result};
 
-    /// Wrapper over a [embedded_io::blocking::Write] that implements the flavor trait
+    /// Wrapper over a [`embedded_io Write`](crate::eio::Write) that implements the flavor trait
     pub struct WriteFlavor<T> {
         writer: T,
     }
 
     impl<T> WriteFlavor<T>
     where
-        T: embedded_io::blocking::Write,
+        T: crate::eio::Write,
     {
-        /// Create a new [Self] flavor from a given [std::io::Write]
+        /// Create a new [Self] flavor from a given [`embedded_io Write`](crate::eio::Write)
         pub fn new(writer: T) -> Self {
             Self { writer }
         }
@@ -274,7 +274,7 @@ pub mod eio {
 
     impl<T> Flavor for WriteFlavor<T>
     where
-        T: embedded_io::blocking::Write,
+        T: crate::eio::Write,
     {
         type Output = T;
 
