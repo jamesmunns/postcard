@@ -274,7 +274,7 @@ where
     serialize_with_flavor::<T, _, _>(value, flavors::ExtendFlavor::new(writer))
 }
 
-/// Serialize a `T` to a [embedded_io::blocking::Write],
+/// Serialize a `T` to an [`embedded_io Write`](crate::eio::Write),
 /// ## Example
 ///
 /// ```rust
@@ -286,11 +286,11 @@ where
 /// to_eio("Hi!", ser).unwrap();
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-#[cfg(feature = "embedded-io")]
+#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub fn to_eio<'b, T, W>(value: &'b T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
-    W: embedded_io::blocking::Write,
+    W: crate::eio::Write,
 {
     serialize_with_flavor::<T, _, _>(value, flavors::eio::WriteFlavor::new(writer))
 }
