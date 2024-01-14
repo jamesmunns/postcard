@@ -29,7 +29,7 @@ version = "0.2.24"
 optional = true
 
 [dependencies.heapless]
-version = "0.7.0"
+version = "0.8.0"
 default-features = false
 features = ["serde"]
 optional = true
@@ -82,7 +82,7 @@ embedded-io-04 = ["dep:embedded-io-04"]
 embedded-io-06 = ["dep:embedded-io-06"]
 
 use-std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "heapless/cas"]
+heapless-cas = ["heapless", "heapless/portable-atomic"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
