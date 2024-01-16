@@ -22,7 +22,10 @@ documentation = "https://docs.rs/postcard/"
 all-features = true
 rustdoc-args = ["--cfg", "doc_cfg"]
 
-[dependencies]
+[dependencies.tinyvec]
+version = "1.6.0"
+optional = true
+features = ["rustc_1_55"]
 
 [dependencies.const_format]
 version = "0.2.24"
@@ -71,7 +74,7 @@ version = "1.0.12"
 optional = true
 
 [features]
-default = ["heapless-cas"]
+default = ["heapless-cas", "tinyvec"]
 
 # Enables support for `embedded-io` traits
 # This feature will track the latest `embedded-io` when major releases are made
