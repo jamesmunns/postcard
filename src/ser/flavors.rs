@@ -95,6 +95,9 @@ use core::ops::IndexMut;
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
 
+#[cfg(feature = "tinyvec")]
+pub use tinyvec_vec::*;
+
 #[cfg(feature = "use-std")]
 pub use std_vec::*;
 
@@ -418,6 +421,72 @@ mod heapless_vec {
         }
     }
 }
+
+#[cfg(feature = "tinyvec")]
+mod tinyvec_vec {
+    use super::Flavor;
+    use super::Index;
+    use super::IndexMut;
+    use crate::{Error, Result};
+    use tinyvec::ArrayVec;
+
+    ////////////////////////////////////////
+    // TVec
+    ////////////////////////////////////////
+
+    /// The `TVec` flavor is a wrapper type around a `tinyvec::ArrayVec`. This is a stack
+    /// allocated data structure, with a fixed maximum size and variable amount of contents.
+    #[derive(Default)]
+    pub struct TVec<const B: usize> {
+        /// the contained data buffer
+        vec: ArrayVec<[u8; B]>,
+    }
+
+    impl<const B: usize> TVec<B> {
+        /// Create a new, currently empty, [heapless::Vec] to be used for storing serialized
+        /// output data.
+        pub fn new() -> Self {
+            Self::default()
+        }
+    }
+
+    impl<const B: usize> Flavor for TVec<B> {
+        type Output = ArrayVec<[u8; B]>;
+
+        #[inline(always)]
+        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+            if data.len() + self.vec.len() > self.vec.capacity() {
+                return Err(Error::SerializeBufferFull);
+            }
+            Ok(self.vec
+                .extend_from_slice(data))
+        }
+
+        #[inline(always)]
+        fn try_push(&mut self, data: u8) -> Result<()> {
+            self.vec.try_push(data).map_or(Ok(()), |_| Err(Error::SerializeBufferFull))
+        }
+
+        fn finalize(self) -> Result<ArrayVec<[u8; B]>> {
+            Ok(self.vec)
+        }
+    }
+
+    impl<const B: usize> Index<usize> for TVec<B> {
+        type Output = u8;
+
+        fn index(&self, idx: usize) -> &u8 {
+            &self.vec[idx]
+        }
+    }
+
+    impl<const B: usize> IndexMut<usize> for TVec<B> {
+        fn index_mut(&mut self, idx: usize) -> &mut u8 {
+            &mut self.vec[idx]
+        }
+    }
+}
+
 
 #[cfg(feature = "use-std")]
 mod std_vec {

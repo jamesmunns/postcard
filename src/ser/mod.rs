@@ -8,6 +8,12 @@ use crate::ser::flavors::HVec;
 #[cfg(feature = "heapless")]
 use heapless::Vec;
 
+#[cfg(feature = "tinyvec")]
+use crate::ser::flavors::TVec;
+
+#[cfg(feature = "tinyvec")]
+use tinyvec::ArrayVec;
+
 #[cfg(feature = "alloc")]
 use crate::ser::flavors::AllocVec;
 
@@ -156,6 +162,24 @@ where
     T: Serialize + ?Sized,
 {
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
+}
+
+#[cfg(feature = "tinyvec")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "tinyvec")))]
+pub fn to_tinyvec_cobs<T, const B: usize>(value: &T) -> Result<ArrayVec<[u8; B]>>
+where
+    T: Serialize + ?Sized,
+{
+    serialize_with_flavor::<T, Cobs<TVec<B>>, ArrayVec<[u8; B]>>(value, Cobs::try_new(TVec::default())?)
+}
+
+#[cfg(feature = "heapless")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+pub fn to_tinyvec<T, const B: usize>(value: &T) -> Result<ArrayVec<[u8; B]>>
+where
+    T: Serialize + ?Sized,
+{
+    serialize_with_flavor::<T, TVec<B>, ArrayVec<[u8; B]>>(value, TVec::default())
 }
 
 /// Serialize a `T` to a `std::vec::Vec<u8>`.
