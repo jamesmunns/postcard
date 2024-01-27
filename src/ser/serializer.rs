@@ -80,7 +80,7 @@ where
     type SerializeTupleStruct = Self;
     type SerializeTupleVariant = Self;
     type SerializeMap = Self;
-    type SerializeStruct = Self;
+    type SerializeStruct = SerializeStruct<'a, F>;
     type SerializeStructVariant = Self;
 
     #[inline]
@@ -300,8 +300,12 @@ where
     }
 
     #[inline]
-    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        Ok(self)
+    fn serialize_struct(self, name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Ok(if name.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
+            SerializeStruct::ByteArray { ser: self }
+        } else {
+            SerializeStruct::Struct { ser: self }
+        })
     }
 
     #[inline]
@@ -505,7 +509,200 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeStruct for &'a mut Serializer<F>
+struct FixedSizeByteArrayEmitter<'a, F>(&'a mut Serializer<F>) where F: Flavor;
+
+impl<'a, F: Flavor> ser::Serializer for FixedSizeByteArrayEmitter<'a, F> {
+    type Ok = ();
+    type Error = Error;
+
+    type SerializeSeq = ser::Impossible<(), Error>;
+    type SerializeTuple = ser::Impossible<(), Error>;
+    type SerializeTupleStruct = ser::Impossible<(), Error>;
+    type SerializeTupleVariant = ser::Impossible<(), Error>;
+    type SerializeMap = ser::Impossible<(), Error>;
+    type SerializeStruct = ser::Impossible<(), Error>;
+    type SerializeStructVariant = ser::Impossible<(), Error>;
+
+    fn serialize_bool(self, _v: bool) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_i8(self, _v: i8) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_i16(self, _v: i16) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_i32(self, _v: i32) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_i64(self, _v: i64) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_i128(self, _v: i128) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_u8(self, _v: u8) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_u16(self, _v: u16) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_u32(self, _v: u32) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_u64(self, _v: u64) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_u128(self, _v: u128) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_f32(self, _v: f32) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_f64(self, _v: f64) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_char(self, _v: char) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_str(self, _value: &str) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_bytes(self, value: &[u8]) -> Result<()> {
+        let FixedSizeByteArrayEmitter(serializer) = self;
+        serializer.output.try_extend(value)
+    }
+
+    fn serialize_none(self) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_some<T>(self, _value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_unit(self) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+    ) -> Result<()> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_newtype_variant<T>(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _value: &T,
+    ) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_tuple_struct(
+        self,
+        _name: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleStruct> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_tuple_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleVariant> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn serialize_struct_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeStructVariant> {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+
+    fn collect_str<T>(self, _value: &T) -> Result<Self::Ok>
+    where
+        T: ?Sized + core::fmt::Display,
+    {
+        Err(ser::Error::custom("expected FixedSizeByteArray"))
+    }
+}
+
+
+pub enum SerializeStruct<'a, F>
+where
+    F: Flavor,
+{
+    Struct {
+        ser: &'a mut Serializer<F>,
+    },
+    ByteArray {
+        ser: &'a mut Serializer<F>,
+    },
+    ByteArrayDone,
+}
+
+impl<'a, F> ser::SerializeStruct for SerializeStruct<'a, F>
 where
     F: Flavor,
 {
@@ -513,11 +710,23 @@ where
     type Error = Error;
 
     #[inline]
-    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
-        value.serialize(&mut **self)
+        match self {
+            SerializeStruct::Struct { ser } => value.serialize(&mut **ser),
+            SerializeStruct::ByteArray { ser } => {
+                if key.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
+                    value.serialize(FixedSizeByteArrayEmitter(&mut **ser))?;
+                    *self = SerializeStruct::ByteArrayDone;
+                    Ok(())
+                } else {
+                    unreachable!();
+                }
+            },
+            SerializeStruct::ByteArrayDone => unreachable!(),
+        }
     }
 
     #[inline]
