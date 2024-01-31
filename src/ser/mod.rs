@@ -339,10 +339,10 @@ where
 #[cfg(feature = "use-crc")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
 #[inline]
-pub fn to_slice_crc32<'a, 'b, T>(
-    value: &'b T,
+pub fn to_slice_crc32<'a, T>(
+    value: &T,
     buf: &'a mut [u8],
-    digest: crc::Digest<'a, u32>,
+    digest: crc::Digest<'_, u32>,
 ) -> Result<&'a mut [u8]>
 where
     T: Serialize + ?Sized,
@@ -375,9 +375,9 @@ where
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
 #[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "heapless"))))]
 #[inline]
-pub fn to_vec_crc32<'a, T, const B: usize>(
+pub fn to_vec_crc32<T, const B: usize>(
     value: &T,
-    digest: crc::Digest<'a, u32>,
+    digest: crc::Digest<'_, u32>,
 ) -> Result<heapless::Vec<u8, B>>
 where
     T: Serialize + ?Sized,
@@ -409,7 +409,7 @@ where
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
 #[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "use-std"))))]
 #[inline]
-pub fn to_stdvec_crc32<'a, T>(value: &T, digest: crc::Digest<'a, u32>) -> Result<std::vec::Vec<u8>>
+pub fn to_stdvec_crc32<T>(value: &T, digest: crc::Digest<'_, u32>) -> Result<std::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
@@ -440,9 +440,9 @@ where
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
 #[cfg_attr(doc_cfg, doc(cfg(all(feature = "use-crc", feature = "alloc"))))]
 #[inline]
-pub fn to_allocvec_crc32<'a, T>(
+pub fn to_allocvec_crc32<T>(
     value: &T,
-    digest: crc::Digest<'a, u32>,
+    digest: crc::Digest<'_, u32>,
 ) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
