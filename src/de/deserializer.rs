@@ -473,14 +473,19 @@ impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de
     #[inline]
     fn deserialize_tuple_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         len: usize,
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
-        self.deserialize_tuple(len, visitor)
+        if name.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
+            let bytes: &'de [u8] = self.flavor.try_take_n(len)?;
+            visitor.visit_borrowed_bytes(bytes)
+        } else {
+            self.deserialize_tuple(len, visitor)
+        }
     }
 
     #[inline]
