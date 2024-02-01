@@ -1,4 +1,4 @@
-use serde::ser::SerializeStruct;
+use serde::ser::SerializeTupleStruct;
 use serde::Serialize;
 use serde::Serializer;
 
@@ -45,8 +45,8 @@ impl<const N: usize> Serialize for FixedSizeByteArray<N> {
     where
         S: Serializer,
     {
-        let mut s = serializer.serialize_struct(TOKEN, 1)?;
-        s.serialize_field(TOKEN, &self.inner)?;
+        let mut s = serializer.serialize_tuple_struct(TOKEN, 1)?;
+        s.serialize_field(&self.inner)?;
         s.end()
     }
 }

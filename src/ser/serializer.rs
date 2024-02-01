@@ -77,10 +77,10 @@ where
     // Serializer struct.
     type SerializeSeq = Self;
     type SerializeTuple = Self;
-    type SerializeTupleStruct = Self;
+    type SerializeTupleStruct = SerializeTupleStruct<'a, F>;
     type SerializeTupleVariant = Self;
     type SerializeMap = Self;
-    type SerializeStruct = SerializeStruct<'a, F>;
+    type SerializeStruct = Self;
     type SerializeStructVariant = Self;
 
     #[inline]
@@ -273,10 +273,14 @@ where
     #[inline]
     fn serialize_tuple_struct(
         self,
-        _name: &'static str,
+        name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct> {
-        Ok(self)
+        Ok(if name.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
+            SerializeTupleStruct::ByteArray { ser: self }
+        } else {
+            SerializeTupleStruct::TupleStruct { ser: self }
+        })
     }
 
     #[inline]
@@ -300,12 +304,8 @@ where
     }
 
     #[inline]
-    fn serialize_struct(self, name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
-        Ok(if name.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
-            SerializeStruct::ByteArray { ser: self }
-        } else {
-            SerializeStruct::Struct { ser: self }
-        })
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Ok(self)
     }
 
     #[inline]
@@ -426,77 +426,6 @@ where
 
     #[inline]
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        value.serialize(&mut **self)
-    }
-
-    #[inline]
-    fn end(self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl<'a, F> ser::SerializeTupleStruct for &'a mut Serializer<F>
-where
-    F: Flavor,
-{
-    type Ok = ();
-    type Error = Error;
-
-    #[inline]
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        value.serialize(&mut **self)
-    }
-
-    #[inline]
-    fn end(self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl<'a, F> ser::SerializeTupleVariant for &'a mut Serializer<F>
-where
-    F: Flavor,
-{
-    type Ok = ();
-    type Error = Error;
-
-    #[inline]
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        value.serialize(&mut **self)
-    }
-
-    #[inline]
-    fn end(self) -> Result<()> {
-        Ok(())
-    }
-}
-
-impl<'a, F> ser::SerializeMap for &'a mut Serializer<F>
-where
-    F: Flavor,
-{
-    type Ok = ();
-    type Error = Error;
-
-    #[inline]
-    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
-    where
-        T: ?Sized + Serialize,
-    {
-        key.serialize(&mut **self)
-    }
-
-    #[inline]
-    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
@@ -689,11 +618,11 @@ impl<'a, F: Flavor> ser::Serializer for FixedSizeByteArrayEmitter<'a, F> {
 }
 
 
-pub enum SerializeStruct<'a, F>
+pub enum SerializeTupleStruct<'a, F>
 where
     F: Flavor,
 {
-    Struct {
+    TupleStruct {
         ser: &'a mut Serializer<F>,
     },
     ByteArray {
@@ -702,7 +631,7 @@ where
     ByteArrayDone,
 }
 
-impl<'a, F> ser::SerializeStruct for SerializeStruct<'a, F>
+impl<'a, F> ser::SerializeTupleStruct for SerializeTupleStruct<'a, F>
 where
     F: Flavor,
 {
@@ -710,23 +639,90 @@ where
     type Error = Error;
 
     #[inline]
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
         T: ?Sized + Serialize,
     {
         match self {
-            SerializeStruct::Struct { ser } => value.serialize(&mut **ser),
-            SerializeStruct::ByteArray { ser } => {
-                if key.as_ptr() == crate::byte_array::TOKEN.as_ptr() {
-                    value.serialize(FixedSizeByteArrayEmitter(&mut **ser))?;
-                    *self = SerializeStruct::ByteArrayDone;
-                    Ok(())
-                } else {
-                    unreachable!();
-                }
+            SerializeTupleStruct::TupleStruct { ser } => value.serialize(&mut **ser),
+            SerializeTupleStruct::ByteArray { ser } => {
+                value.serialize(FixedSizeByteArrayEmitter(&mut **ser))?;
+                *self = SerializeTupleStruct::ByteArrayDone;
+                Ok(())
             },
-            SerializeStruct::ByteArrayDone => unreachable!(),
+            SerializeTupleStruct::ByteArrayDone => unreachable!(),
         }
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a, F> ser::SerializeTupleVariant for &'a mut Serializer<F>
+where
+    F: Flavor,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a, F> ser::SerializeMap for &'a mut Serializer<F>
+where
+    F: Flavor,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        key.serialize(&mut **self)
+    }
+
+    #[inline]
+    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        Ok(())
+    }
+}
+
+impl<'a, F> ser::SerializeStruct for &'a mut Serializer<F>
+where
+    F: Flavor,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
+    where
+        T: ?Sized + Serialize,
+    {
+        value.serialize(&mut **self)
     }
 
     #[inline]
