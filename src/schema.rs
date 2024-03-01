@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use serde::Serialize;
+use serde_derive::Serialize;
 
 /// A schema type representing a variably encoded integer
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]

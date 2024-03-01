@@ -134,7 +134,9 @@ mod test_heapless {
     use core::fmt::Write;
     use core::ops::Deref;
     use heapless::{FnvIndexMap, String, Vec};
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::de::{Deserialize, Deserializer};
+    use serde::ser::{Serialize, Serializer};
+    use serde_derive::{Deserialize, Serialize};
 
     #[test]
     fn de_u8() {

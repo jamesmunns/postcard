@@ -506,7 +506,7 @@ mod test {
     use core::fmt::Write;
     use core::ops::{Deref, DerefMut};
     use heapless::{FnvIndexMap, String};
-    use serde::Deserialize;
+    use serde_derive::{Deserialize, Serialize};
 
     #[test]
     fn ser_u8() {

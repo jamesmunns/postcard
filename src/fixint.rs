@@ -21,7 +21,8 @@ use serde::{Deserialize, Serialize, Serializer};
 /// size array, in **Little Endian** order on the wire.
 ///
 /// ```rust
-/// # use serde::Serialize;
+/// # use serde::ser::Serialize;
+/// # use serde_derive::Serialize;
 /// #[derive(Serialize)]
 /// pub struct DefinitelyLittleEndian {
 ///     #[serde(with = "postcard::fixint::le")]
@@ -59,7 +60,7 @@ pub mod le {
 /// size array, in **Big Endian** order on the wire.
 ///
 /// ```rust
-/// # use serde::Serialize;
+/// # use serde_derive::Serialize;
 /// #[derive(Serialize)]
 /// pub struct DefinitelyBigEndian {
 ///     #[serde(with = "postcard::fixint::be")]
@@ -151,7 +152,7 @@ impl_fixint![i16, i32, i64, i128, u16, u32, u64, u128];
 
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
+    use serde_derive::{Deserialize, Serialize};
 
     #[test]
     fn test_little_endian() {

@@ -35,9 +35,11 @@ features = ["serde"]
 optional = true
 
 [dependencies.serde]
-version = "1.0.100"
+version = "1.0.186"
 default-features = false
-features = ["derive"]
+
+[dependencies.serde_derive]
+version = "1"
 
 [dependencies.cobs]
 version = "0.2.3"
@@ -69,6 +71,9 @@ optional = true
 [dependencies.paste]
 version = "1.0.12"
 optional = true
+
+[dev-dependencies.serde_derive]
+version = "1"
 
 [features]
 default = ["heapless-cas"]

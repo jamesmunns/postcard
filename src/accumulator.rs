@@ -1,6 +1,6 @@
 //! An accumulator used to collect chunked COBS data and deserialize it.
 
-use serde::Deserialize;
+use serde::de::Deserialize;
 
 /// An accumulator used to collect chunked COBS data and deserialize it.
 ///
@@ -13,11 +13,12 @@ use serde::Deserialize;
 ///
 /// ```rust
 /// use postcard::accumulator::{CobsAccumulator, FeedResult};
-/// use serde::Deserialize;
+/// use serde::de::Deserialize;
+/// use serde_derive::{Deserialize, Serialize};
 /// use std::io::Read;
 ///
 /// # let mut input_buf = [0u8; 256];
-/// # #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+/// # #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 /// # struct MyData {
 /// #     a: u32,
 /// #     b: bool,
@@ -179,10 +180,11 @@ impl<const N: usize> CobsAccumulator<N> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use serde_derive::{Deserialize, Serialize};
 
     #[test]
     fn loop_test() {
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo {
             a: u32,
             b: u8,
@@ -203,7 +205,7 @@ mod test {
 
     #[test]
     fn double_loop_test() {
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo {
             a: u32,
             b: u8,
@@ -247,7 +249,7 @@ mod test {
 
     #[test]
     fn loop_test_ref() {
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
             a: u32,
             b: u8,
@@ -280,7 +282,7 @@ mod test {
 
     #[test]
     fn double_loop_test_ref() {
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
             a: u32,
             b: u8,
@@ -342,7 +344,7 @@ mod test {
         // Test bug present in revision abcb407:
         // extend_unchecked may be passed slice with size 1 greater than accumulator buffer causing panic
 
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
+        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo {
             data: [u8; 10],
         }
