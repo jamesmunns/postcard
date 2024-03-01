@@ -15,6 +15,7 @@ mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
+#[cfg(feature = "experimental-derive")]
 pub(crate) mod schema;
 
 /// # Experimental Postcard Features

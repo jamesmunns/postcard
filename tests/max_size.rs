@@ -4,7 +4,7 @@
 mod tests {
     use postcard::experimental::max_size::MaxSize;
     use postcard::to_slice;
-    use serde::Serialize;
+    use serde_derive::Serialize;
 
     #[test]
     fn test_struct_max_size() {

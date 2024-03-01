@@ -10,7 +10,8 @@ use postcard::to_vec;
 
 use postcard::from_bytes;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::ser::Serialize;
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 struct BasicU8S {

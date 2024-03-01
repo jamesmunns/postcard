@@ -54,7 +54,8 @@
 //!     de_flavors::Slice,
 //!     Deserializer,
 //! };
-//! use serde::Deserialize;
+//! use serde::de::Deserialize;
+//! use serde_derive::Deserialize;
 //!
 //! #[derive(Deserialize, Debug, PartialEq)]
 //! struct Tup(u8, u8, u8);
