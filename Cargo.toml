@@ -40,6 +40,7 @@ default-features = false
 
 [dependencies.serde_derive]
 version = "1"
+optional = true
 
 [dependencies.cobs]
 version = "0.2.3"
@@ -95,7 +96,7 @@ use-crc = ["crc", "paste"]
 # Experimental features!
 #
 # NOT subject to SemVer guarantees!
-experimental-derive = ["postcard-derive", "const_format"]
+experimental-derive = ["postcard-derive", "const_format", "dep:serde_derive"]
 
 [workspace]
 members = ["postcard-derive"]
