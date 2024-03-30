@@ -24,10 +24,6 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 
 [dependencies]
 
-[dependencies.const_format]
-version = "0.2.24"
-optional = true
-
 [dependencies.heapless]
 version = "0.8.0"
 default-features = false
@@ -90,7 +86,7 @@ use-crc = ["crc", "paste"]
 # Experimental features!
 #
 # NOT subject to SemVer guarantees!
-experimental-derive = ["postcard-derive", "const_format"]
+experimental-derive = ["postcard-derive"]
 
 [workspace]
 members = ["postcard-derive"]
