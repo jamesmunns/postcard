@@ -75,6 +75,7 @@ fn test_enum_serialize() {
 #[test]
 fn test_struct_serialize() {
     assert_eq!(
+        Outer::SCHEMA,
         &NamedType {
             name: "Outer",
             ty: &SdmTy::Struct(&[
@@ -98,11 +99,51 @@ fn test_struct_serialize() {
                     name: "e",
                     ty: &NamedType {
                         name: "[T; N]",
-                        ty: &SdmTy::Seq(&U8_SCHEMA),
+                        ty: &SdmTy::Tuple(&[
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                            &NamedType {
+                                name: "u8",
+                                ty: &SdmTy::U8
+                            },
+                        ])
                     }
-                }
+                },
             ]),
-        },
-        Outer::SCHEMA
+        }
     );
 }
