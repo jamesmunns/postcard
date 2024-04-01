@@ -32,6 +32,10 @@ enum Inner {
     Beta,
     Gamma,
     Delta(i32, i16),
+    Epsilon {
+        zeta: f32,
+        eta: bool,
+    }
 }
 
 #[allow(unused)]
@@ -66,6 +70,20 @@ fn test_enum_serialize() {
                     name: "Delta",
                     ty: &SdmTy::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
                 },
+                &NamedVariant {
+                    name: "Epsilon",
+                    ty: &SdmTy::StructVariant(&[
+                        &NamedValue {
+                            name: "zeta",
+                            ty: &NamedType { name: "f32", ty: &SdmTy::F32 },
+                        }
+                        ,
+                        &NamedValue {
+                            name: "eta",
+                            ty: &NamedType { name: "bool", ty: &SdmTy::Bool },
+                        }
+                    ]),
+                }
             ]),
         },
         Inner::SCHEMA
