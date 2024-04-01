@@ -15,7 +15,9 @@ mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
-pub(crate) mod schema;
+
+/// The schema types and macros.
+pub mod schema;
 
 /// # Experimental Postcard Features
 ///

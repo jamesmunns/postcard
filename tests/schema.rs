@@ -1,6 +1,7 @@
-#![cfg(feature = "derive")]
+#![cfg(feature = "experimental-derive")]
 
 use postcard::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
+use postcard_derive::Schema;
 
 const U8_SCHEMA: NamedType = NamedType {
     name: "u8",
