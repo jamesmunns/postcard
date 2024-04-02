@@ -197,6 +197,11 @@ pub mod io {
         }
 
         #[inline]
+        fn size(&self) -> usize {
+            (self.end as usize) - (self.cursor as usize)
+        }
+
+        #[inline]
         fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8]> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
@@ -263,6 +268,11 @@ pub mod io {
             }
 
             #[inline]
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.buff.size())
+            }
+
+            #[inline]
             fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
@@ -321,6 +331,11 @@ pub mod io {
                     .read(&mut val)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
                 Ok(val[0])
+            }
+
+            #[inline]
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.buff.size())
             }
 
             #[inline]
@@ -412,6 +427,11 @@ pub mod crc {
                                 }
                                 e @ Err(_) => e,
                             }
+                        }
+
+                        #[inline]
+                        fn size_hint(&self) -> Option<usize> {
+                            self.flav.size_hint()
                         }
 
                         #[inline]
