@@ -168,7 +168,10 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b, F
 
     #[inline]
     fn size_hint(&self) -> Option<usize> {
-        Some(self.len)
+        match self.deserializer.flavor.size_hint() {
+            Some(size) if size < self.len => None,
+            _ => Some(self.len),
+        }
     }
 }
 
