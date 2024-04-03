@@ -96,6 +96,22 @@ pub trait Flavor<'de>: 'de {
     fn pop(&mut self) -> Result<u8>;
 
     /// Returns the number of bytes remaining in the message, if known.
+    /// 
+    /// # Implementation notes
+    /// 
+    /// It is not enforced that this number is exactly correct.
+    /// A flavor may yield less or more bytes than the what is hinted at by
+    /// this function.
+    /// 
+    /// `size_hint()` is primarily intended to be used for optimizations such as
+    /// reserving space for deserialized items, but must not be trusted to
+    /// e.g., omit bounds checks in unsafe code. An incorrect implementation of
+    /// `size_hint()` should not lead to memory safety violations.
+    /// 
+    /// That said, the implementation should provide a correct estimation,
+    /// because otherwise it would be a violation of the trait’s protocol.
+    /// 
+    /// The default implementation returns `None` which is correct for any flavor.
     fn size_hint(&self) -> Option<usize> {
         None
     }
