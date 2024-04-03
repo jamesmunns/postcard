@@ -96,7 +96,9 @@ pub trait Flavor<'de>: 'de {
     fn pop(&mut self) -> Result<u8>;
 
     /// Returns the number of bytes remaining in the message, if known.
-    fn size_hint(&self) -> Option<usize>;
+    fn size_hint(&self) -> Option<usize> {
+        None
+    }
 
     /// Attempt to take the next `ct` bytes from the serialized message
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
