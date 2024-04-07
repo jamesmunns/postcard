@@ -17,6 +17,10 @@ mod varint;
 pub(crate) mod max_size;
 
 /// The schema types and macros.
+#[cfg(not(feature = "experimental-derive"))]
+mod schema;
+
+#[cfg(feature = "experimental-derive")]
 pub mod schema;
 
 /// # Experimental Postcard Features
