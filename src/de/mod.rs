@@ -80,7 +80,7 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a[std::io::Read].
+/// Deserialize a message of type `T` from a [std::io::Read].
 #[cfg(feature = "use-std")]
 pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
