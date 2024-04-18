@@ -200,6 +200,12 @@ impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize, F: MaxSize> Max
 
 #[cfg(feature = "alloc")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+impl<T: MaxSize> MaxSize for Box<T> {
+    const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
+}
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
 impl<T: MaxSize> MaxSize for Arc<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
@@ -258,6 +264,13 @@ mod tests {
     use super::*;
     use alloc::rc::Rc;
     use alloc::sync::Arc;
+
+    #[test]
+    fn box_max_size() {
+        assert_eq!(Box::<u8>::POSTCARD_MAX_SIZE, 1);
+        assert_eq!(Box::<u32>::POSTCARD_MAX_SIZE, 5);
+        assert_eq!(Box::<(u128, [u8; 8])>::POSTCARD_MAX_SIZE, 27);
+    }
 
     #[test]
     fn arc_max_size() {
