@@ -91,6 +91,9 @@ pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
 
+#[cfg(feature = "tinyvec")]
+pub use ser::{to_tinyvec, to_tinyvec_cobs};
+
 #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub use ser::to_eio;
 
