@@ -1,5 +1,5 @@
 use postcard::accumulator::{CobsAccumulator, FeedResult};
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use std::io::Read;
 
 // Read a "huge" serialized struct in 32 byte chunks into a 256 byte buffer and deserialize it.
