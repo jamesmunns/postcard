@@ -212,7 +212,7 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
-/// Wrapper over a [std::iter::Extend<u8>] that implements the flavor trait
+/// Wrapper over a [`std::iter::Extend<u8>`] that implements the flavor trait
 pub struct ExtendFlavor<T> {
     iter: T,
 }
@@ -221,7 +221,7 @@ impl<T> ExtendFlavor<T>
 where
     T: core::iter::Extend<u8>,
 {
-    /// Create a new [Self] flavor from a given [std::iter::Extend<u8>]
+    /// Create a new [Self] flavor from a given [`std::iter::Extend<u8>`]
     pub fn new(iter: T) -> Self {
         Self { iter }
     }
