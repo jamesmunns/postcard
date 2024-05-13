@@ -228,6 +228,7 @@ impl<const N: usize> MaxSize for heapless::String<N> {
     const POSTCARD_MAX_SIZE: usize = <[u8; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
 
+#[cfg(feature = "heapless")]
 const fn varint_size(max_n: usize) -> usize {
     const BITS_PER_BYTE: usize = 8;
     const BITS_PER_VARINT_BYTE: usize = 7;

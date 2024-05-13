@@ -11,7 +11,7 @@ fn test_crc() {
     assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
 
     let digest = crc.digest();
-    let res = postcard::take_from_bytes_crc32::<[u8; 5]>(&res, digest).unwrap();
+    let res = postcard::take_from_bytes_crc32::<[u8; 5]>(res, digest).unwrap();
 
     let expected_bytes = [0x04, 0x01, 0x00, 0x20, 0x30];
     let remaining_bytes = [];
@@ -31,7 +31,7 @@ fn test_crc_8() {
     assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30, 167]);
 
     let digest = crc.digest();
-    let res = postcard::de_flavors::crc::take_from_bytes_u8::<[u8; 5]>(&res, digest).unwrap();
+    let res = postcard::de_flavors::crc::take_from_bytes_u8::<[u8; 5]>(res, digest).unwrap();
 
     let expected_bytes = [0x04, 0x01, 0x00, 0x20, 0x30];
     let remaining_bytes = [];
@@ -54,7 +54,7 @@ fn test_crc_error() {
     res[last] = 0;
 
     let digest = crc.digest();
-    let res = postcard::take_from_bytes_crc32::<[u8; 5]>(&res, digest);
+    let res = postcard::take_from_bytes_crc32::<[u8; 5]>(res, digest);
 
     assert_eq!(res, Err(postcard::Error::DeserializeBadCrc));
 }
