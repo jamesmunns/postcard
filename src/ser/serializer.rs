@@ -318,9 +318,9 @@ where
     }
 
     #[inline]
-    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok>
     where
-        T: core::fmt::Display,
+        T: core::fmt::Display + ?Sized,
     {
         use core::fmt::Write;
 

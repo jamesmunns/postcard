@@ -308,6 +308,7 @@ pub mod io {
     }
 
     /// Support for [std::io] traits
+    #[allow(clippy::module_inception)]
     #[cfg(feature = "use-std")]
     pub mod io {
         use super::super::Flavor;
