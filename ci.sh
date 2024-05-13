@@ -25,5 +25,4 @@ cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive
 
 cargo fmt -- --check
 
-# TODO: Uncomment once documentation lints are fixed.
-# env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo doc --no-deps
+env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo doc --no-deps --all-features
