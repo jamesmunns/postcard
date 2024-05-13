@@ -308,7 +308,7 @@ where
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(feature = "use-std")]
-pub fn to_io<'b, T, W>(value: &'b T, writer: W) -> Result<W>
+pub fn to_io<T, W>(value: &T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: std::io::Write,
@@ -508,7 +508,7 @@ mod test {
     #[test]
     fn ser_u8() {
         let output: Vec<u8, 1> = to_vec(&0x05u8).unwrap();
-        assert!(&[5] == output.deref());
+        assert_eq!(&[5], output.deref());
         assert!(output.len() == serialized_size(&0x05u8).unwrap());
         assert!(output.len() <= Vec::<u8, 1>::POSTCARD_MAX_SIZE);
     }
@@ -654,7 +654,7 @@ mod test {
         let mut buf = [0; varint_max::<usize>()];
         let res = varint_usize(1, &mut buf);
 
-        assert!(&[1] == res);
+        assert_eq!(&[1], res);
 
         let res = varint_usize(usize::MAX, &mut buf);
 
@@ -702,7 +702,7 @@ mod test {
         assert_eq!(&[0x01], output.deref());
         assert!(output.len() == serialized_size(&input).unwrap());
 
-        let input = DataEnum::Bim(u64::max_value());
+        let input = DataEnum::Bim(u64::MAX);
         let output: Vec<u8, { 1 + varint_max::<u64>() }> = to_vec(&input).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
@@ -710,12 +710,12 @@ mod test {
         );
         assert!(output.len() == serialized_size(&input).unwrap());
 
-        let input = DataEnum::Bib(u16::max_value());
+        let input = DataEnum::Bib(u16::MAX);
         let output: Vec<u8, { 1 + varint_max::<u16>() }> = to_vec(&input).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
         assert!(output.len() == serialized_size(&input).unwrap());
 
-        let input = DataEnum::Bap(u8::max_value());
+        let input = DataEnum::Bap(u8::MAX);
         let output: Vec<u8, 2> = to_vec(&input).unwrap();
         assert_eq!(&[0x02, 0xFF], output.deref());
         assert!(output.len() == serialized_size(&input).unwrap());

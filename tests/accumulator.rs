@@ -23,6 +23,8 @@ fn reader() {
     };
 
     let input = postcard::to_slice_cobs(&expected, &mut input_buf).unwrap();
+    // TODO(https://github.com/rust-lang/rust-clippy/issues/12751): Remove once fixed.
+    #[allow(clippy::redundant_slicing)]
     let mut input = &input[..];
 
     // Magic number from serializing struct and printing length
@@ -37,10 +39,10 @@ fn reader() {
         }
 
         let buf = &raw_buf[..ct];
-        let mut window = &buf[..];
+        let mut window = buf;
 
         'cobs: while !window.is_empty() {
-            window = match cobs_buf.feed::<Huge>(&window) {
+            window = match cobs_buf.feed::<Huge>(window) {
                 FeedResult::Consumed => break 'cobs,
                 FeedResult::OverFull(new_wind) => new_wind,
                 FeedResult::DeserError(new_wind) => new_wind,

@@ -98,13 +98,13 @@ fn loopback() {
     // Enums!
     test_one(BasicEnum::Bim, &[0x01]);
     test_one(
-        DataEnum::Bim(u64::max_value()),
+        DataEnum::Bim(u64::MAX),
         &[
             0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01,
         ],
     );
-    test_one(DataEnum::Bib(u16::max_value()), &[0x00, 0xFF, 0xFF, 0x03]);
-    test_one(DataEnum::Bap(u8::max_value()), &[0x02, 0xFF]);
+    test_one(DataEnum::Bib(u16::MAX), &[0x00, 0xFF, 0xFF, 0x03]);
+    test_one(DataEnum::Bap(u8::MAX), &[0x02, 0xFF]);
     test_one(
         DataEnum::Kim(EnumStruct {
             eight: 0xF0,
@@ -156,7 +156,7 @@ fn loopback() {
 
 #[cfg(feature = "heapless")]
 #[track_caller]
-fn test_one<'a, 'de, T>(data: T, ser_rep: &'a [u8])
+fn test_one<T>(data: T, ser_rep: &[u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
 {
@@ -179,7 +179,7 @@ fn std_io_loopback() {
     use postcard::from_io;
     use postcard::to_io;
 
-    fn test_io<'a, 'de, T>(data: T, ser_rep: &'a [u8])
+    fn test_io<T>(data: T, ser_rep: &[u8])
     where
         T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
     {

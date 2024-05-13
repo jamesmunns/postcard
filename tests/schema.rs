@@ -100,7 +100,7 @@ fn test_enum_serialize() {
 
 #[test]
 fn test_struct_serialize() {
-    const TEN_BYTES_SCHEMA: &'static [&'static NamedType] = &[&U8_SCHEMA; 10];
+    const TEN_BYTES_SCHEMA: &[&NamedType] = &[&U8_SCHEMA; 10];
 
     assert_eq!(
         Outer::SCHEMA,

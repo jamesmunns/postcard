@@ -90,6 +90,12 @@ pub enum FeedResult<'a, T> {
     },
 }
 
+impl<const N: usize> Default for CobsAccumulator<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> CobsAccumulator<N> {
     /// Create a new accumulator.
     pub const fn new() -> Self {

@@ -9,15 +9,14 @@ ensure_target() {
 }
 cargo_check() {
   cargo check "$@"
-  # TODO: Uncomment once clippy lints are fixed.
-  # cargo clippy "$@" -- --deny=warnings
+  cargo clippy "$@" -- --deny=warnings
 }
 cargo_test() {
   cargo_check --all-targets "$@"
   cargo test "$@"
 }
 
-cargo_test --features=alloc,experimental-derive
+cargo_test --features=alloc,experimental-derive,use-std,use-crc
 
 ensure_target thumbv7em-none-eabi
 cargo_check --target=thumbv7em-none-eabi --no-default-features
@@ -26,3 +25,8 @@ cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive
 cargo fmt -- --check
 
 env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo doc --no-deps --all-features
+
+cd postcard-derive
+
+cargo_check
+cargo fmt -- --check

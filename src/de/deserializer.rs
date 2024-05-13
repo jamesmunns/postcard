@@ -44,12 +44,6 @@ impl<'de> Deserializer<'de, Slice<'de>> {
 }
 
 impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
-    #[cfg(target_pointer_width = "8")]
-    #[inline(always)]
-    fn try_take_varint_usize(&mut self) -> Result<usize> {
-        self.try_take_varint_u8().map(|u| u as usize)
-    }
-
     #[cfg(target_pointer_width = "16")]
     #[inline(always)]
     fn try_take_varint_usize(&mut self) -> Result<usize> {
