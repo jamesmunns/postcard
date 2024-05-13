@@ -208,7 +208,7 @@ impl<T: Schema, E: Schema> Schema for Result<T, E> {
     };
 }
 
-impl<T: Schema> Schema for &'_ T {
+impl<T: Schema + ?Sized> Schema for &'_ T {
     const SCHEMA: &'static NamedType = T::SCHEMA;
 }
 

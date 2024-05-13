@@ -80,7 +80,7 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a[std::io::Read].
+/// Deserialize a message of type `T` from a [std::io::Read].
 #[cfg(feature = "use-std")]
 pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
@@ -564,5 +564,44 @@ mod test_heapless {
         let (val, remain) = take_from_bytes_cobs::<(i32, u8, u64)>(&mut output).unwrap();
         assert_eq!((4, 0, 4), val);
         assert_eq!(remain.len(), 0);
+    }
+}
+
+#[cfg(any(feature = "alloc", feature = "use-std"))]
+#[cfg(test)]
+mod test_alloc {
+    extern crate alloc;
+
+    use super::*;
+
+    use alloc::vec;
+    use serde::Deserialize;
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct ZSTStruct;
+
+    #[test]
+    fn zst_vec() {
+        assert_eq!(from_bytes(&[3]), Ok(vec![ZSTStruct, ZSTStruct, ZSTStruct]));
+
+        assert_eq!(
+            from_bytes(&[4]),
+            Ok(vec![ZSTStruct, ZSTStruct, ZSTStruct, ZSTStruct])
+        );
+    }
+
+    #[test]
+    fn vec() {
+        assert_eq!(
+            from_bytes::<Vec<u8>>(&[8, 255, 255, 255, 0, 0, 0, 0, 0]),
+            Ok(vec![255, 255, 255, 0, 0, 0, 0, 0])
+        );
+
+        // This won't actually prove anything since tests will likely always be
+        // run on devices with larger amounts of memory, but it can't hurt.
+        assert_eq!(
+            from_bytes::<Vec<u8>>(&[(1 << 7) | 8, 255, 255, 255, 0, 0, 0, 0, 0]),
+            Err(Error::DeserializeUnexpectedEnd)
+        );
     }
 }

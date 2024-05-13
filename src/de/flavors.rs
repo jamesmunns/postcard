@@ -95,6 +95,27 @@ pub trait Flavor<'de>: 'de {
     /// Obtain the next byte for deserialization
     fn pop(&mut self) -> Result<u8>;
 
+    /// Returns the number of bytes remaining in the message, if known.
+    /// 
+    /// # Implementation notes
+    /// 
+    /// It is not enforced that this number is exactly correct.
+    /// A flavor may yield less or more bytes than the what is hinted at by
+    /// this function.
+    /// 
+    /// `size_hint()` is primarily intended to be used for optimizations such as
+    /// reserving space for deserialized items, but must not be trusted to
+    /// e.g., omit bounds checks in unsafe code. An incorrect implementation of
+    /// `size_hint()` should not lead to memory safety violations.
+    /// 
+    /// That said, the implementation should provide a correct estimation,
+    /// because otherwise it would be a violation of the trait’s protocol.
+    /// 
+    /// The default implementation returns `None` which is correct for any flavor.
+    fn size_hint(&self) -> Option<usize> {
+        None
+    }
+
     /// Attempt to take the next `ct` bytes from the serialized message
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
 
@@ -143,6 +164,11 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 
     #[inline]
+    fn size_hint(&self) -> Option<usize> {
+        Some((self.end as usize) - (self.cursor as usize))
+    }
+
+    #[inline]
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
         let remain = (self.end as usize) - (self.cursor as usize);
         if remain < ct {
@@ -186,6 +212,11 @@ pub mod io {
                 end: unsafe { sli.as_ptr().add(sli.len()) },
                 _pl: PhantomData,
             }
+        }
+
+        #[inline]
+        fn size(&self) -> usize {
+            (self.end as usize) - (self.cursor as usize)
         }
 
         #[inline]
@@ -255,6 +286,11 @@ pub mod io {
             }
 
             #[inline]
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.buff.size())
+            }
+
+            #[inline]
             fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
@@ -313,6 +349,11 @@ pub mod io {
                     .read(&mut val)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
                 Ok(val[0])
+            }
+
+            #[inline]
+            fn size_hint(&self) -> Option<usize> {
+                Some(self.buff.size())
             }
 
             #[inline]
@@ -404,6 +445,11 @@ pub mod crc {
                                 }
                                 e @ Err(_) => e,
                             }
+                        }
+
+                        #[inline]
+                        fn size_hint(&self) -> Option<usize> {
+                            self.flav.size_hint()
                         }
 
                         #[inline]

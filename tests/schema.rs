@@ -1,6 +1,6 @@
 #![cfg(feature = "experimental-derive")]
 
-use postcard::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
+use postcard::experimental::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
 use postcard_derive::Schema;
 
 const U8_SCHEMA: NamedType = NamedType {
@@ -45,7 +45,13 @@ struct Outer {
     b: u64,
     c: u8,
     d: Inner,
-    e: [u8; 10],
+    e: [u8; 3],
+}
+
+#[allow(unused)]
+#[derive(Schema)]
+struct Slice<'a> {
+    x: &'a [u8],
 }
 
 #[test]
@@ -163,5 +169,22 @@ fn test_struct_serialize() {
                 },
             ]),
         }
+    );
+}
+
+#[test]
+fn test_slice_serialize() {
+    assert_eq!(
+        &NamedType {
+            name: "Slice",
+            ty: &SdmTy::Struct(&[&NamedValue {
+                name: "x",
+                ty: &NamedType {
+                    name: "&[T]",
+                    ty: &SdmTy::Seq(&U8_SCHEMA)
+                }
+            },]),
+        },
+        Slice::SCHEMA
     );
 }
