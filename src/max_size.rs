@@ -2,7 +2,7 @@
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
-use alloc::{rc::Rc, sync::Arc};
+use alloc::{boxed::Box, rc::Rc, sync::Arc};
 
 use crate::varint::varint_max;
 use core::{
