@@ -572,7 +572,7 @@ where
 ///
 /// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
 #[cfg(feature = "use-crc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "use-crc")))]
 pub mod crc {
     use crc::Digest;
     use crc::Width;
@@ -652,7 +652,7 @@ pub mod crc {
                     /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "heapless")]
-                    #[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
                     pub fn [<to_vec_ $int>]<T, const B: usize>(
                         value: &T,
                         digest: Digest<'_, $int>,
@@ -668,7 +668,7 @@ pub mod crc {
                     /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "alloc")]
-                    #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
                     pub fn [<to_allocvec_ $int>]<T>(value: &T, digest: Digest<'_, $int>) -> Result<alloc::vec::Vec<u8>>
                     where
                         T: Serialize + ?Sized,

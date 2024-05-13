@@ -226,7 +226,7 @@ impl<T: Schema, const N: usize> Schema for [T; N] {
 }
 
 #[cfg(feature = "heapless")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 impl<T: Schema, const N: usize> Schema for heapless::Vec<T, N> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "heapless::Vec<T, N>",
@@ -234,7 +234,7 @@ impl<T: Schema, const N: usize> Schema for heapless::Vec<T, N> {
     };
 }
 #[cfg(feature = "heapless")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 impl<const N: usize> Schema for heapless::String<N> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "heapless::String<N>",
@@ -243,7 +243,7 @@ impl<const N: usize> Schema for heapless::String<N> {
 }
 
 #[cfg(feature = "use-std")]
-#[cfg_attr(doc_cfg, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<T: Schema> Schema for std::vec::Vec<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Vec<T>",
@@ -252,7 +252,7 @@ impl<T: Schema> Schema for std::vec::Vec<T> {
 }
 
 #[cfg(feature = "use-std")]
-#[cfg_attr(doc_cfg, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl Schema for std::string::String {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "String",

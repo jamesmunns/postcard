@@ -199,31 +199,31 @@ impl<A: MaxSize, B: MaxSize, C: MaxSize, D: MaxSize, E: MaxSize, F: MaxSize> Max
 }
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T: MaxSize> MaxSize for Box<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T: MaxSize> MaxSize for Arc<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T: MaxSize> MaxSize for Rc<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
 
 #[cfg(feature = "heapless")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 impl<T: MaxSize, const N: usize> MaxSize for heapless::Vec<T, N> {
     const POSTCARD_MAX_SIZE: usize = <[T; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
 
 #[cfg(feature = "heapless")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 impl<const N: usize> MaxSize for heapless::String<N> {
     const POSTCARD_MAX_SIZE: usize = <[u8; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
