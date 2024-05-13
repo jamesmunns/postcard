@@ -638,10 +638,10 @@ pub mod crc {
                     ///
                     /// When successful, this function returns the slice containing the
                     /// serialized and encoded message.
-                    pub fn [<to_slice_ $int>]<'a, 'b, T>(
-                        value: &'b T,
+                    pub fn [<to_slice_ $int>]<'a, T>(
+                        value: &T,
                         buf: &'a mut [u8],
-                        digest: Digest<'a, $int>,
+                        digest: Digest<'_, $int>,
                     ) -> Result<&'a mut [u8]>
                     where
                         T: Serialize + ?Sized,
@@ -653,9 +653,9 @@ pub mod crc {
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "heapless")]
                     #[cfg_attr(doc_cfg, doc(cfg(feature = "heapless")))]
-                    pub fn [<to_vec_ $int>]<'a, T, const B: usize>(
+                    pub fn [<to_vec_ $int>]<T, const B: usize>(
                         value: &T,
-                        digest: Digest<'a, $int>,
+                        digest: Digest<'_, $int>,
                     ) -> Result<heapless::Vec<u8, B>>
                     where
                         T: Serialize + ?Sized,
@@ -669,7 +669,7 @@ pub mod crc {
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "alloc")]
                     #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
-                    pub fn [<to_allocvec_ $int>]<'a, T>(value: &T, digest: Digest<'a, $int>) -> Result<alloc::vec::Vec<u8>>
+                    pub fn [<to_allocvec_ $int>]<T>(value: &T, digest: Digest<'_, $int>) -> Result<alloc::vec::Vec<u8>>
                     where
                         T: Serialize + ?Sized,
                     {
