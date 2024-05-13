@@ -23,8 +23,7 @@ ensure_target thumbv7em-none-eabi
 cargo_check --target=thumbv7em-none-eabi --no-default-features
 cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive
 
-# TODO: Uncomment once formatting is correct.
-# cargo fmt -- --check
+cargo fmt -- --check
 
 # TODO: Uncomment once documentation lints are fixed.
 # env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo doc --no-deps
