@@ -266,7 +266,7 @@ where
 /// let vec = to_extend("Hi!", ser).unwrap();
 /// assert_eq!(&vec[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-pub fn to_extend<'a, T, W>(value: &'a T, writer: W) -> Result<W>
+pub fn to_extend<T, W>(value: &T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: core::iter::Extend<u8>,

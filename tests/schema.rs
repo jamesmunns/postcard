@@ -31,16 +31,18 @@ enum Inner {
     Beta,
     Gamma,
     Delta(i32, i16),
+    Epsilon { zeta: f32, eta: bool },
 }
 
 #[allow(unused)]
 #[derive(Schema)]
-struct Outer {
+struct Outer<'a> {
     a: u32,
     b: u64,
     c: u8,
     d: Inner,
-    e: [u8; 3],
+    e: [u8; 10],
+    f: &'a [u8],
 }
 
 #[allow(unused)]
@@ -71,6 +73,25 @@ fn test_enum_serialize() {
                     name: "Delta",
                     ty: &SdmTy::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
                 },
+                &NamedVariant {
+                    name: "Epsilon",
+                    ty: &SdmTy::StructVariant(&[
+                        &NamedValue {
+                            name: "zeta",
+                            ty: &NamedType {
+                                name: "f32",
+                                ty: &SdmTy::F32
+                            },
+                        },
+                        &NamedValue {
+                            name: "eta",
+                            ty: &NamedType {
+                                name: "bool",
+                                ty: &SdmTy::Bool
+                            },
+                        }
+                    ]),
+                }
             ]),
         },
         Inner::SCHEMA
@@ -79,7 +100,10 @@ fn test_enum_serialize() {
 
 #[test]
 fn test_struct_serialize() {
+    const TEN_BYTES_SCHEMA: &'static [&'static NamedType] = &[&U8_SCHEMA; 10];
+
     assert_eq!(
+        Outer::SCHEMA,
         &NamedType {
             name: "Outer",
             ty: &SdmTy::Struct(&[
@@ -103,12 +127,21 @@ fn test_struct_serialize() {
                     name: "e",
                     ty: &NamedType {
                         name: "[T; N]",
-                        ty: &SdmTy::Tuple(&[&U8_SCHEMA, &U8_SCHEMA, &U8_SCHEMA]),
+                        ty: &SdmTy::Tuple(TEN_BYTES_SCHEMA),
                     }
-                }
+                },
+                &NamedValue {
+                    name: "f",
+                    ty: &NamedType {
+                        name: "&[T]",
+                        ty: &SdmTy::Seq(&NamedType {
+                            name: "u8",
+                            ty: &SdmTy::U8
+                        })
+                    }
+                },
             ]),
-        },
-        Outer::SCHEMA
+        }
     );
 }
 

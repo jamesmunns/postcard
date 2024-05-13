@@ -89,7 +89,7 @@ fn generate_variants(fields: &Fields) -> TokenStream {
             let fields = fields.named.iter().map(|f| {
                 let ty = &f.ty;
                 let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => ::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
+                quote_spanned!(f.span() => &::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
             });
             quote! { &::postcard::experimental::schema::SdmTy::StructVariant(&[
                 #( #fields ),*

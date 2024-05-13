@@ -374,7 +374,7 @@ where
             fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
                 self.output
                     .try_extend(s.as_bytes())
-                    .map_err(|_| core::fmt::Error::default())
+                    .map_err(|_| core::fmt::Error)
             }
         }
 

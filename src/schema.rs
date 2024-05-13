@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use serde::Serialize;
 
 /// A schema type representing a variably encoded integer
