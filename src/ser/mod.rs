@@ -440,10 +440,7 @@ where
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = "alloc"))))]
 #[inline]
-pub fn to_allocvec_crc32<T>(
-    value: &T,
-    digest: crc::Digest<'_, u32>,
-) -> Result<alloc::vec::Vec<u8>>
+pub fn to_allocvec_crc32<T>(value: &T, digest: crc::Digest<'_, u32>) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
