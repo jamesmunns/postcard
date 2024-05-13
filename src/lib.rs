@@ -1,7 +1,7 @@
 #![cfg_attr(not(any(test, feature = "use-std")), no_std)]
 #![warn(missing_docs)]
 #![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
-#![cfg_attr(doc_cfg, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod accumulator;
 mod de;
@@ -66,7 +66,7 @@ pub mod schema;
 pub mod experimental {
     /// Compile time max-serialization size calculation
     #[cfg(feature = "experimental-derive")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "experimental-derive")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental-derive")))]
     pub mod max_size {
         // NOTE: This is the trait...
         pub use crate::max_size::MaxSize;
@@ -78,7 +78,7 @@ pub mod experimental {
 
     /// Compile time Schema generation
     #[cfg(feature = "experimental-derive")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "experimental-derive")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "experimental-derive")))]
     pub mod schema {
         // NOTE: This is the trait...
         pub use crate::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};

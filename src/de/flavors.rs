@@ -387,7 +387,7 @@ pub mod io {
 ///
 /// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
 #[cfg(feature = "use-crc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "use-crc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "use-crc")))]
 pub mod crc {
     use core::convert::TryInto;
 
