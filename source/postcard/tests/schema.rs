@@ -51,6 +51,26 @@ struct Slice<'a> {
     x: &'a [u8],
 }
 
+#[allow(unused)]
+#[derive(Schema)]
+#[postcard(bound = "")] // doesn't compile without this
+struct Bound<F: bound::Fun> {
+    x: F::Out<u8>,
+}
+
+mod bound {
+    use super::*;
+
+    pub trait Fun {
+        type Out<In: Schema>: Schema;
+    }
+
+    pub enum Id {}
+    impl Fun for Id {
+        type Out<In: Schema> = In;
+    }
+}
+
 #[test]
 fn test_enum_serialize() {
     assert_eq!(
@@ -159,5 +179,19 @@ fn test_slice_serialize() {
             },]),
         },
         Slice::SCHEMA
+    );
+}
+
+#[test]
+fn test_bound_serialize() {
+    assert_eq!(
+        &NamedType {
+            name: "Bound",
+            ty: &SdmTy::Struct(&[&NamedValue {
+                name: "x",
+                ty: &U8_SCHEMA
+            }]),
+        },
+        Bound::<bound::Id>::SCHEMA,
     );
 }
