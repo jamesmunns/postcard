@@ -100,7 +100,7 @@ where
 #[cfg(feature = "use-crc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "use-crc")))]
 #[inline]
-pub fn from_bytes_crc32<'a, T>(s: &'a [u8], digest: crc::Digest<'a, u32>) -> Result<T>
+pub fn from_bytes_crc32<'a, T>(s: &'a [u8], digest: crc::Digest<'_, u32>) -> Result<T>
 where
     T: Deserialize<'a>,
 {
@@ -116,7 +116,7 @@ where
 #[inline]
 pub fn take_from_bytes_crc32<'a, T>(
     s: &'a [u8],
-    digest: crc::Digest<'a, u32>,
+    digest: crc::Digest<'_, u32>,
 ) -> Result<(T, &'a [u8])>
 where
     T: Deserialize<'a>,
