@@ -291,13 +291,13 @@ mod varint {
 
     #[cfg(target_pointer_width = "16")]
     #[inline(always)]
-    fn try_take_varint_usize(data: &[u8]) -> Result<(usize, &[u8]), Error> {
+    pub fn try_take_varint_usize(data: &[u8]) -> Result<(usize, &[u8]), Error> {
         try_take_varint_u16(data).map(|(u, rest)| (u as usize, rest))
     }
 
     #[cfg(target_pointer_width = "32")]
     #[inline(always)]
-    fn try_take_varint_usize(data: &[u8]) -> Result<(usize, &[u8]), Error> {
+    pub fn try_take_varint_usize(data: &[u8]) -> Result<(usize, &[u8]), Error> {
         try_take_varint_u32(data).map(|(u, rest)| (u as usize, rest))
     }
 
