@@ -55,7 +55,7 @@ optional = true
 
 [dependencies.postcard-derive]
 path = "../postcard-derive"
-version = "0.1.1"
+version = "0.1.2"
 optional = true
 
 [dependencies.crc]
