@@ -9,6 +9,7 @@ ensure_target() {
 }
 
 ensure_target thumbv7em-none-eabi
+ensure_target riscv32i-unknown-none-elf
 
 has_toolchain() {
   rustup toolchain list | grep -q "$1"
@@ -32,6 +33,10 @@ cargo_test --features=alloc,experimental-derive,use-std,use-crc
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features
 cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive
+
+# CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
+# on non-atomic systems
+cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive
 
 cargo fmt --all -- --check
 

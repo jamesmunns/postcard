@@ -2,7 +2,10 @@
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
-use alloc::{boxed::Box, rc::Rc, sync::Arc};
+use alloc::{boxed::Box, rc::Rc};
+
+#[cfg(all(feature = "alloc", target_has_atomic = "ptr"))]
+use alloc::sync::Arc;
 
 use crate::varint::varint_max;
 use core::{
@@ -204,8 +207,8 @@ impl<T: MaxSize> MaxSize for Box<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
 
-#[cfg(feature = "alloc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+#[cfg(all(feature = "alloc", target_has_atomic = "ptr"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "alloc", target_has_atomic = "ptr"))))]
 impl<T: MaxSize> MaxSize for Arc<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
@@ -264,6 +267,8 @@ mod tests {
 
     use super::*;
     use alloc::rc::Rc;
+
+    #[cfg(target_has_atomic = "ptr")]
     use alloc::sync::Arc;
 
     #[test]
@@ -274,6 +279,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_has_atomic = "ptr")]
     fn arc_max_size() {
         assert_eq!(Arc::<u8>::POSTCARD_MAX_SIZE, 1);
         assert_eq!(Arc::<u32>::POSTCARD_MAX_SIZE, 5);
