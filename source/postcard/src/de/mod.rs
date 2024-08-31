@@ -427,7 +427,7 @@ mod test_heapless {
         let x = ByteSliceStruct { bytes: &[0u8; 32] };
         let output: Vec<u8, 128> = to_vec(&x).unwrap();
         assert_eq!(output.len(), 33);
-        let out: ByteSliceStruct = from_bytes(output.deref()).unwrap();
+        let out: ByteSliceStruct<'_> = from_bytes(output.deref()).unwrap();
         assert_eq!(out, ByteSliceStruct { bytes: &[0u8; 32] });
     }
 
@@ -488,7 +488,7 @@ mod test_heapless {
             output.deref()
         );
 
-        let out: RefStruct = from_bytes(output.deref()).unwrap();
+        let out: RefStruct<'_> = from_bytes(output.deref()).unwrap();
         assert_eq!(
             out,
             RefStruct {
@@ -548,7 +548,7 @@ mod test_heapless {
 
         let mut encode_buf = [0u8; 32];
         let sz = cobs::encode(output.deref(), &mut encode_buf);
-        let out = from_bytes_cobs::<RefStruct>(&mut encode_buf[..sz]).unwrap();
+        let out = from_bytes_cobs::<RefStruct<'_>>(&mut encode_buf[..sz]).unwrap();
 
         assert_eq!(input, out);
     }
