@@ -255,7 +255,7 @@ where
     )
 }
 
-/// Serialize a `T` to a [core::iter::Extend],
+/// Serialize a `T` to a [`core::iter::Extend`],
 /// ## Example
 ///
 /// ```rust
@@ -295,7 +295,7 @@ where
     serialize_with_flavor::<T, _, _>(value, flavors::eio::WriteFlavor::new(writer))
 }
 
-/// Serialize a `T` to a [std::io::Write],
+/// Serialize a `T` to a [`std::io::Write`],
 /// ## Example
 ///
 /// ```rust
