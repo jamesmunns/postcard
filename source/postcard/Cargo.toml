@@ -78,7 +78,7 @@ embedded-io-04 = ["dep:embedded-io-04"]
 embedded-io-06 = ["dep:embedded-io-06"]
 
 use-std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "heapless/cas"]
+heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
@@ -87,3 +87,8 @@ use-crc = ["crc", "paste"]
 #
 # NOT subject to SemVer guarantees!
 experimental-derive = ["postcard-derive"]
+crc = ["dep:crc"]
+defmt = ["dep:defmt"]
+heapless = ["dep:heapless"]
+paste = ["dep:paste"]
+postcard-derive = ["dep:postcard-derive"]
