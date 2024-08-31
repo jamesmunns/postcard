@@ -189,7 +189,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
-/// Support for [std::io] or `embedded-io` traits
+/// Support for [`std::io`] or `embedded-io` traits
 #[cfg(any(
     feature = "embedded-io-04",
     feature = "embedded-io-06",
@@ -248,7 +248,7 @@ pub mod io {
         use super::SlidingBuffer;
         use crate::{Error, Result};
 
-        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [Flavor] trait
+        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [`Flavor`] trait
         pub struct EIOReader<'de, T>
         where
             T: crate::eio::Read,
@@ -307,7 +307,7 @@ pub mod io {
         }
     }
 
-    /// Support for [std::io] traits
+    /// Support for [`std::io`] traits
     #[allow(clippy::module_inception)]
     #[cfg(feature = "use-std")]
     pub mod io {
@@ -315,7 +315,7 @@ pub mod io {
         use super::SlidingBuffer;
         use crate::{Error, Result};
 
-        /// Wrapper over a [std::io::Read] and a sliding buffer to implement the [Flavor] trait
+        /// Wrapper over a [`std::io::Read`] and a sliding buffer to implement the [Flavor] trait
         pub struct IOReader<'de, T>
         where
             T: std::io::Read,
