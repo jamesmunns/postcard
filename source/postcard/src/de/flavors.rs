@@ -380,11 +380,11 @@ pub mod io {
 ////////////////////////////////////////
 
 /// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
-/// the serialized data. The flavor will check the CRC assuming that it has been appended to the bytes.
+/// the serialized data.
 ///
+/// The flavor will check the CRC assuming that it has been appended to the bytes.
 /// CRCs are used for error detection when reading data back.
-///
-/// The `crc` feature requires enabling to use this module.
+/// Requires the `crc` feature.
 ///
 /// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
 #[cfg(feature = "use-crc")]
