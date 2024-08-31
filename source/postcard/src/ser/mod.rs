@@ -856,7 +856,7 @@ mod test {
 
         let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
 
-        let x = crate::from_bytes::<RefStruct>(&output.deref_mut()[..sz]).unwrap();
+        let x = crate::from_bytes::<RefStruct<'_>>(&output.deref_mut()[..sz]).unwrap();
 
         assert_eq!(input, x);
     }
