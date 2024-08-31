@@ -287,7 +287,7 @@ where
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub fn to_eio<'b, T, W>(value: &'b T, writer: W) -> Result<W>
+pub fn to_eio<T, W>(value: &T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: crate::eio::Write,
