@@ -18,8 +18,9 @@ where
     Ok(t)
 }
 
-/// Deserialize a message of type `T` from a cobs-encoded byte slice. The
-/// unused portion (if any) of the byte slice is not returned.
+/// Deserialize a message of type `T` from a cobs-encoded byte slice.
+///
+/// The unused portion (if any) of the byte slice is not returned.
 /// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<T>
@@ -30,8 +31,9 @@ where
     from_bytes::<T>(&s[..sz])
 }
 
-/// Deserialize a message of type `T` from a cobs-encoded byte slice. The
-/// unused portion (if any) of the byte slice is returned for further usage.
+/// Deserialize a message of type `T` from a cobs-encoded byte slice.
+///
+/// The unused portion (if any) of the byte slice is returned for further usage.
 /// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
