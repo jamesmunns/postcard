@@ -1,6 +1,8 @@
 #![cfg(feature = "experimental-derive")]
 
-use postcard::experimental::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
+use postcard::experimental::schema::{
+    NamedType, NamedValue, NamedVariant, OwnedNamedType, Schema, SdmTy, Varint,
+};
 
 const U8_SCHEMA: NamedType = NamedType {
     name: "u8",
@@ -160,4 +162,54 @@ fn test_slice_serialize() {
         },
         Slice::SCHEMA
     );
+}
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+enum TestEnum<'a> {
+    Alpha,
+    Beta(u32),
+    Gamma { a: bool, b: &'a [u8] },
+    Delta(f32, Option<&'a str>),
+    Epsilon(TestStruct1),
+}
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+struct TestStruct1 {
+    a: i8,
+    b: i16,
+    c: i32,
+    d: i64,
+}
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+struct TestStruct2<'a> {
+    x: TestEnum<'a>,
+    y: TestStruct1,
+    z: Result<TestStruct1, u32>,
+}
+
+#[test]
+fn owned_punning() {
+    let borrowed_schema = TestStruct2::SCHEMA;
+    let owned_schema: OwnedNamedType = borrowed_schema.into();
+
+    // Check that they are the same on the wire when serialized
+    let ser_borrowed_schema = postcard::to_stdvec(borrowed_schema).unwrap();
+    let ser_owned_schema = postcard::to_stdvec(&owned_schema).unwrap();
+    assert_eq!(ser_borrowed_schema, ser_owned_schema);
+
+    // TODO: This is wildly repetitive, and likely could benefit from interning of
+    // repeated types, strings, etc.
+    assert_eq!(ser_borrowed_schema.len(), 282);
+
+    // Check that we round-trip correctly
+    let deser_borrowed_schema =
+        postcard::from_bytes::<OwnedNamedType>(&ser_borrowed_schema).unwrap();
+    let deser_owned_schema = postcard::from_bytes::<OwnedNamedType>(&ser_owned_schema).unwrap();
+    assert_eq!(deser_borrowed_schema, deser_owned_schema);
+    assert_eq!(deser_borrowed_schema, owned_schema);
+    assert_eq!(deser_owned_schema, owned_schema);
 }

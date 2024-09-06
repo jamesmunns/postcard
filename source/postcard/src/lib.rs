@@ -81,6 +81,11 @@ pub mod experimental {
         pub use crate::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
         // NOTE: ...and this is the derive macro
         pub use postcard_derive::Schema;
+
+        #[cfg(any(feature = "use-std", feature = "alloc"))]
+        pub use crate::schema::owned::{
+            OwnedNamedType, OwnedNamedValue, OwnedNamedVariant, OwnedSdmTy,
+        };
     }
 }
 
