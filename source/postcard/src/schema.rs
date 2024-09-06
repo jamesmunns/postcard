@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use postcard_derive::Schema;
 
 /// A schema type representing a variably encoded integer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -23,6 +24,24 @@ pub enum Varint {
     Usize,
     /// A variably encoded isize
     Isize,
+}
+
+impl Schema for Varint {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Varint",
+        ty: &SdmTy::Enum(&[
+            &NamedVariant { name: "I16", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "I32", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "I64", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "I128", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "U16", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "U32", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "U64", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "U128", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "Usize", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "Isize", ty: &SdmTy::UnitVariant },
+        ]),
+    };
 }
 
 /// Serde Data Model Types (and friends)
@@ -103,6 +122,62 @@ pub enum SdmTy {
     Enum(&'static [&'static NamedVariant]),
 }
 
+impl Schema for SdmTy {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "SdmTy",
+        ty: &SdmTy::Enum(&[
+            &NamedVariant { name: "Bool", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "I8", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "U8", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "Varint", ty: &SdmTy::NewtypeVariant(
+                NamedType::SCHEMA
+            )},
+            &NamedVariant { name: "F32", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "F64", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "Char", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "String", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "ByteArray", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "Option", ty: &SdmTy::NewtypeVariant(
+                NamedType::SCHEMA
+            )},
+            &NamedVariant { name: "Unit", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "UnitStruct", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "UnitVariant", ty: &SdmTy::UnitVariant },
+            &NamedVariant { name: "NewtypeStruct", ty: &SdmTy::NewtypeVariant(
+                NamedType::SCHEMA
+            )},
+            &NamedVariant { name: "NewtypeVariant", ty: &SdmTy::NewtypeVariant(
+                NamedType::SCHEMA
+            )},
+            &NamedVariant { name: "Seq", ty: &SdmTy::NewtypeVariant(
+                NamedType::SCHEMA
+            )},
+            &NamedVariant { name: "Tuple", ty: &SdmTy::NewtypeVariant(
+                <[NamedType]>::SCHEMA,
+            )},
+            &NamedVariant { name: "TupleStruct", ty: &SdmTy::NewtypeVariant(
+                <[NamedType]>::SCHEMA,
+            )},
+            &NamedVariant { name: "TupleVariant", ty: &SdmTy::NewtypeVariant(
+                <[NamedType]>::SCHEMA,
+            )},
+            &NamedVariant { name: "Map", ty: &SdmTy::StructVariant(&[
+                &NamedValue { name: "key", ty: NamedType::SCHEMA },
+                &NamedValue { name: "val", ty: NamedType::SCHEMA },
+            ])},
+            &NamedVariant { name: "Struct", ty: &SdmTy::NewtypeVariant(
+                <[NamedValue]>::SCHEMA,
+            )},
+            &NamedVariant { name: "StructVariant", ty: &SdmTy::NewtypeVariant(
+                <[NamedValue]>::SCHEMA,
+            )},
+            &NamedVariant { name: "Enum", ty: &SdmTy::NewtypeVariant(
+                <[NamedVariant]>::SCHEMA,
+            )},
+        ]),
+    };
+}
+
 /// A data type with a name - e.g. a field of a Struct
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct NamedValue {
@@ -110,6 +185,16 @@ pub struct NamedValue {
     pub name: &'static str,
     /// The type of this value
     pub ty: &'static NamedType,
+}
+
+impl Schema for NamedValue {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "NamedValue",
+        ty: &SdmTy::Struct(&[
+            &NamedValue { name: "name", ty: str::SCHEMA },
+            &NamedValue { name: "ty", ty: NamedType::SCHEMA },
+        ]),
+    };
 }
 
 /// A data type - e.g. a custom `struct Foo{ ... }` type
@@ -121,6 +206,16 @@ pub struct NamedType {
     pub ty: &'static SdmTy,
 }
 
+impl Schema for NamedType {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "NamedType",
+        ty: &SdmTy::Struct(&[
+            &NamedValue { name: "name", ty: str::SCHEMA },
+            &NamedValue { name: "ty", ty: SdmTy::SCHEMA },
+        ]),
+    };
+}
+
 /// An enum variant with a name, e.g. `T::Bar(...)`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct NamedVariant {
@@ -128,6 +223,15 @@ pub struct NamedVariant {
     pub name: &'static str,
     /// The type of this variant
     pub ty: &'static SdmTy,
+}
+
+impl Schema for NamedVariant {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "SdmTy",
+        ty: &SdmTy::Struct(&[
+            // TODO stuff should be here
+        ]),
+    };
 }
 
 /// A trait that represents a compile time calculated schema

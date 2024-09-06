@@ -67,7 +67,7 @@ version = "1.0.12"
 optional = true
 
 [features]
-default = ["heapless-cas"]
+default = ["heapless-cas", "experimental-derive", "use-std"]
 
 # Enables support for `embedded-io` traits
 # This feature will track the latest `embedded-io` when major releases are made
