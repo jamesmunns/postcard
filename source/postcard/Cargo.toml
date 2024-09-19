@@ -66,6 +66,12 @@ optional = true
 version = "1.0.12"
 optional = true
 
+[dependencies.uuid]
+version = "1.10.0"
+default-features = false
+features = ["serde"]
+optional = true
+
 [features]
 default = ["heapless-cas"]
 

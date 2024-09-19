@@ -241,6 +241,14 @@ impl<const N: usize> Schema for heapless::String<N> {
         ty: &SdmTy::String,
     };
 }
+#[cfg(feature = "uuid")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uuid")))]
+impl Schema for uuid::Uuid {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "uuid::Uuid",
+        ty: &SdmTy::ByteArray,
+    };
+}
 
 #[cfg(feature = "use-std")]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
