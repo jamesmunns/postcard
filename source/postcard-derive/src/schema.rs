@@ -1,22 +1,22 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
-    parse_macro_input, parse_quote, spanned::Spanned, Data, DeriveInput, Fields, GenericParam,
-    Generics,
+    parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute, Data, DeriveInput, Error,
+    Fields, GenericParam, Generics, Token,
 };
 
-pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(item as DeriveInput);
-
+pub fn do_derive_schema(input: DeriveInput) -> Result<TokenStream, Error> {
     let span = input.span();
     let name = input.ident;
 
     // Add a bound `T: Schema` to every type parameter T.
-    let generics = add_trait_bounds(input.generics);
+    let generics = match find_bounds(&input.attrs, &input.generics)? {
+        Some(x) => x,
+        None => add_trait_bounds(input.generics),
+    };
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let ty = generate_type(&input.data, span, name.to_string())
-        .unwrap_or_else(syn::Error::into_compile_error);
+    let ty = generate_type(&input.data, span, name.to_string())?;
 
     let expanded = quote! {
         impl #impl_generics ::postcard::experimental::schema::Schema for #name #ty_generics #where_clause {
@@ -24,10 +24,10 @@ pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
         }
     };
 
-    expanded.into()
+    Ok(expanded)
 }
 
-fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, syn::Error> {
+fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, Error> {
     let ty = match data {
         Data::Struct(data) => generate_struct(&data.fields),
         Data::Enum(data) => {
@@ -41,7 +41,7 @@ fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, s
             }
         }
         Data::Union(_) => {
-            return Err(syn::Error::new(
+            return Err(Error::new(
                 span,
                 "unions are not supported by `postcard::experimental::schema`",
             ))
@@ -120,4 +120,44 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         }
     }
     generics
+}
+
+fn find_bounds(attrs: &[Attribute], generics: &Generics) -> Result<Option<Generics>, Error> {
+    let mut result = None;
+    for attr in attrs {
+        if !attr.path.is_ident("postcard") {
+            continue;
+        }
+        let span = attr.span();
+        let meta = match attr.parse_meta()? {
+            syn::Meta::List(x) => x,
+            _ => return Err(Error::new(span, "expected #[postcard(...)]")),
+        };
+        for meta in meta.nested {
+            let meta = match meta {
+                syn::NestedMeta::Meta(x) => x,
+                _ => return Err(Error::new(span, "expected #[postcard($meta)]")),
+            };
+            let meta = match meta {
+                syn::Meta::NameValue(x) => x,
+                _ => return Err(Error::new(span, "expected #[postcard($path = $lit)]")),
+            };
+            if !meta.path.is_ident("bound") {
+                return Err(Error::new(span, "expected #[postcard(bound = $lit)]"));
+            }
+            if result.is_some() {
+                return Err(Error::new(span, "duplicate #[postcard(bound = \"...\")]"));
+            }
+            let bound = match meta.lit {
+                syn::Lit::Str(x) => x,
+                _ => return Err(Error::new(span, "expected #[postcard(bound = \"...\")]")),
+            };
+            let bound =
+                bound.parse_with(Punctuated::<syn::WherePredicate, Token![,]>::parse_terminated)?;
+            let mut generics = generics.clone();
+            generics.make_where_clause().predicates.extend(bound);
+            result = Some(generics);
+        }
+    }
+    Ok(result)
 }
