@@ -11,7 +11,7 @@ use crate::varint::*;
 ///
 /// See the docs for [`SerFlavor`] for more information about "flavors" of serialization
 ///
-/// [`SerFlavor`]: trait.SerFlavor.html
+/// [`SerFlavor`]: crate::ser_flavors::Flavor
 pub struct Serializer<F>
 where
     F: Flavor,
