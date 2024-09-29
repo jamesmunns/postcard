@@ -260,6 +260,19 @@ impl Schema for std::string::String {
     };
 }
 
+#[cfg(feature = "nalgebra")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
+impl<T, const R: usize, const C: usize> Schema
+    for nalgebra::Matrix<T, nalgebra::Const<R>, nalgebra::Const<C>, nalgebra::ArrayStorage<T, R, C>>
+where
+    T: Schema + nalgebra::Scalar,
+{
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "nalgebra::Matrix<T, R, C, ArrayStorage<T, R, C>>",
+        ty: &SdmTy::Seq(T::SCHEMA),
+    };
+}
+
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
 extern crate alloc;
 
