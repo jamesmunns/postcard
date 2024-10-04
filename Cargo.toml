@@ -6,6 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-postcard = { version = "1.0.8", features = ["use-std", "experimental-derive"] }
+postcard = { version = "1.0.10", features = ["use-std", "experimental-derive"] }
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
+
+[patch.crates-io]
+postcard = { path = "../postcard/source/postcard" }

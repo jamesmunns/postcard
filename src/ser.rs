@@ -1,6 +1,6 @@
 use std::num::TryFromIntError;
 
-use postcard::experimental::schema::{NamedType, SdmTy, Varint};
+use postcard::experimental::schema::{OwnedNamedType, OwnedSdmTy, SdmTy, Varint};
 use serde_json::Value;
 use varint::{varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128, zig_zag_i16, zig_zag_i32, zig_zag_i64};
 
@@ -13,12 +13,12 @@ pub enum Error {
 }
 
 pub fn to_stdvec_dyn(
-    schema: &'static NamedType,
+    schema: &OwnedNamedType,
     value: &Value,
 ) -> Result<Vec<u8>, Error> {
     let mut out = vec![];
 
-    ser_named_type(schema.ty, value, &mut out)?;
+    ser_named_type(&schema.ty, value, &mut out)?;
 
     Ok(out)
 }
@@ -43,26 +43,26 @@ impl From<TryFromIntError> for Error {
 }
 
 fn ser_named_type(
-    ty: &'static SdmTy,
+    ty: &OwnedSdmTy,
     value: &Value,
     out: &mut Vec<u8>,
 ) -> Result<(), Error> {
     match ty {
-        SdmTy::Bool => {
+        OwnedSdmTy::Bool => {
             let val = value.as_bool().right()?;
             out.push(if val { 0x01 } else { 0x00 });
         },
-        SdmTy::I8 => {
+        OwnedSdmTy::I8 => {
             let val = value.as_i64().right()?;
             let val = i8::try_from(val)?;
             out.push(val as u8);
         },
-        SdmTy::U8 => {
+        OwnedSdmTy::U8 => {
             let val = value.as_u64().right()?;
             let val = u8::try_from(val)?;
             out.push(val);
         },
-        SdmTy::Varint(v) => match v {
+        OwnedSdmTy::Varint(v) => match v {
             Varint::I16 => {
                 let val = value.as_i64().right()?;
                 let val = i16::try_from(val)?;
@@ -157,18 +157,18 @@ fn ser_named_type(
                 out.extend_from_slice(used);
             },
         },
-        SdmTy::F32 => {
+        OwnedSdmTy::F32 => {
             let val = value.as_f64().right()?;
             let val = val as f32; // todo
             let val = val.to_le_bytes();
             out.extend_from_slice(&val);
         },
-        SdmTy::F64 => {
+        OwnedSdmTy::F64 => {
             let val = value.as_f64().right()?;
             let val = val.to_le_bytes();
             out.extend_from_slice(&val);
         },
-        SdmTy::String | SdmTy::Char => {
+        OwnedSdmTy::String | OwnedSdmTy::Char => {
             let val = value.as_str().right()?;
 
             // First add len
@@ -180,7 +180,7 @@ fn ser_named_type(
             // Then add payload
             out.extend_from_slice(val.as_bytes());
         },
-        SdmTy::ByteArray => {
+        OwnedSdmTy::ByteArray => {
             let val = value.as_array().right()?;
 
             // First add len
@@ -196,21 +196,21 @@ fn ser_named_type(
                 out.push(val);
             }
         },
-        SdmTy::Option(nt) => {
+        OwnedSdmTy::Option(nt) => {
             if value.is_null() {
                 out.push(0x00);
             } else {
                 out.push(0x01);
-                ser_named_type(nt.ty, value, out)?;
+                ser_named_type(&nt.ty, value, out)?;
             }
         },
-        SdmTy::Unit => {},
-        SdmTy::UnitStruct => {},
-        SdmTy::UnitVariant => {},
-        SdmTy::NewtypeStruct(nt) | SdmTy::NewtypeVariant(nt) => {
-            ser_named_type(nt.ty, value, out)?;
+        OwnedSdmTy::Unit => {},
+        OwnedSdmTy::UnitStruct => {},
+        OwnedSdmTy::UnitVariant => {},
+        OwnedSdmTy::NewtypeStruct(nt) | OwnedSdmTy::NewtypeVariant(nt) => {
+            ser_named_type(&nt.ty, value, out)?;
         },
-        SdmTy::Seq(nt) => {
+        OwnedSdmTy::Seq(nt) => {
             let val = value.as_array().right()?;
 
             // First add len
@@ -221,13 +221,13 @@ fn ser_named_type(
 
             // Then add values
             for b in val {
-                ser_named_type(nt.ty, b, out)?;
+                ser_named_type(&nt.ty, b, out)?;
             }
         },
-        SdmTy::Tuple(nts) | SdmTy::TupleStruct(nts) | SdmTy::TupleVariant(nts) => {
+        OwnedSdmTy::Tuple(nts) | OwnedSdmTy::TupleStruct(nts) | OwnedSdmTy::TupleVariant(nts) => {
             // Tuples with arity of 1 are not arrays, but instead just a single object
             if nts.len() == 1 {
-                return ser_named_type(nts[0].ty, value, out);
+                return ser_named_type(&nts[0].ty, value, out);
             }
 
             let val = value.as_array().right()?;
@@ -237,15 +237,15 @@ fn ser_named_type(
             }
 
             for (nt, val) in nts.iter().zip(val.iter()) {
-                ser_named_type(nt.ty, val, out)?;
+                ser_named_type(&nt.ty, val, out)?;
             }
         },
-        SdmTy::Map { key, val } => {
+        OwnedSdmTy::Map { key, val } => {
             // TODO: impling blind because we can't test this, oops
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if key.ty != &SdmTy::String {
+            if key.ty != OwnedSdmTy::String {
                 return Err(Error::ShouldSupportButDont)
             }
 
@@ -270,10 +270,10 @@ fn ser_named_type(
                 out.extend_from_slice(k.as_bytes());
 
                 // VALUE
-                ser_named_type(val.ty, v, out)?;
+                ser_named_type(&val.ty, v, out)?;
             }
         },
-        SdmTy::Struct(nvs) | SdmTy::StructVariant(nvs) => {
+        OwnedSdmTy::Struct(nvs) | OwnedSdmTy::StructVariant(nvs) => {
             let val = value.as_object().right()?;
 
             if val.len() != nvs.len() {
@@ -281,11 +281,11 @@ fn ser_named_type(
             }
 
             for field in nvs.iter() {
-                let v = val.get(field.name).right()?;
-                ser_named_type(field.ty.ty, v, out)?;
+                let v = val.get(&field.name).right()?;
+                ser_named_type(&field.ty.ty, v, out)?;
             }
         },
-        SdmTy::Enum(nvars) => {
+        OwnedSdmTy::Enum(nvars) => {
             // This is a bit serde_json::Value specific, if we make our own value
             // type we might be able to handle this "better"
 
@@ -293,7 +293,7 @@ fn ser_named_type(
             if let Some(s) = value.as_str() {
                 // Is there a unit variant that matches this name?
                 let (idx, evar) = nvars.iter().enumerate().find(|(_i, v)| v.name == s).right()?;
-                if evar.ty != &SdmTy::UnitVariant {
+                if evar.ty != OwnedSdmTy::UnitVariant {
                     return Err(Error::SchemaMismatch);
                 }
 
@@ -307,7 +307,7 @@ fn ser_named_type(
                     return Err(Error::SchemaMismatch);
                 }
                 let (k, v) = o.iter().next().right()?;
-                let (idx, evar) = nvars.iter().enumerate().find(|(_i, v)| v.name == k).right()?;
+                let (idx, evar) = nvars.iter().enumerate().find(|(_i, v)| &v.name == k).right()?;
 
                 // cool, we found it, serialize as a varint usize
                 let mut buf = [0u8; varint_max::<usize>()];
@@ -315,7 +315,7 @@ fn ser_named_type(
                 out.extend_from_slice(used);
 
                 // then serialize the value
-                ser_named_type(evar.ty, v, out)?;
+                ser_named_type(&evar.ty, v, out)?;
             } else {
                 return Err(Error::SchemaMismatch);
             }
