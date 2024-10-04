@@ -86,28 +86,28 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 let (val, rest) = try_take_varint_u16(data)?;
                 let val = Value::Number(Number::from(val));
                 Ok((val, rest))
-            },
+            }
             Varint::U32 => {
                 let (val, rest) = try_take_varint_u32(data)?;
                 let val = Value::Number(Number::from(val));
                 Ok((val, rest))
-            },
+            }
             Varint::U64 => {
                 let (val, rest) = try_take_varint_u64(data)?;
                 let val = Value::Number(Number::from(val));
                 Ok((val, rest))
-            },
+            }
             Varint::U128 => {
                 let (val, rest) = try_take_varint_u128(data)?;
                 let val = u64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
                 let val = Value::Number(Number::from(val));
                 Ok((val, rest))
-            },
+            }
             Varint::Usize => {
                 let (val, rest) = try_take_varint_usize(data)?;
                 let val = Value::Number(Number::from(val));
                 Ok((val, rest))
-            },
+            }
             Varint::Isize => {
                 let (val, rest) = try_take_varint_usize(data)?;
 
@@ -122,7 +122,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
 
                 let valu = Value::Number(Number::from(valu));
                 Ok((valu, rest))
-            },
+            }
         },
         OwnedSdmTy::F32 => {
             let (val, rest) = data.take_n(4)?;
@@ -131,7 +131,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let f = f32::from_le_bytes(buf);
             let val = Value::Number(Number::from_f64(f.into()).right()?);
             Ok((val, rest))
-        },
+        }
         OwnedSdmTy::F64 => {
             let (val, rest) = data.take_n(8)?;
             let mut buf = [0u8; 8];
@@ -139,7 +139,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let f = f64::from_le_bytes(buf);
             let val = Value::Number(Number::from_f64(f).right()?);
             Ok((val, rest))
-        },
+        }
         OwnedSdmTy::Char => todo!(),
         OwnedSdmTy::String => {
             let (val, rest) = try_take_varint_usize(data)?;
@@ -147,31 +147,34 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let s = from_utf8(bytes).map_err(|_| Error::SchemaMismatch)?;
             let val = Value::String(s.to_string());
             Ok((val, rest))
-        },
+        }
         OwnedSdmTy::ByteArray => {
             let (val, rest) = try_take_varint_usize(data)?;
             let (bytes, rest) = rest.take_n(val)?;
-            let vvec = bytes.iter().map(|b| {
-                Value::Number(Number::from(*b))
-            }).collect::<Vec<Value>>();
+            let vvec = bytes
+                .iter()
+                .map(|b| Value::Number(Number::from(*b)))
+                .collect::<Vec<Value>>();
             let val = Value::Array(vvec);
             Ok((val, rest))
-        },
+        }
         OwnedSdmTy::Option(nt) => {
             let (val, rest) = data.take_one()?;
             match val {
                 0 => return Ok((Value::Null, rest)),
-                1 => {},
+                1 => {}
                 _ => return Err(Error::SchemaMismatch),
             }
             de_named_type(&nt.ty, rest)
-        },
+        }
         OwnedSdmTy::Unit | OwnedSdmTy::UnitStruct | OwnedSdmTy::UnitVariant => {
             // TODO This is PROBABLY wrong, as Some(()) will be coalesced into the same
             // value as None. Fix this when we have our own Value
             Ok((Value::Null, data))
-        },
-        OwnedSdmTy::NewtypeStruct(nt) | OwnedSdmTy::NewtypeVariant(nt) => de_named_type(&nt.ty, data),
+        }
+        OwnedSdmTy::NewtypeStruct(nt) | OwnedSdmTy::NewtypeVariant(nt) => {
+            de_named_type(&nt.ty, data)
+        }
         OwnedSdmTy::Seq(nt) => {
             let (val, mut rest) = try_take_varint_usize(data)?;
             let mut vec = vec![];
@@ -181,13 +184,13 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 vec.push(v);
             }
             Ok((Value::Array(vec), rest))
-        },
+        }
         OwnedSdmTy::Tuple(nts) | OwnedSdmTy::TupleStruct(nts) | OwnedSdmTy::TupleVariant(nts) => {
             match nts.as_slice() {
                 [] => {
                     // TODO: Not sure this is right...
                     Ok((Value::Null, data))
-                },
+                }
                 [nt] => {
                     // Single item, NOT an array
                     de_named_type(&nt.ty, data)
@@ -203,14 +206,14 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                     Ok((Value::Array(vec), rest))
                 }
             }
-        },
+        }
         OwnedSdmTy::Map { key, val } => {
             // TODO: impling blind because we can't test this, oops
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
             if key.ty != OwnedSdmTy::String {
-                return Err(Error::ShouldSupportButDont)
+                return Err(Error::ShouldSupportButDont);
             }
 
             let (map_len, mut rest) = try_take_varint_usize(data)?;
@@ -228,7 +231,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             }
 
             Ok((Value::Object(map), rest))
-        },
+        }
         OwnedSdmTy::Struct(nvs) | OwnedSdmTy::StructVariant(nvs) => {
             let mut map = Map::new();
             let mut rest = data;
@@ -238,7 +241,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 map.insert(nv.name.to_string(), val);
             }
             Ok((Value::Object(map), rest))
-        },
+        }
         OwnedSdmTy::Enum(nvars) => {
             let (variant, rest) = try_take_varint_usize(data)?;
             let schema = nvars.get(variant).right()?;
@@ -246,7 +249,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 OwnedSdmTy::Unit | OwnedSdmTy::UnitStruct | OwnedSdmTy::UnitVariant => {
                     // Units become strings
                     Ok((Value::String(schema.name.to_string()), rest))
-                },
+                }
                 _ => {
                     // everything else becomes an object with one field
                     let (val, irest) = de_named_type(&schema.ty, rest)?;
@@ -255,7 +258,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                     Ok((Value::Object(map), irest))
                 }
             }
-        },
+        }
     }
 }
 
@@ -456,44 +459,64 @@ mod test {
         let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
         assert_eq!(vec![0], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
-        assert_eq!(de, json!{
-            "Alpha"
-        });
+        assert_eq!(
+            de,
+            json! {
+                "Alpha"
+            }
+        );
 
         let bye = serde_json::to_value(Enum1::Beta(4)).unwrap();
         let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
         assert_eq!(vec![1, 4], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
-        assert_eq!(de, json!{
-            {"Beta": 4}
-        });
+        assert_eq!(
+            de,
+            json! {
+                {"Beta": 4}
+            }
+        );
 
         let bye = serde_json::to_value(Enum1::Gamma(vec![1, 2, 3])).unwrap();
         let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
         assert_eq!(vec![2, 3, 1, 2, 3], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
-        assert_eq!(de, json!{
-            {"Gamma": [1, 2, 3]}
-        });
+        assert_eq!(
+            de,
+            json! {
+                {"Gamma": [1, 2, 3]}
+            }
+        );
 
-        let bye = serde_json::to_value(Enum1::Delta(Struct1 { x: false, y: 1000, z: 4.0 })).unwrap();
+        let bye = serde_json::to_value(Enum1::Delta(Struct1 {
+            x: false,
+            y: 1000,
+            z: 4.0,
+        }))
+        .unwrap();
         let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
         assert_eq!(vec![3, 0, 232, 7, 0, 0, 0, 0, 0, 0, 16, 64], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
-        assert_eq!(de, json!{
-            {"Delta": {
-                "x": false,
-                "y": 1000,
-                "z": 4.0
-            }}
-        });
+        assert_eq!(
+            de,
+            json! {
+                {"Delta": {
+                    "x": false,
+                    "y": 1000,
+                    "z": 4.0
+                }}
+            }
+        );
 
         let bye = serde_json::to_value(Enum1::Epsilon(8, false)).unwrap();
         let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
         assert_eq!(vec![4, 8, 0], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
-        assert_eq!(de, json!{
-            {"Epsilon": [8, false]}
-        });
+        assert_eq!(
+            de,
+            json! {
+                {"Epsilon": [8, false]}
+            }
+        );
     }
 }
