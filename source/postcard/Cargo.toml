@@ -66,7 +66,8 @@ optional = true
 version = "1.0.12"
 optional = true
 
-[dependencies.nalgebra]
+[dependencies.nalgebra-0_33]
+package = "nalgebra"
 version = "0.33.0"
 optional = true
 default-features = false
@@ -81,6 +82,9 @@ embedded-io = ["dep:embedded-io-04"]
 # Specific versions of `embedded-io` can be selected through the features below
 embedded-io-04 = ["dep:embedded-io-04"]
 embedded-io-06 = ["dep:embedded-io-06"]
+
+# Specific versions of `nalgebra` can be selected through the features below
+nalgebra-0_33 = ["dep:nalgebra-0_33"]
 
 use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "heapless/cas"]

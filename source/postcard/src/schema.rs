@@ -260,12 +260,17 @@ impl Schema for std::string::String {
     };
 }
 
-#[cfg(feature = "nalgebra")]
-#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra")))]
+#[cfg(feature = "nalgebra-0_33")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-0_33")))]
 impl<T, const R: usize, const C: usize> Schema
-    for nalgebra::Matrix<T, nalgebra::Const<R>, nalgebra::Const<C>, nalgebra::ArrayStorage<T, R, C>>
+    for nalgebra_0_33::Matrix<
+        T,
+        nalgebra_0_33::Const<R>,
+        nalgebra_0_33::Const<C>,
+        nalgebra_0_33::ArrayStorage<T, R, C>,
+    >
 where
-    T: Schema + nalgebra::Scalar,
+    T: Schema + nalgebra_0_33::Scalar,
 {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "nalgebra::Matrix<T, R, C, ArrayStorage<T, R, C>>",
