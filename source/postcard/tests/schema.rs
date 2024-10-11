@@ -203,7 +203,7 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 282);
+    assert_eq!(ser_borrowed_schema.len(), 280);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
@@ -212,4 +212,49 @@ fn owned_punning() {
     assert_eq!(deser_borrowed_schema, deser_owned_schema);
     assert_eq!(deser_borrowed_schema, owned_schema);
     assert_eq!(deser_owned_schema, owned_schema);
+}
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+struct TestStruct3(u64);
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+struct TestStruct4(u64, bool);
+
+#[allow(unused)]
+#[derive(Debug, Schema)]
+enum TestEnum2 {
+    Nt(u64),
+    Tup(u64, bool),
+}
+
+#[test]
+fn newtype_vs_tuple() {
+    assert_eq!(
+        TestStruct3::SCHEMA,
+        &NamedType {
+            name: "TestStruct3",
+            ty: &SdmTy::NewtypeStruct(u64::SCHEMA)
+        }
+    );
+
+    assert_eq!(
+        TestStruct4::SCHEMA,
+        &NamedType {
+            name: "TestStruct4",
+            ty: &SdmTy::TupleStruct(&[u64::SCHEMA, bool::SCHEMA]),
+        }
+    );
+
+    assert_eq!(
+        TestEnum2::SCHEMA,
+        &NamedType {
+            name: "TestEnum2",
+            ty: &SdmTy::Enum(&[
+                &NamedVariant { name: "Nt", ty: &SdmTy::NewtypeVariant(u64::SCHEMA) },
+                &NamedVariant { name: "Tup", ty: &SdmTy::TupleVariant(&[u64::SCHEMA, bool::SCHEMA]) },
+            ]),
+        }
+    );
 }
