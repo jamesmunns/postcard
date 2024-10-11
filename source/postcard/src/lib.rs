@@ -87,6 +87,9 @@ pub mod experimental {
             fmt::{fmt_owned_nt_to_buf, is_prim},
             owned::{OwnedNamedType, OwnedNamedValue, OwnedNamedVariant, OwnedSdmTy},
         };
+
+        #[cfg(feature = "use-std")]
+        pub use crate::schema::fmt::{discover_tys, discover_tys_sdm};
     }
 }
 

@@ -550,15 +550,21 @@ pub(crate) mod owned {
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod fmt {
-    use core::ops::Deref;
-    use std::collections::HashSet;
-
     use super::{
         owned::{OwnedNamedType, OwnedSdmTy},
         Varint,
     };
+
+    #[cfg(feature = "use-std")]
+    use std::{string::String, vec::Vec};
+
+    #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+    extern crate alloc;
+
+    #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+    use alloc::{format, string::String, vec::Vec};
 
     /// Is this [`OwnedSdmTy`] a primitive?
     pub fn is_prim(osdmty: &OwnedSdmTy) -> bool {
@@ -800,13 +806,18 @@ pub(crate) mod fmt {
         }
     }
 
-    pub(crate) fn discover_tys(ont: &OwnedNamedType, set: &mut HashSet<OwnedNamedType>) {
+    /// Collect unique types mentioned by this [`OwnedNamedType`]
+    #[cfg(feature = "use-std")]
+    pub fn discover_tys(ont: &OwnedNamedType, set: &mut std::collections::HashSet<OwnedNamedType>) {
         set.insert(ont.clone());
         discover_tys_sdm(&ont.ty, set);
     }
 
-    pub(crate) fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut HashSet<OwnedNamedType>) {
+    /// Collect unique types mentioned by this [`OwnedSdmTy`]
+    #[cfg(feature = "use-std")]
+    pub fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut std::collections::HashSet<OwnedNamedType>) {
         use crate::experimental::schema::Schema;
+        use core::ops::Deref;
         match sdm {
             OwnedSdmTy::Bool => set.insert(bool::SCHEMA.into()),
             OwnedSdmTy::I8 => set.insert(i8::SCHEMA.into()),
