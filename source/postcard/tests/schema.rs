@@ -264,3 +264,93 @@ fn newtype_vs_tuple() {
         }
     );
 }
+
+// Formatting
+
+fn dewit<T: Schema>() -> String {
+    let schema: OwnedNamedType = T::SCHEMA.into();
+    let mut buf = String::new();
+    ugh_ont(&schema, &mut buf, true);
+    buf
+}
+
+#[derive(Schema)]
+struct UnitStruct;
+
+#[derive(Schema)]
+struct NewTypeStruct(String);
+
+#[derive(Schema)]
+struct TupStruct(u64, String);
+
+#[derive(Schema)]
+enum Enums {
+    Unit,
+    Nt(u64),
+    Tup(u32, bool),
+}
+
+#[derive(Schema)]
+struct Classic {
+    a: u32,
+    b: u16,
+    c: bool,
+}
+
+#[derive(Schema)]
+struct ClassicGen<T: Schema> {
+    a: u32,
+    b: T,
+}
+
+#[test]
+fn smoke() {
+    #[allow(clippy::type_complexity)]
+    let tests: &[(fn() -> String, &str)] = &[
+        (dewit::<u8>, "u8"),
+        (dewit::<u16>, "u16"),
+        (dewit::<u32>, "u32"),
+        (dewit::<u64>, "u64"),
+        (dewit::<u128>, "u128"),
+        (dewit::<i8>, "i8"),
+        (dewit::<i16>, "i16"),
+        (dewit::<i32>, "i32"),
+        (dewit::<i64>, "i64"),
+        (dewit::<i128>, "i128"),
+        (dewit::<()>, "()"),
+        (dewit::<char>, "char"),
+        (dewit::<bool>, "bool"),
+        (dewit::<String>, "String"),
+        (dewit::<Option<u16>>, "Option<u16>"),
+        (dewit::<UnitStruct>, "struct UnitStruct"),
+        (dewit::<Option<UnitStruct>>, "Option<UnitStruct>"),
+        (dewit::<NewTypeStruct>, "struct NewTypeStruct(String)"),
+        (dewit::<Option<NewTypeStruct>>, "Option<NewTypeStruct>"),
+        (
+            dewit::<Enums>,
+            "enum Enums { Unit, Nt(u64), Tup(u32, bool) }",
+        ),
+        (dewit::<Option<Enums>>, "Option<Enums>"),
+        (dewit::<&[u8]>, "[u8]"),
+        (dewit::<Vec<u16>>, "[u16]"),
+        (dewit::<[u8; 16]>, "[u8; 16]"),
+        (dewit::<(u8, u16, u32)>, "(u8, u16, u32)"),
+        (dewit::<TupStruct>, "struct TupStruct(u64, String)"),
+        (dewit::<Option<TupStruct>>, "Option<TupStruct>"),
+        (dewit::<HashMap<u32, String>>, "Map<u32, String>"),
+        (dewit::<HashSet<u32>>, "[u32]"),
+        (
+            dewit::<Classic>,
+            "struct Classic { a: u32, b: u16, c: bool }",
+        ),
+        (
+            dewit::<ClassicGen<i32>>,
+            "struct ClassicGen { a: u32, b: i32 }",
+        ),
+        (dewit::<Option<Classic>>, "Option<Classic>"),
+        (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
+    ];
+    for (f, s) in tests {
+        assert_eq!(f().as_str(), *s);
+    }
+}

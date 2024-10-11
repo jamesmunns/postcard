@@ -345,7 +345,7 @@ pub(crate) mod owned {
     use super::*;
 
     #[cfg(feature = "use-std")]
-    use std::{boxed::Box, string::String, vec::Vec};
+    use std::{boxed::Box, collections::HashSet, string::String, vec::Vec};
 
     #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
     use alloc::{
@@ -498,6 +498,30 @@ pub(crate) mod owned {
         pub ty: OwnedSdmTy,
     }
 
+    impl core::fmt::Display for OwnedNamedType {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            let pc = self.to_pseudocode();
+            f.write_str(&pc)
+        }
+    }
+
+    impl OwnedNamedType {
+        /// Convert an [OwnedNamedType] to a pseudo-Rust type format
+        pub fn to_pseudocode(&self) -> String {
+            let mut buf = String::new();
+            fmt::fmt_owned_nt_to_buf(self, &mut buf, true);
+            buf
+        }
+
+        /// Collect all types used recursively by this type
+        #[cfg(feature = "use-std")]
+        pub fn all_used_types(&self) -> HashSet<OwnedNamedType> {
+            let mut buf = HashSet::new();
+            fmt::discover_tys(self, &mut buf);
+            buf
+        }
+    }
+
     impl From<&NamedType> for OwnedNamedType {
         fn from(value: &NamedType) -> Self {
             Self {
@@ -523,5 +547,329 @@ pub(crate) mod owned {
                 ty: value.ty.into(),
             }
         }
+    }
+}
+
+#[cfg(feature = "use-std")]
+pub(crate) mod fmt {
+    use core::ops::Deref;
+    use std::collections::HashSet;
+
+    use super::{
+        owned::{OwnedNamedType, OwnedSdmTy},
+        Varint,
+    };
+
+    /// Is this [`OwnedSdmTy`] a primitive?
+    pub fn is_prim(osdmty: &OwnedSdmTy) -> bool {
+        match osdmty {
+            OwnedSdmTy::Bool => true,
+            OwnedSdmTy::I8 => true,
+            OwnedSdmTy::U8 => true,
+            OwnedSdmTy::Varint(varint) => match varint {
+                Varint::I16 => true,
+                Varint::I32 => true,
+                Varint::I64 => true,
+                Varint::I128 => true,
+                Varint::U16 => true,
+                Varint::U32 => true,
+                Varint::U64 => true,
+                Varint::U128 => true,
+                Varint::Usize => true,
+                Varint::Isize => true,
+            },
+            OwnedSdmTy::F32 => true,
+            OwnedSdmTy::F64 => true,
+            OwnedSdmTy::Char => true,
+            OwnedSdmTy::String => true,
+            OwnedSdmTy::ByteArray => true,
+            OwnedSdmTy::Option(owned_named_type) => is_prim(&owned_named_type.ty),
+            OwnedSdmTy::Unit => true,
+            OwnedSdmTy::UnitStruct => true,
+            OwnedSdmTy::UnitVariant => true,
+            OwnedSdmTy::NewtypeStruct(owned_named_type) => is_prim(&owned_named_type.ty),
+            OwnedSdmTy::NewtypeVariant(owned_named_type) => is_prim(&owned_named_type.ty),
+            OwnedSdmTy::Seq(_) => false,
+            OwnedSdmTy::Tuple(_) => false,
+            OwnedSdmTy::TupleStruct(vec) => vec.iter().all(|e| is_prim(&e.ty)),
+            OwnedSdmTy::TupleVariant(vec) => vec.iter().all(|e| is_prim(&e.ty)),
+            OwnedSdmTy::Map { key, val } => is_prim(&key.ty) && is_prim(&val.ty),
+            OwnedSdmTy::Struct(_) => false,
+            OwnedSdmTy::StructVariant(_) => false,
+            OwnedSdmTy::Enum(_) => false,
+        }
+    }
+
+    /// Format an [`OwnedNamedType`] to the given string.
+    ///
+    /// Use `top_level = true` when this is a standalone type, and `top_level = false`
+    /// when this type is contained within another type
+    pub fn fmt_owned_nt_to_buf(ont: &OwnedNamedType, buf: &mut String, top_level: bool) {
+        match &ont.ty {
+            OwnedSdmTy::Bool => *buf += "bool",
+            OwnedSdmTy::I8 => *buf += "i8",
+            OwnedSdmTy::U8 => *buf += "u8",
+            OwnedSdmTy::Varint(varint) => match varint {
+                Varint::I16 => *buf += "i16",
+                Varint::I32 => *buf += "i32",
+                Varint::I64 => *buf += "i64",
+                Varint::I128 => *buf += "i128",
+                Varint::U16 => *buf += "u16",
+                Varint::U32 => *buf += "u32",
+                Varint::U64 => *buf += "u64",
+                Varint::U128 => *buf += "u128",
+                Varint::Usize => *buf += "usize",
+                Varint::Isize => *buf += "isize",
+            },
+            OwnedSdmTy::F32 => *buf += "f32",
+            OwnedSdmTy::F64 => *buf += "f64",
+            OwnedSdmTy::Char => *buf += "char",
+            OwnedSdmTy::String => *buf += "String",
+            OwnedSdmTy::ByteArray => *buf += "[u8]",
+            OwnedSdmTy::Option(owned_named_type) => {
+                *buf += "Option<";
+                fmt_owned_nt_to_buf(owned_named_type, buf, false);
+                *buf += ">";
+            }
+            OwnedSdmTy::Unit => *buf += "()",
+            OwnedSdmTy::UnitStruct => {
+                if top_level {
+                    *buf += "struct ";
+                }
+                *buf += &ont.name;
+            }
+            OwnedSdmTy::NewtypeStruct(owned_named_type) => {
+                if top_level {
+                    *buf += "struct ";
+                }
+                *buf += &ont.name;
+                if top_level {
+                    *buf += "(";
+                    fmt_owned_nt_to_buf(owned_named_type, buf, false);
+                    *buf += ")";
+                }
+            }
+            OwnedSdmTy::Seq(owned_named_type) => {
+                *buf += "[";
+                *buf += &owned_named_type.name;
+                *buf += "]";
+            }
+            OwnedSdmTy::Tuple(vec) => {
+                if !vec.is_empty() {
+                    let first = &vec[0];
+                    if vec.iter().all(|v| first == v) {
+                        // This is a fixed size array
+                        *buf += "[";
+                        *buf += &first.name;
+                        *buf += "; ";
+                        *buf += &format!("{}", vec.len());
+                        *buf += "]";
+                    } else {
+                        *buf += "(";
+                        let fields = vec
+                            .iter()
+                            .map(|v| {
+                                let mut buf = String::new();
+                                fmt_owned_nt_to_buf(v, &mut buf, false);
+                                buf
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        *buf += &fields;
+                        *buf += ")";
+                    }
+                } else {
+                    *buf += "()";
+                }
+            }
+            OwnedSdmTy::TupleStruct(vec) => {
+                if top_level {
+                    *buf += "struct ";
+                    *buf += &ont.name;
+                    *buf += "(";
+                    let fields = vec
+                        .iter()
+                        .map(|v| {
+                            let mut buf = String::new();
+                            fmt_owned_nt_to_buf(v, &mut buf, false);
+                            buf
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    *buf += &fields;
+                    *buf += ")";
+                } else {
+                    *buf += &ont.name;
+                }
+            }
+            OwnedSdmTy::Map { key, val } => {
+                *buf += "Map<";
+                *buf += &key.name;
+                *buf += ", ";
+                *buf += &val.name;
+                *buf += ">";
+            }
+            OwnedSdmTy::Struct(vec) => {
+                if top_level {
+                    *buf += "struct ";
+                    *buf += &ont.name;
+                    *buf += " { ";
+                    let fields = vec
+                        .iter()
+                        .map(|v| {
+                            let mut buf = String::new();
+                            buf += &v.name;
+                            buf += ": ";
+                            fmt_owned_nt_to_buf(&v.ty, &mut buf, false);
+                            buf
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    *buf += &fields;
+                    *buf += " }";
+                } else {
+                    *buf += &ont.name;
+                }
+            }
+            OwnedSdmTy::Enum(vec) => {
+                if top_level {
+                    *buf += "enum ";
+                    *buf += &ont.name;
+                    *buf += " { ";
+
+                    let fields = vec
+                        .iter()
+                        .map(|v| {
+                            let mut buf = String::new();
+                            buf += &v.name;
+                            match &v.ty {
+                                OwnedSdmTy::UnitVariant => {}
+                                OwnedSdmTy::NewtypeVariant(owned_named_type) => {
+                                    buf += "(";
+                                    fmt_owned_nt_to_buf(owned_named_type, &mut buf, false);
+                                    buf += ")";
+                                }
+                                OwnedSdmTy::TupleVariant(vec) => {
+                                    buf += "(";
+                                    let fields = vec
+                                        .iter()
+                                        .map(|ont| {
+                                            let mut buf = String::new();
+                                            fmt_owned_nt_to_buf(ont, &mut buf, false);
+                                            buf
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    buf += &fields;
+                                    buf += ")";
+                                }
+                                OwnedSdmTy::StructVariant(vec) => {
+                                    buf += "{ ";
+                                    let fields = vec
+                                        .iter()
+                                        .map(|nv| {
+                                            let mut buf = String::new();
+                                            buf += &nv.name;
+                                            buf += ": ";
+                                            fmt_owned_nt_to_buf(&nv.ty, &mut buf, false);
+                                            buf
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    buf += &fields;
+                                    buf += "}";
+                                }
+                                _ => unreachable!(),
+                            }
+                            buf
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    *buf += &fields;
+                    *buf += " }";
+                } else {
+                    *buf += &ont.name;
+                }
+            }
+
+            // We only handle variants as part of an enum
+            OwnedSdmTy::UnitVariant => unreachable!(),
+            OwnedSdmTy::NewtypeVariant(_) => unreachable!(),
+            OwnedSdmTy::TupleVariant(_) => unreachable!(),
+            OwnedSdmTy::StructVariant(_) => unreachable!(),
+        }
+    }
+
+    pub(crate) fn discover_tys(ont: &OwnedNamedType, set: &mut HashSet<OwnedNamedType>) {
+        set.insert(ont.clone());
+        discover_tys_sdm(&ont.ty, set);
+    }
+
+    pub(crate) fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut HashSet<OwnedNamedType>) {
+        use crate::experimental::schema::Schema;
+        match sdm {
+            OwnedSdmTy::Bool => set.insert(bool::SCHEMA.into()),
+            OwnedSdmTy::I8 => set.insert(i8::SCHEMA.into()),
+            OwnedSdmTy::U8 => set.insert(u8::SCHEMA.into()),
+            OwnedSdmTy::Varint(varint) => match varint {
+                Varint::I16 => set.insert(i16::SCHEMA.into()),
+                Varint::I32 => set.insert(i32::SCHEMA.into()),
+                Varint::I64 => set.insert(i64::SCHEMA.into()),
+                Varint::I128 => set.insert(i128::SCHEMA.into()),
+                Varint::U16 => set.insert(u16::SCHEMA.into()),
+                Varint::U32 => set.insert(u32::SCHEMA.into()),
+                Varint::U64 => set.insert(u64::SCHEMA.into()),
+                Varint::U128 => set.insert(u128::SCHEMA.into()),
+
+                // TODO: usize and isize don't impl Schema, which, fair.
+                Varint::Usize => unreachable!(),
+                Varint::Isize => unreachable!(),
+            },
+            OwnedSdmTy::F32 => set.insert(f32::SCHEMA.into()),
+            OwnedSdmTy::F64 => set.insert(f64::SCHEMA.into()),
+            OwnedSdmTy::Char => set.insert(char::SCHEMA.into()),
+            OwnedSdmTy::String => set.insert(String::SCHEMA.into()),
+            OwnedSdmTy::ByteArray => set.insert(<[u8]>::SCHEMA.into()),
+            OwnedSdmTy::Option(owned_named_type) => set.insert(owned_named_type.deref().clone()),
+            OwnedSdmTy::Unit => set.insert(<()>::SCHEMA.into()),
+            OwnedSdmTy::UnitStruct => false,
+            OwnedSdmTy::UnitVariant => false,
+            OwnedSdmTy::NewtypeStruct(owned_named_type) => {
+                set.insert(owned_named_type.deref().clone())
+            }
+            OwnedSdmTy::NewtypeVariant(owned_named_type) => {
+                set.insert(owned_named_type.deref().clone())
+            }
+            OwnedSdmTy::Seq(owned_named_type) => set.insert(owned_named_type.deref().clone()),
+            OwnedSdmTy::Tuple(vec) | OwnedSdmTy::TupleStruct(vec) => {
+                for v in vec.iter() {
+                    discover_tys_sdm(&v.ty, set);
+                }
+                false
+            }
+            OwnedSdmTy::TupleVariant(vec) => {
+                for v in vec.iter() {
+                    discover_tys(v, set);
+                }
+                false
+            }
+            OwnedSdmTy::Map { key, val } => {
+                set.insert(key.deref().clone());
+                set.insert(val.deref().clone());
+                false
+            }
+            OwnedSdmTy::Struct(vec) | OwnedSdmTy::StructVariant(vec) => {
+                for v in vec.iter() {
+                    discover_tys(&v.ty, set);
+                }
+                false
+            }
+            OwnedSdmTy::Enum(vec) => {
+                for v in vec.iter() {
+                    discover_tys_sdm(&v.ty, set);
+                }
+                false
+            }
+        };
     }
 }

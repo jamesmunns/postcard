@@ -83,8 +83,9 @@ pub mod experimental {
         pub use postcard_derive::Schema;
 
         #[cfg(any(feature = "use-std", feature = "alloc"))]
-        pub use crate::schema::owned::{
-            OwnedNamedType, OwnedNamedValue, OwnedNamedVariant, OwnedSdmTy,
+        pub use crate::schema::{
+            fmt::{fmt_owned_nt_to_buf, is_prim},
+            owned::{OwnedNamedType, OwnedNamedValue, OwnedNamedVariant, OwnedSdmTy},
         };
     }
 }
