@@ -260,6 +260,48 @@ impl Schema for std::string::String {
     };
 }
 
+#[cfg(feature = "use-std")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "HashMap<K, V>",
+        ty: &SdmTy::Map {
+            key: K::SCHEMA,
+            val: V::SCHEMA,
+        },
+    };
+}
+
+#[cfg(feature = "use-std")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "BTreeMap<K, V>",
+        ty: &SdmTy::Map {
+            key: K::SCHEMA,
+            val: V::SCHEMA,
+        },
+    };
+}
+
+#[cfg(feature = "use-std")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<K: Schema> Schema for std::collections::HashSet<K> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "HashSet<K>",
+        ty: &SdmTy::Seq(K::SCHEMA),
+    };
+}
+
+#[cfg(feature = "use-std")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<K: Schema> Schema for std::collections::BTreeSet<K> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "BTreeSet<K>",
+        ty: &SdmTy::Seq(K::SCHEMA),
+    };
+}
+
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
 extern crate alloc;
 
@@ -276,6 +318,25 @@ impl Schema for alloc::string::String {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "String",
         ty: &SdmTy::String,
+    };
+}
+
+#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "BTreeMap<K, V>",
+        ty: &SdmTy::Map {
+            key: K::SCHEMA,
+            val: V::SCHEMA,
+        },
+    };
+}
+
+#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "BTreeSet<K>",
+        ty: &SdmTy::Seq(K::SCHEMA),
     };
 }
 

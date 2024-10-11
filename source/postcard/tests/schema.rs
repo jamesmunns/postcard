@@ -252,8 +252,14 @@ fn newtype_vs_tuple() {
         &NamedType {
             name: "TestEnum2",
             ty: &SdmTy::Enum(&[
-                &NamedVariant { name: "Nt", ty: &SdmTy::NewtypeVariant(u64::SCHEMA) },
-                &NamedVariant { name: "Tup", ty: &SdmTy::TupleVariant(&[u64::SCHEMA, bool::SCHEMA]) },
+                &NamedVariant {
+                    name: "Nt",
+                    ty: &SdmTy::NewtypeVariant(u64::SCHEMA)
+                },
+                &NamedVariant {
+                    name: "Tup",
+                    ty: &SdmTy::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
+                },
             ]),
         }
     );
