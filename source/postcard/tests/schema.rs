@@ -269,9 +269,7 @@ fn newtype_vs_tuple() {
 
 fn dewit<T: Schema>() -> String {
     let schema: OwnedNamedType = T::SCHEMA.into();
-    let mut buf = String::new();
-    ugh_ont(&schema, &mut buf, true);
-    buf
+    schema.to_pseudocode()
 }
 
 #[derive(Schema)]
@@ -337,8 +335,8 @@ fn smoke() {
         (dewit::<(u8, u16, u32)>, "(u8, u16, u32)"),
         (dewit::<TupStruct>, "struct TupStruct(u64, String)"),
         (dewit::<Option<TupStruct>>, "Option<TupStruct>"),
-        (dewit::<HashMap<u32, String>>, "Map<u32, String>"),
-        (dewit::<HashSet<u32>>, "[u32]"),
+        (dewit::<std::collections::HashMap<u32, String>>, "Map<u32, String>"),
+        (dewit::<std::collections::HashSet<u32>>, "[u32]"),
         (
             dewit::<Classic>,
             "struct Classic { a: u32, b: u16, c: bool }",

@@ -101,6 +101,9 @@ pub enum SdmTy {
 
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
     Enum(&'static [&'static NamedVariant]),
+
+    // A NamedType/OwnedNamedType
+    Schema,
 }
 
 /// A data type with a name - e.g. a field of a Struct
@@ -340,6 +343,13 @@ impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     };
 }
 
+impl Schema for NamedType {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "NamedType",
+        ty: &SdmTy::Schema,
+    };
+}
+
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod owned {
     use super::*;
@@ -430,6 +440,9 @@ pub(crate) mod owned {
 
         /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
         Enum(Vec<OwnedNamedVariant>),
+
+        // A NamedType/OwnedNamedType
+        Schema,
     }
 
     impl From<&SdmTy> for OwnedSdmTy {
@@ -467,6 +480,7 @@ pub(crate) mod owned {
                     Self::StructVariant(sv.iter().map(|i| (*i).into()).collect())
                 }
                 SdmTy::Enum(e) => Self::Enum(e.iter().map(|i| (*i).into()).collect()),
+                SdmTy::Schema => Self::Schema,
             }
         }
     }
@@ -548,6 +562,13 @@ pub(crate) mod owned {
             }
         }
     }
+
+    impl Schema for OwnedNamedValue {
+        const SCHEMA: &'static NamedType = &NamedType {
+            name: "OwnedNamedType",
+            ty: &SdmTy::Schema,
+        };
+    }
 }
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
@@ -603,6 +624,7 @@ pub(crate) mod fmt {
             OwnedSdmTy::Struct(_) => false,
             OwnedSdmTy::StructVariant(_) => false,
             OwnedSdmTy::Enum(_) => false,
+            OwnedSdmTy::Schema => true,
         }
     }
 
@@ -797,6 +819,9 @@ pub(crate) mod fmt {
                     *buf += &ont.name;
                 }
             }
+            OwnedSdmTy::Schema => {
+                *buf += "Schema"
+            }
 
             // We only handle variants as part of an enum
             OwnedSdmTy::UnitVariant => unreachable!(),
@@ -881,6 +906,7 @@ pub(crate) mod fmt {
                 }
                 false
             }
+            OwnedSdmTy::Schema => todo!(),
         };
     }
 }
