@@ -102,7 +102,7 @@ pub enum SdmTy {
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
     Enum(&'static [&'static NamedVariant]),
 
-    // A NamedType/OwnedNamedType
+    /// A NamedType/OwnedNamedType
     Schema,
 }
 
@@ -350,6 +350,11 @@ impl Schema for NamedType {
     };
 }
 
+#[cfg(feature = "uuid-v1_0")]
+impl Schema for uuid::Uuid {
+    const SCHEMA: &'static NamedType = <[u8; 16]>::SCHEMA;
+}
+
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod owned {
     use super::*;
@@ -441,7 +446,7 @@ pub(crate) mod owned {
         /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
         Enum(Vec<OwnedNamedVariant>),
 
-        // A NamedType/OwnedNamedType
+        /// A NamedType/OwnedNamedType
         Schema,
     }
 

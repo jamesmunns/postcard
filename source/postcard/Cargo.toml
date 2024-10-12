@@ -66,6 +66,11 @@ optional = true
 version = "1.0.12"
 optional = true
 
+[dependencies.uuid]
+version = "1.0"
+default-features = false
+optional = true
+
 [features]
 default = ["heapless-cas"]
 
@@ -82,6 +87,8 @@ heapless-cas = ["heapless", "heapless/cas"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
+
+uuid-v1_0 = ["uuid"]
 
 # Experimental features!
 #
