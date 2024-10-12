@@ -352,7 +352,18 @@ impl Schema for NamedType {
 
 #[cfg(feature = "uuid-v1_0")]
 impl Schema for uuid::Uuid {
-    const SCHEMA: &'static NamedType = <[u8; 16]>::SCHEMA;
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Uuid",
+        ty: <[u8; 16]>::SCHEMA.ty,
+    };
+}
+
+#[cfg(feature = "chrono-v0_4")]
+impl<Tz: chrono::TimeZone> Schema for chrono::DateTime<Tz> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "DateTime",
+        ty: <&str>::SCHEMA.ty,
+    };
 }
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]

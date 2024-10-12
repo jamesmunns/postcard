@@ -71,6 +71,11 @@ version = "1.0"
 default-features = false
 optional = true
 
+[dependencies.chrono]
+version = "0.4"
+default-features = false
+optional = true
+
 [features]
 default = ["heapless-cas"]
 
@@ -89,6 +94,7 @@ use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
 
 uuid-v1_0 = ["uuid"]
+chrono-v0_4 = ["chrono"]
 
 # Experimental features!
 #
