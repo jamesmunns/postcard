@@ -324,6 +324,7 @@ fn ser_named_type(ty: &OwnedSdmTy, value: &Value, out: &mut Vec<u8>) -> Result<(
                 return Err(Error::SchemaMismatch);
             }
         }
+        OwnedSdmTy::Schema => todo!(),
     }
     Ok(())
 }

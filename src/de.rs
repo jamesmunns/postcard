@@ -259,6 +259,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 }
             }
         }
+        OwnedSdmTy::Schema => todo!(),
     }
 }
 
