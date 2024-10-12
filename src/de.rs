@@ -457,7 +457,7 @@ mod test {
     #[test]
     fn smoke() {
         let bye = serde_json::to_value(Enum1::Alpha).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![0], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
         assert_eq!(
@@ -468,7 +468,7 @@ mod test {
         );
 
         let bye = serde_json::to_value(Enum1::Beta(4)).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![1, 4], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
         assert_eq!(
@@ -479,7 +479,7 @@ mod test {
         );
 
         let bye = serde_json::to_value(Enum1::Gamma(vec![1, 2, 3])).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![2, 3, 1, 2, 3], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
         assert_eq!(
@@ -495,7 +495,7 @@ mod test {
             z: 4.0,
         }))
         .unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![3, 0, 232, 7, 0, 0, 0, 0, 0, 0, 16, 64], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
         assert_eq!(
@@ -510,7 +510,7 @@ mod test {
         );
 
         let bye = serde_json::to_value(Enum1::Epsilon(8, false)).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![4, 8, 0], t);
         let de = from_slice_dyn(&Enum1::SCHEMA.into(), &t).unwrap();
         assert_eq!(

@@ -448,6 +448,8 @@ pub(crate) mod varint {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
+
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
@@ -486,63 +488,63 @@ mod test {
     fn ints() {
         let pos = json!(45);
 
-        let t = to_stdvec_dyn(u8::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u8::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![45]);
 
-        let t = to_stdvec_dyn(u16::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u16::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![45]);
 
-        let t = to_stdvec_dyn(u32::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u32::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![45]);
 
-        let t = to_stdvec_dyn(u64::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u64::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![45]);
 
-        let t = to_stdvec_dyn(u128::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u128::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![45]);
 
         let neg = json!(-45);
 
-        let t = to_stdvec_dyn(i8::SCHEMA, &neg).unwrap();
+        let t = to_stdvec_dyn(&i8::SCHEMA.into(), &neg).unwrap();
         // i8s are serialized as-is
         assert_eq!(t, vec![211]);
 
         // All other types get zig-zag'd first
-        let t = to_stdvec_dyn(i16::SCHEMA, &neg).unwrap();
+        let t = to_stdvec_dyn(&i16::SCHEMA.into(), &neg).unwrap();
         assert_eq!(t, vec![89]);
 
-        let t = to_stdvec_dyn(i32::SCHEMA, &neg).unwrap();
+        let t = to_stdvec_dyn(&i32::SCHEMA.into(), &neg).unwrap();
         assert_eq!(t, vec![89]);
 
-        let t = to_stdvec_dyn(i64::SCHEMA, &neg).unwrap();
+        let t = to_stdvec_dyn(&i64::SCHEMA.into(), &neg).unwrap();
         assert_eq!(t, vec![89]);
 
-        let t = to_stdvec_dyn(i128::SCHEMA, &neg).unwrap();
+        let t = to_stdvec_dyn(&i128::SCHEMA.into(), &neg).unwrap();
         assert_eq!(t, vec![89]);
 
         let pos = json!(128);
-        let t = to_stdvec_dyn(u16::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&u16::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![128, 1]);
 
         let pos = json!(-65);
-        let t = to_stdvec_dyn(i16::SCHEMA, &pos).unwrap();
+        let t = to_stdvec_dyn(&i16::SCHEMA.into(), &pos).unwrap();
         assert_eq!(t, vec![129, 1]);
     }
 
     #[test]
     fn opts() {
         let bys = serde_json::to_value(Some(5i16)).unwrap();
-        let t = to_stdvec_dyn(Option::<i16>::SCHEMA, &bys).unwrap();
+        let t = to_stdvec_dyn(&Option::<i16>::SCHEMA.into(), &bys).unwrap();
         assert_eq!(t, [0x01, 0x0A]);
         let byn = serde_json::to_value(Option::<i16>::None).unwrap();
-        let t = to_stdvec_dyn(Option::<i16>::SCHEMA, &byn).unwrap();
+        let t = to_stdvec_dyn(&Option::<i16>::SCHEMA.into(), &byn).unwrap();
         assert_eq!(t, [0x00]);
     }
 
     #[test]
     fn strs() {
         let s = json!("Hello, world!");
-        let t = to_stdvec_dyn(String::SCHEMA, &s).unwrap();
+        let t = to_stdvec_dyn(&String::SCHEMA.into(), &s).unwrap();
         let mut exp = vec![13];
         exp.extend_from_slice(b"Hello, world!");
         assert_eq!(exp, t);
@@ -551,7 +553,7 @@ mod test {
     #[test]
     fn seqs() {
         let s = json!([1, 2, 3, 4]);
-        let t = to_stdvec_dyn(Vec::<u16>::SCHEMA, &s).unwrap();
+        let t = to_stdvec_dyn(&Vec::<u16>::SCHEMA.into(), &s).unwrap();
         assert_eq!(vec![4, 1, 2, 3, 4], t);
     }
 
@@ -559,7 +561,7 @@ mod test {
     fn tups() {
         let byt = serde_json::to_value((true, 5u8, 1.0f32)).unwrap();
         type Tup1 = (bool, u8, f32);
-        let t = to_stdvec_dyn(Tup1::SCHEMA, &byt).unwrap();
+        let t = to_stdvec_dyn(&Tup1::SCHEMA.into(), &byt).unwrap();
         assert_eq!(vec![1, 5, 0, 0, 128, 63], t);
     }
 
@@ -571,34 +573,34 @@ mod test {
             z: 4.0,
         })
         .unwrap();
-        let t = to_stdvec_dyn(Struct1::SCHEMA, &bysct).unwrap();
+        let t = to_stdvec_dyn(&Struct1::SCHEMA.into(), &bysct).unwrap();
         assert_eq!(vec![0, 232, 7, 0, 0, 0, 0, 0, 0, 16, 64], t);
 
         let bysct = serde_json::to_value(TupStruct1(1)).unwrap();
-        let t = to_stdvec_dyn(TupStruct1::SCHEMA, &bysct).unwrap();
+        let t = to_stdvec_dyn(&TupStruct1::SCHEMA.into(), &bysct).unwrap();
         assert_eq!(vec![1], t);
 
         let bysct = serde_json::to_value(TupStruct2(1, 2)).unwrap();
-        let t = to_stdvec_dyn(TupStruct2::SCHEMA, &bysct).unwrap();
+        let t = to_stdvec_dyn(&TupStruct2::SCHEMA.into(), &bysct).unwrap();
         assert_eq!(vec![1, 2], t);
 
         let bysct = serde_json::to_value(UnitStruct).unwrap();
-        let t = to_stdvec_dyn(UnitStruct::SCHEMA, &bysct).unwrap();
+        let t = to_stdvec_dyn(&UnitStruct::SCHEMA.into(), &bysct).unwrap();
         assert_eq!(Vec::<u8>::new(), t);
     }
 
     #[test]
     fn enums() {
         let bye = serde_json::to_value(Enum1::Alpha).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![0], t);
 
         let bye = serde_json::to_value(Enum1::Beta(4)).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![1, 4], t);
 
         let bye = serde_json::to_value(Enum1::Gamma(vec![1, 2, 3])).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![2, 3, 1, 2, 3], t);
 
         let bye = serde_json::to_value(Enum1::Delta(Struct1 {
@@ -607,27 +609,27 @@ mod test {
             z: 4.0,
         }))
         .unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![3, 0, 232, 7, 0, 0, 0, 0, 0, 0, 16, 64], t);
 
         let bye = serde_json::to_value(Enum1::Epsilon(8, false)).unwrap();
-        let t = to_stdvec_dyn(Enum1::SCHEMA, &bye).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![4, 8, 0], t);
     }
 
     // TODO: we don't implement schema for map types like HashMap, BTreeMap, heapless::IndexMap, or
     // similar types. We should fix that.
     //
-    // #[test]
-    // fn maps() {
-    //     type Map1 = HashMap<String, i64>;
-    //     let mut map: Map1 = HashMap::new();
-    //     map.insert("bib".to_string(), 10);
-    //     map.insert("bim".to_string(), 20);
-    //     map.insert("bap".to_string(), 30);
-    //     let bym = serde_json::to_value(map).unwrap();
-    //     let t = to_stdvec_dyn(Map1::SCHEMA, &bym).unwrap();
-    // }
+    #[test]
+    fn maps() {
+        type Map1 = HashMap<String, i64>;
+        let mut map: Map1 = HashMap::new();
+        map.insert("bib".to_string(), 10);
+        map.insert("bim".to_string(), 20);
+        map.insert("bap".to_string(), 30);
+        let bym = serde_json::to_value(map).unwrap();
+        let _t = to_stdvec_dyn(&Map1::SCHEMA.into(), &bym).unwrap();
+    }
 
     // Figuring out how serde_json handles various types
     #[test]
