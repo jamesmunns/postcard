@@ -563,7 +563,7 @@ pub(crate) mod owned {
         }
     }
 
-    impl Schema for OwnedNamedValue {
+    impl Schema for OwnedNamedType {
         const SCHEMA: &'static NamedType = &NamedType {
             name: "OwnedNamedType",
             ty: &SdmTy::Schema,
