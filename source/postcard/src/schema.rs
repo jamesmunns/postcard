@@ -1,3 +1,7 @@
+use core::num::{
+    NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
+    NonZeroU32, NonZeroU64, NonZeroU8,
+};
 use serde::{Deserialize, Serialize};
 
 /// A schema type representing a variably encoded integer
@@ -168,7 +172,9 @@ macro_rules! impl_schema {
 
 impl_schema![
     u8: SdmTy::U8,
+    NonZeroU8: SdmTy::U8,
     i8: SdmTy::I8,
+    NonZeroI8: SdmTy::I8,
     bool: SdmTy::Bool,
     f32: SdmTy::F32,
     f64: SdmTy::F64,
@@ -178,7 +184,11 @@ impl_schema![
 ];
 impl_schema!(varint => [
     i16: Varint::I16, i32: Varint::I32, i64: Varint::I64, i128: Varint::I128,
-    u16: Varint::U16, u32: Varint::U32, u64: Varint::U64, u128: Varint::U128
+    u16: Varint::U16, u32: Varint::U32, u64: Varint::U64, u128: Varint::U128,
+    NonZeroI16: Varint::I16, NonZeroI32: Varint::I32,
+    NonZeroI64: Varint::I64, NonZeroI128: Varint::I128,
+    NonZeroU16: Varint::U16, NonZeroU32: Varint::U32,
+    NonZeroU64: Varint::U64, NonZeroU128: Varint::U128
 ]);
 impl_schema!(tuple => [
     (A),
@@ -835,9 +845,7 @@ pub(crate) mod fmt {
                     *buf += &ont.name;
                 }
             }
-            OwnedSdmTy::Schema => {
-                *buf += "Schema"
-            }
+            OwnedSdmTy::Schema => *buf += "Schema",
 
             // We only handle variants as part of an enum
             OwnedSdmTy::UnitVariant => unreachable!(),
