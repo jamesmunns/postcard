@@ -272,15 +272,19 @@ fn dewit<T: Schema>() -> String {
     schema.to_pseudocode()
 }
 
+#[allow(unused)]
 #[derive(Schema)]
 struct UnitStruct;
 
+#[allow(unused)]
 #[derive(Schema)]
 struct NewTypeStruct(String);
 
+#[allow(unused)]
 #[derive(Schema)]
 struct TupStruct(u64, String);
 
+#[allow(unused)]
 #[derive(Schema)]
 enum Enums {
     Unit,
@@ -288,6 +292,7 @@ enum Enums {
     Tup(u32, bool),
 }
 
+#[allow(unused)]
 #[derive(Schema)]
 struct Classic {
     a: u32,
@@ -295,6 +300,7 @@ struct Classic {
     c: bool,
 }
 
+#[allow(unused)]
 #[derive(Schema)]
 struct ClassicGen<T: Schema> {
     a: u32,
@@ -335,7 +341,10 @@ fn smoke() {
         (dewit::<(u8, u16, u32)>, "(u8, u16, u32)"),
         (dewit::<TupStruct>, "struct TupStruct(u64, String)"),
         (dewit::<Option<TupStruct>>, "Option<TupStruct>"),
-        (dewit::<std::collections::HashMap<u32, String>>, "Map<u32, String>"),
+        (
+            dewit::<std::collections::HashMap<u32, String>>,
+            "Map<u32, String>",
+        ),
         (dewit::<std::collections::HashSet<u32>>, "[u32]"),
         (
             dewit::<Classic>,
