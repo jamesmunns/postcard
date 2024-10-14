@@ -1,0 +1,55 @@
+[package]
+name = "postcard-schema"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+# todo: remove this?
+features = ["derive"]
+
+[dependencies.uuid]
+version = "1.0"
+default-features = false
+optional = true
+
+[dependencies.chrono]
+version = "0.4"
+default-features = false
+optional = true
+
+[dependencies.heapless_v0_7]
+package = "heapless"
+version = "0.7"
+default-features = false
+optional = true
+
+[dependencies.heapless_v0_8]
+package = "heapless"
+version = "0.8"
+default-features = false
+optional = true
+
+[dependencies.postcard-derive]
+path = "../postcard-derive"
+version = "0.1.2"
+optional = true
+
+[dev-dependencies.postcard]
+path = "../postcard"
+version = "1.0"
+features = ["use-std"]
+
+[features]
+default = []
+use-std = ["serde/std"]
+alloc = ["serde/alloc"]
+derive = ["postcard-derive", "postcard/experimental-derive"]
+
+uuid-v1_0 = ["uuid"]
+chrono-v0_4 = ["chrono"]
+heapless-v0_7 = ["heapless_v0_7"]
+heapless-v0_8 = ["heapless_v0_8"]
