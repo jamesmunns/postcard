@@ -56,7 +56,7 @@ pub enum SdmTy {
     /// The `String` Serde Data Model Type
     String,
 
-    /// The `[u8; N]` Serde Data Model Type
+    /// The `&[u8]` Serde Data Model Type
     ByteArray,
 
     /// The `Option<T>` Serde Data Model Type
@@ -364,7 +364,7 @@ impl Schema for NamedType {
 impl Schema for uuid::Uuid {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Uuid",
-        ty: <[u8; 16]>::SCHEMA.ty,
+        ty: &SdmTy::ByteArray,
     };
 }
 
@@ -417,7 +417,7 @@ pub(crate) mod owned {
         /// The `String` Serde Data Model Type
         String,
 
-        /// The `[u8; N]` Serde Data Model Type
+        /// The `&[u8]` Serde Data Model Type
         ByteArray,
 
         /// The `Option<T>` Serde Data Model Type
