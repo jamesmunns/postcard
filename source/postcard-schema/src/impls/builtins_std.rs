@@ -1,6 +1,6 @@
 use crate::{
-    Schema,
     schema::{NamedType, SdmTy},
+    Schema,
 };
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]

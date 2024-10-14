@@ -99,7 +99,7 @@ fn generate_variants(fields: &Fields) -> TokenStream {
                 let name = f.ident.as_ref().unwrap().to_string();
                 quote_spanned!(f.span() => &::postcard_schema::schema::NamedValue { name: #name, ty: <#ty as ::postcard_schema::Schema>::SCHEMA })
             });
-            quote! { &::postcard_schema::schema::SdmTy::StructVariant(&[
+            quote! { &::postcard_schema::schema::SdmVariant::StructVariant(&[
                 #( #fields ),*
             ]) }
         }
@@ -109,19 +109,19 @@ fn generate_variants(fields: &Fields) -> TokenStream {
                 let ty = &f.ty;
                 let qs = quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA);
 
-                quote! { &::postcard_schema::schema::SdmTy::NewtypeVariant(#qs) }
+                quote! { &::postcard_schema::schema::SdmVariant::NewtypeVariant(#qs) }
             } else {
                 let fields = fields.unnamed.iter().map(|f| {
                     let ty = &f.ty;
                     quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA)
                 });
-                quote! { &::postcard_schema::schema::SdmTy::TupleVariant(&[
+                quote! { &::postcard_schema::schema::SdmVariant::TupleVariant(&[
                     #( #fields ),*
                 ]) }
             }
         }
         syn::Fields::Unit => {
-            quote! { &::postcard_schema::schema::SdmTy::UnitVariant }
+            quote! { &::postcard_schema::schema::SdmVariant::UnitVariant }
         }
     }
 }

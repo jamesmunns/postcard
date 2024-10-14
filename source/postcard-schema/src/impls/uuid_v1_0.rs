@@ -1,6 +1,6 @@
 use crate::{
-    Schema,
     schema::{NamedType, SdmTy},
+    Schema,
 };
 
 impl Schema for uuid::Uuid {

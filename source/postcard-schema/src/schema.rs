@@ -1,5 +1,17 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum SdmVariant {
+    /// The "unit variant" Serde Data Model Type
+    UnitVariant,
+    /// The "newtype variant" Serde Data Model Type
+    NewtypeVariant(&'static NamedType),
+    /// The "Tuple Variant" Serde Data Model Type
+    TupleVariant(&'static [&'static NamedType]),
+    /// The "Struct Variant" Serde Data Model Type
+    StructVariant(&'static [&'static NamedValue]),
+}
+
 /// Serde Data Model Types (and friends)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum SdmTy {
@@ -66,14 +78,8 @@ pub enum SdmTy {
     /// The "unit struct" Serde Data Model Type
     UnitStruct,
 
-    /// The "unit variant" Serde Data Model Type
-    UnitVariant,
-
     /// The "newtype struct" Serde Data Model Type
     NewtypeStruct(&'static NamedType),
-
-    /// The "newtype variant" Serde Data Model Type
-    NewtypeVariant(&'static NamedType),
 
     /// The "Sequence" Serde Data Model Type
     Seq(&'static NamedType),
@@ -83,9 +89,6 @@ pub enum SdmTy {
 
     /// The "Tuple Struct" Serde Data Model Type
     TupleStruct(&'static [&'static NamedType]),
-
-    /// The "Tuple Variant" Serde Data Model Type
-    TupleVariant(&'static [&'static NamedType]),
 
     /// The "Map" Serde Data Model Type
     Map {
@@ -97,9 +100,6 @@ pub enum SdmTy {
 
     /// The "Struct" Serde Data Model Type
     Struct(&'static [&'static NamedValue]),
-
-    /// The "Struct Variant" Serde Data Model Type
-    StructVariant(&'static [&'static NamedValue]),
 
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
     Enum(&'static [&'static NamedVariant]),
@@ -132,7 +132,7 @@ pub struct NamedVariant {
     /// The name of this variant
     pub name: &'static str,
     /// The type of this variant
-    pub ty: &'static SdmTy,
+    pub ty: &'static SdmVariant,
 }
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
@@ -148,6 +148,18 @@ pub mod owned {
         string::{String, ToString},
         vec::Vec,
     };
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    pub enum OwnedSdmVariant {
+        /// The "unit variant" Serde Data Model Type
+        UnitVariant,
+        /// The "newtype variant" Serde Data Model Type
+        NewtypeVariant(Box<OwnedNamedType>),
+        /// The "Tuple Variant" Serde Data Model Type
+        TupleVariant(Vec<OwnedNamedType>),
+        /// The "Struct Variant" Serde Data Model Type
+        StructVariant(Vec<OwnedNamedValue>),
+    }
 
     /// Serde Data Model Types (and friends)
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -215,14 +227,8 @@ pub mod owned {
         /// The "unit struct" Serde Data Model Type
         UnitStruct,
 
-        /// The "unit variant" Serde Data Model Type
-        UnitVariant,
-
         /// The "newtype struct" Serde Data Model Type
         NewtypeStruct(Box<OwnedNamedType>),
-
-        /// The "newtype variant" Serde Data Model Type
-        NewtypeVariant(Box<OwnedNamedType>),
 
         /// The "Sequence" Serde Data Model Type
         Seq(Box<OwnedNamedType>),
@@ -232,9 +238,6 @@ pub mod owned {
 
         /// The "Tuple Struct" Serde Data Model Type
         TupleStruct(Vec<OwnedNamedType>),
-
-        /// The "Tuple Variant" Serde Data Model Type
-        TupleVariant(Vec<OwnedNamedType>),
 
         /// The "Map" Serde Data Model Type
         Map {
@@ -247,14 +250,26 @@ pub mod owned {
         /// The "Struct" Serde Data Model Type
         Struct(Vec<OwnedNamedValue>),
 
-        /// The "Struct Variant" Serde Data Model Type
-        StructVariant(Vec<OwnedNamedValue>),
-
         /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
         Enum(Vec<OwnedNamedVariant>),
 
         /// A NamedType/OwnedNamedType
         Schema,
+    }
+
+    impl From<&SdmVariant> for OwnedSdmVariant {
+        fn from(value: &SdmVariant) -> Self {
+            match value {
+                SdmVariant::UnitVariant => Self::UnitVariant,
+                SdmVariant::NewtypeVariant(d) => Self::NewtypeVariant(Box::new((*d).into())),
+                SdmVariant::TupleVariant(d) => {
+                    Self::TupleVariant(d.iter().map(|i| (*i).into()).collect())
+                }
+                SdmVariant::StructVariant(d) => {
+                    Self::StructVariant(d.iter().map(|i| (*i).into()).collect())
+                }
+            }
+        }
     }
 
     impl From<&SdmTy> for OwnedSdmTy {
@@ -281,25 +296,17 @@ pub mod owned {
                 SdmTy::Option(o) => Self::Option(Box::new((*o).into())),
                 SdmTy::Unit => Self::Unit,
                 SdmTy::UnitStruct => Self::UnitStruct,
-                SdmTy::UnitVariant => Self::UnitVariant,
                 SdmTy::NewtypeStruct(nts) => Self::NewtypeStruct(Box::new((*nts).into())),
-                SdmTy::NewtypeVariant(ntv) => Self::NewtypeVariant(Box::new((*ntv).into())),
                 SdmTy::Seq(s) => Self::Seq(Box::new((*s).into())),
                 SdmTy::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
                 SdmTy::TupleStruct(ts) => {
                     Self::TupleStruct(ts.iter().map(|i| (*i).into()).collect())
-                }
-                SdmTy::TupleVariant(tv) => {
-                    Self::TupleVariant(tv.iter().map(|i| (*i).into()).collect())
                 }
                 SdmTy::Map { key, val } => Self::Map {
                     key: Box::new((*key).into()),
                     val: Box::new((*val).into()),
                 },
                 SdmTy::Struct(s) => Self::Struct(s.iter().map(|i| (*i).into()).collect()),
-                SdmTy::StructVariant(sv) => {
-                    Self::StructVariant(sv.iter().map(|i| (*i).into()).collect())
-                }
                 SdmTy::Enum(e) => Self::Enum(e.iter().map(|i| (*i).into()).collect()),
                 SdmTy::Schema => Self::Schema,
             }
@@ -372,7 +379,7 @@ pub mod owned {
         /// The name of this variant
         pub name: String,
         /// The type of this variant
-        pub ty: OwnedSdmTy,
+        pub ty: OwnedSdmVariant,
     }
 
     impl From<&NamedVariant> for OwnedNamedVariant {
@@ -394,7 +401,7 @@ pub mod owned {
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod fmt {
-    use super::owned::{OwnedNamedType, OwnedSdmTy};
+    use super::owned::{OwnedNamedType, OwnedSdmTy, OwnedSdmVariant};
 
     #[cfg(feature = "use-std")]
     use std::{string::String, vec::Vec};
@@ -429,16 +436,12 @@ pub(crate) mod fmt {
             OwnedSdmTy::Option(owned_named_type) => is_prim(&owned_named_type.ty),
             OwnedSdmTy::Unit => true,
             OwnedSdmTy::UnitStruct => true,
-            OwnedSdmTy::UnitVariant => true,
             OwnedSdmTy::NewtypeStruct(owned_named_type) => is_prim(&owned_named_type.ty),
-            OwnedSdmTy::NewtypeVariant(owned_named_type) => is_prim(&owned_named_type.ty),
             OwnedSdmTy::Seq(_) => false,
             OwnedSdmTy::Tuple(_) => false,
             OwnedSdmTy::TupleStruct(vec) => vec.iter().all(|e| is_prim(&e.ty)),
-            OwnedSdmTy::TupleVariant(vec) => vec.iter().all(|e| is_prim(&e.ty)),
             OwnedSdmTy::Map { key, val } => is_prim(&key.ty) && is_prim(&val.ty),
             OwnedSdmTy::Struct(_) => false,
-            OwnedSdmTy::StructVariant(_) => false,
             OwnedSdmTy::Enum(_) => false,
             OwnedSdmTy::Schema => true,
         }
@@ -585,13 +588,13 @@ pub(crate) mod fmt {
                             let mut buf = String::new();
                             buf += &v.name;
                             match &v.ty {
-                                OwnedSdmTy::UnitVariant => {}
-                                OwnedSdmTy::NewtypeVariant(owned_named_type) => {
+                                OwnedSdmVariant::UnitVariant => {}
+                                OwnedSdmVariant::NewtypeVariant(owned_named_type) => {
                                     buf += "(";
                                     fmt_owned_nt_to_buf(owned_named_type, &mut buf, false);
                                     buf += ")";
                                 }
-                                OwnedSdmTy::TupleVariant(vec) => {
+                                OwnedSdmVariant::TupleVariant(vec) => {
                                     buf += "(";
                                     let fields = vec
                                         .iter()
@@ -605,7 +608,7 @@ pub(crate) mod fmt {
                                     buf += &fields;
                                     buf += ")";
                                 }
-                                OwnedSdmTy::StructVariant(vec) => {
+                                OwnedSdmVariant::StructVariant(vec) => {
                                     buf += "{ ";
                                     let fields = vec
                                         .iter()
@@ -634,12 +637,6 @@ pub(crate) mod fmt {
                 }
             }
             OwnedSdmTy::Schema => *buf += "Schema",
-
-            // We only handle variants as part of an enum
-            OwnedSdmTy::UnitVariant => unreachable!(),
-            OwnedSdmTy::NewtypeVariant(_) => unreachable!(),
-            OwnedSdmTy::TupleVariant(_) => unreachable!(),
-            OwnedSdmTy::StructVariant(_) => unreachable!(),
         }
     }
 
@@ -654,7 +651,6 @@ pub(crate) mod fmt {
     #[cfg(feature = "use-std")]
     pub fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut std::collections::HashSet<OwnedNamedType>) {
         use crate::Schema;
-        use core::ops::Deref;
         match sdm {
             OwnedSdmTy::Bool => set.insert(bool::SCHEMA.into()),
             OwnedSdmTy::I8 => set.insert(i8::SCHEMA.into()),
@@ -672,41 +668,37 @@ pub(crate) mod fmt {
             OwnedSdmTy::Usize => unreachable!(),
             OwnedSdmTy::Isize => unreachable!(),
             //
-
             OwnedSdmTy::F32 => set.insert(f32::SCHEMA.into()),
             OwnedSdmTy::F64 => set.insert(f64::SCHEMA.into()),
             OwnedSdmTy::Char => set.insert(char::SCHEMA.into()),
             OwnedSdmTy::String => set.insert(String::SCHEMA.into()),
             OwnedSdmTy::ByteArray => set.insert(<[u8]>::SCHEMA.into()),
-            OwnedSdmTy::Option(owned_named_type) => set.insert(owned_named_type.deref().clone()),
+            OwnedSdmTy::Option(owned_named_type) => {
+                discover_tys(owned_named_type, set);
+                false
+            }
             OwnedSdmTy::Unit => set.insert(<()>::SCHEMA.into()),
             OwnedSdmTy::UnitStruct => false,
-            OwnedSdmTy::UnitVariant => false,
             OwnedSdmTy::NewtypeStruct(owned_named_type) => {
-                set.insert(owned_named_type.deref().clone())
+                discover_tys(owned_named_type, set);
+                false
             }
-            OwnedSdmTy::NewtypeVariant(owned_named_type) => {
-                set.insert(owned_named_type.deref().clone())
+            OwnedSdmTy::Seq(owned_named_type) => {
+                discover_tys(owned_named_type, set);
+                false
             }
-            OwnedSdmTy::Seq(owned_named_type) => set.insert(owned_named_type.deref().clone()),
             OwnedSdmTy::Tuple(vec) | OwnedSdmTy::TupleStruct(vec) => {
                 for v in vec.iter() {
                     discover_tys_sdm(&v.ty, set);
                 }
                 false
             }
-            OwnedSdmTy::TupleVariant(vec) => {
-                for v in vec.iter() {
-                    discover_tys(v, set);
-                }
-                false
-            }
             OwnedSdmTy::Map { key, val } => {
-                set.insert(key.deref().clone());
-                set.insert(val.deref().clone());
+                discover_tys(key, set);
+                discover_tys(val, set);
                 false
             }
-            OwnedSdmTy::Struct(vec) | OwnedSdmTy::StructVariant(vec) => {
+            OwnedSdmTy::Struct(vec) => {
                 for v in vec.iter() {
                     discover_tys(&v.ty, set);
                 }
@@ -714,7 +706,22 @@ pub(crate) mod fmt {
             }
             OwnedSdmTy::Enum(vec) => {
                 for v in vec.iter() {
-                    discover_tys_sdm(&v.ty, set);
+                    match &v.ty {
+                        OwnedSdmVariant::UnitVariant => {}
+                        OwnedSdmVariant::NewtypeVariant(owned_named_type) => {
+                            discover_tys(owned_named_type, set);
+                        }
+                        OwnedSdmVariant::TupleVariant(vec) => {
+                            for v in vec.iter() {
+                                discover_tys(v, set);
+                            }
+                        }
+                        OwnedSdmVariant::StructVariant(vec) => {
+                            for v in vec.iter() {
+                                discover_tys(&v.ty, set);
+                            }
+                        }
+                    }
                 }
                 false
             }

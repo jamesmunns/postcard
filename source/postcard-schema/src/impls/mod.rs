@@ -1,6 +1,6 @@
 use crate::{
-    Schema,
     schema::{NamedType, SdmTy},
+    Schema,
 };
 
 pub mod builtins_nostd;
@@ -23,11 +23,9 @@ pub mod heapless_v0_7;
 #[cfg(feature = "heapless-v0_8")]
 pub mod heapless_v0_8;
 
-
 impl Schema for NamedType {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "NamedType",
         ty: &SdmTy::Schema,
     };
 }
-

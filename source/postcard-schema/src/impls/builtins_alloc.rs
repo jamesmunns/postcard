@@ -1,8 +1,7 @@
 use crate::{
-    Schema,
     schema::{NamedType, SdmTy},
+    Schema,
 };
-
 
 extern crate alloc;
 

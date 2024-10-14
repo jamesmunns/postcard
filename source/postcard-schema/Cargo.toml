@@ -44,7 +44,7 @@ version = "1.0"
 features = ["use-std"]
 
 [features]
-default = []
+default = ["use-std"]
 use-std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["postcard-derive"]

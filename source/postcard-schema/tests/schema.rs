@@ -1,5 +1,5 @@
 use postcard_schema::{
-    schema::{owned::OwnedNamedType, NamedType, NamedValue, NamedVariant, SdmTy},
+    schema::{owned::OwnedNamedType, NamedType, NamedValue, NamedVariant, SdmTy, SdmVariant},
     Schema,
 };
 
@@ -60,23 +60,23 @@ fn test_enum_serialize() {
             ty: &SdmTy::Enum(&[
                 &NamedVariant {
                     name: "Alpha",
-                    ty: &SdmTy::UnitVariant
+                    ty: &SdmVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Beta",
-                    ty: &SdmTy::UnitVariant
+                    ty: &SdmVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Gamma",
-                    ty: &SdmTy::UnitVariant
+                    ty: &SdmVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Delta",
-                    ty: &SdmTy::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
+                    ty: &SdmVariant::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
                 },
                 &NamedVariant {
                     name: "Epsilon",
-                    ty: &SdmTy::StructVariant(&[
+                    ty: &SdmVariant::StructVariant(&[
                         &NamedValue {
                             name: "zeta",
                             ty: &NamedType {
@@ -253,11 +253,11 @@ fn newtype_vs_tuple() {
             ty: &SdmTy::Enum(&[
                 &NamedVariant {
                     name: "Nt",
-                    ty: &SdmTy::NewtypeVariant(u64::SCHEMA)
+                    ty: &SdmVariant::NewtypeVariant(u64::SCHEMA)
                 },
                 &NamedVariant {
                     name: "Tup",
-                    ty: &SdmTy::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
+                    ty: &SdmVariant::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
                 },
             ]),
         }

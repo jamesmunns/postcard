@@ -2,8 +2,8 @@
 // #![warn(missing_docs)]
 //! # Postcard Schema
 
-pub mod schema;
 pub mod impls;
+pub mod schema;
 
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;

@@ -1,6 +1,6 @@
 use crate::{
+    schema::{NamedType, NamedVariant, SdmTy, SdmVariant},
     Schema,
-    schema::{NamedType, NamedVariant, SdmTy},
 };
 use core::num::{
     NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
@@ -70,11 +70,11 @@ impl<T: Schema, E: Schema> Schema for Result<T, E> {
         ty: &SdmTy::Enum(&[
             &NamedVariant {
                 name: "Ok",
-                ty: &SdmTy::TupleVariant(&[T::SCHEMA]),
+                ty: &SdmVariant::TupleVariant(&[T::SCHEMA]),
             },
             &NamedVariant {
                 name: "Err",
-                ty: &SdmTy::TupleVariant(&[E::SCHEMA]),
+                ty: &SdmVariant::TupleVariant(&[E::SCHEMA]),
             },
         ]),
     };
