@@ -1,5 +1,7 @@
+//! Implementations of the [`Schema`] trait for the `heapless` crate v0.7
+
 use crate::{
-    schema::{NamedType, DataModelType},
+    schema::{DataModelType, NamedType},
     Schema,
 };
 

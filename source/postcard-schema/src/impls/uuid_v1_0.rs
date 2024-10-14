@@ -1,5 +1,7 @@
+//! Implementations of the [`Schema`] trait for the `uuid` crate v1.0
+
 use crate::{
-    schema::{NamedType, DataModelType},
+    schema::{DataModelType, NamedType},
     Schema,
 };
 

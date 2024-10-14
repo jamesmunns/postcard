@@ -1,5 +1,9 @@
+//! Implementations of the [`Schema`] trait for `core` types
+//!
+//! These implementations are always available
+
 use crate::{
-    schema::{NamedType, NamedVariant, DataModelType, DataModelVariant},
+    schema::{DataModelType, DataModelVariant, NamedType, NamedVariant},
     Schema,
 };
 use core::num::{

@@ -1,3 +1,5 @@
+//! Implementations of the [`Schema`] trait for `alloc` types
+
 use crate::{
     schema::{NamedType, SdmTy},
     Schema,

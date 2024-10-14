@@ -1,3 +1,5 @@
+//! Implementations of the [`Schema`] trait for the `nalgebra` crate v0.33
+
 use crate::{
     schema::{DataModelType, NamedType},
     Schema,

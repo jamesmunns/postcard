@@ -1,5 +1,7 @@
 use postcard_schema::{
-    schema::{owned::OwnedNamedType, NamedType, NamedValue, NamedVariant, DataModelType, DataModelVariant},
+    schema::{
+        owned::OwnedNamedType, DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant,
+    },
     Schema,
 };
 

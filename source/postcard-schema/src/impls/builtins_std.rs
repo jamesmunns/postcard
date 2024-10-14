@@ -1,5 +1,7 @@
+//! Implementations of the [`Schema`] trait for `std` types
+
 use crate::{
-    schema::{NamedType, DataModelType},
+    schema::{DataModelType, NamedType},
     Schema,
 };
 

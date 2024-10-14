@@ -1,5 +1,5 @@
 #![cfg_attr(not(any(test, feature = "use-std")), no_std)]
-// #![warn(missing_docs)]
+#![warn(missing_docs)]
 //! # Postcard Schema
 
 pub mod impls;
