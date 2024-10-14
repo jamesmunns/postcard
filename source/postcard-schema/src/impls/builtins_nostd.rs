@@ -1,5 +1,5 @@
 use crate::{
-    schema::{NamedType, NamedVariant, SdmTy, SdmVariant},
+    schema::{NamedType, NamedVariant, DataModelType, DataModelVariant},
     Schema,
 };
 use core::num::{
@@ -23,7 +23,7 @@ macro_rules! impl_schema {
             impl<$($generic: Schema),*> Schema for ($($generic,)*) {
                 const SCHEMA: &'static NamedType = &NamedType {
                     name: stringify!(($($generic,)*)),
-                    ty: &SdmTy::Tuple(&[$($generic::SCHEMA),*]),
+                    ty: &DataModelType::Tuple(&[$($generic::SCHEMA),*]),
                 };
             }
         )*
@@ -31,22 +31,22 @@ macro_rules! impl_schema {
 }
 
 impl_schema![
-    u8: SdmTy::U8,
-    NonZeroU8: SdmTy::U8,
-    i8: SdmTy::I8,
-    NonZeroI8: SdmTy::I8,
-    bool: SdmTy::Bool,
-    f32: SdmTy::F32,
-    f64: SdmTy::F64,
-    char: SdmTy::Char,
-    str: SdmTy::String,
-    (): SdmTy::Unit,
-    i16: SdmTy::I16, i32: SdmTy::I32, i64: SdmTy::I64, i128: SdmTy::I128,
-    u16: SdmTy::U16, u32: SdmTy::U32, u64: SdmTy::U64, u128: SdmTy::U128,
-    NonZeroI16: SdmTy::I16, NonZeroI32: SdmTy::I32,
-    NonZeroI64: SdmTy::I64, NonZeroI128: SdmTy::I128,
-    NonZeroU16: SdmTy::U16, NonZeroU32: SdmTy::U32,
-    NonZeroU64: SdmTy::U64, NonZeroU128: SdmTy::U128
+    u8: DataModelType::U8,
+    NonZeroU8: DataModelType::U8,
+    i8: DataModelType::I8,
+    NonZeroI8: DataModelType::I8,
+    bool: DataModelType::Bool,
+    f32: DataModelType::F32,
+    f64: DataModelType::F64,
+    char: DataModelType::Char,
+    str: DataModelType::String,
+    (): DataModelType::Unit,
+    i16: DataModelType::I16, i32: DataModelType::I32, i64: DataModelType::I64, i128: DataModelType::I128,
+    u16: DataModelType::U16, u32: DataModelType::U32, u64: DataModelType::U64, u128: DataModelType::U128,
+    NonZeroI16: DataModelType::I16, NonZeroI32: DataModelType::I32,
+    NonZeroI64: DataModelType::I64, NonZeroI128: DataModelType::I128,
+    NonZeroU16: DataModelType::U16, NonZeroU32: DataModelType::U32,
+    NonZeroU64: DataModelType::U64, NonZeroU128: DataModelType::U128
 ];
 
 impl_schema!(tuple => [
@@ -61,20 +61,20 @@ impl_schema!(tuple => [
 impl<T: Schema> Schema for Option<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Option<T>",
-        ty: &SdmTy::Option(T::SCHEMA),
+        ty: &DataModelType::Option(T::SCHEMA),
     };
 }
 impl<T: Schema, E: Schema> Schema for Result<T, E> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Result<T, E>",
-        ty: &SdmTy::Enum(&[
+        ty: &DataModelType::Enum(&[
             &NamedVariant {
                 name: "Ok",
-                ty: &SdmVariant::TupleVariant(&[T::SCHEMA]),
+                ty: &DataModelVariant::TupleVariant(&[T::SCHEMA]),
             },
             &NamedVariant {
                 name: "Err",
-                ty: &SdmVariant::TupleVariant(&[E::SCHEMA]),
+                ty: &DataModelVariant::TupleVariant(&[E::SCHEMA]),
             },
         ]),
     };
@@ -87,12 +87,12 @@ impl<T: Schema + ?Sized> Schema for &'_ T {
 impl<T: Schema> Schema for [T] {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "&[T]",
-        ty: &SdmTy::Seq(T::SCHEMA),
+        ty: &DataModelType::Seq(T::SCHEMA),
     };
 }
 impl<T: Schema, const N: usize> Schema for [T; N] {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "[T; N]",
-        ty: &SdmTy::Tuple(&[T::SCHEMA; N]),
+        ty: &DataModelType::Tuple(&[T::SCHEMA; N]),
     };
 }

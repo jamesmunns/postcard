@@ -1,11 +1,11 @@
 use crate::{
-    schema::{NamedType, SdmTy},
+    schema::{NamedType, DataModelType},
     Schema,
 };
 
-impl Schema for uuid::Uuid {
+impl Schema for uuid_v1_0::Uuid {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Uuid",
-        ty: &SdmTy::ByteArray,
+        ty: &DataModelType::ByteArray,
     };
 }

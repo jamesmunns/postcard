@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub enum SdmVariant {
+pub enum DataModelVariant {
     /// The "unit variant" Serde Data Model Type
     UnitVariant,
     /// The "newtype variant" Serde Data Model Type
@@ -14,7 +14,7 @@ pub enum SdmVariant {
 
 /// Serde Data Model Types (and friends)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub enum SdmTy {
+pub enum DataModelType {
     /// The `bool` Serde Data Model Type
     Bool,
 
@@ -123,7 +123,7 @@ pub struct NamedType {
     /// The name of this type
     pub name: &'static str,
     /// The type
-    pub ty: &'static SdmTy,
+    pub ty: &'static DataModelType,
 }
 
 /// An enum variant with a name, e.g. `T::Bar(...)`
@@ -132,7 +132,7 @@ pub struct NamedVariant {
     /// The name of this variant
     pub name: &'static str,
     /// The type of this variant
-    pub ty: &'static SdmVariant,
+    pub ty: &'static DataModelVariant,
 }
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
@@ -150,7 +150,7 @@ pub mod owned {
     };
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-    pub enum OwnedSdmVariant {
+    pub enum OwnedDataModelVariant {
         /// The "unit variant" Serde Data Model Type
         UnitVariant,
         /// The "newtype variant" Serde Data Model Type
@@ -163,7 +163,7 @@ pub mod owned {
 
     /// Serde Data Model Types (and friends)
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-    pub enum OwnedSdmTy {
+    pub enum OwnedDataModelType {
         /// The `bool` Serde Data Model Type
         Bool,
 
@@ -257,58 +257,58 @@ pub mod owned {
         Schema,
     }
 
-    impl From<&SdmVariant> for OwnedSdmVariant {
-        fn from(value: &SdmVariant) -> Self {
+    impl From<&DataModelVariant> for OwnedDataModelVariant {
+        fn from(value: &DataModelVariant) -> Self {
             match value {
-                SdmVariant::UnitVariant => Self::UnitVariant,
-                SdmVariant::NewtypeVariant(d) => Self::NewtypeVariant(Box::new((*d).into())),
-                SdmVariant::TupleVariant(d) => {
+                DataModelVariant::UnitVariant => Self::UnitVariant,
+                DataModelVariant::NewtypeVariant(d) => Self::NewtypeVariant(Box::new((*d).into())),
+                DataModelVariant::TupleVariant(d) => {
                     Self::TupleVariant(d.iter().map(|i| (*i).into()).collect())
                 }
-                SdmVariant::StructVariant(d) => {
+                DataModelVariant::StructVariant(d) => {
                     Self::StructVariant(d.iter().map(|i| (*i).into()).collect())
                 }
             }
         }
     }
 
-    impl From<&SdmTy> for OwnedSdmTy {
-        fn from(other: &SdmTy) -> Self {
+    impl From<&DataModelType> for OwnedDataModelType {
+        fn from(other: &DataModelType) -> Self {
             match other {
-                SdmTy::Bool => Self::Bool,
-                SdmTy::I8 => Self::I8,
-                SdmTy::U8 => Self::U8,
-                SdmTy::I16 => Self::I16,
-                SdmTy::I32 => Self::I32,
-                SdmTy::I64 => Self::I64,
-                SdmTy::I128 => Self::I128,
-                SdmTy::U16 => Self::U16,
-                SdmTy::U32 => Self::U32,
-                SdmTy::U64 => Self::U64,
-                SdmTy::U128 => Self::U128,
-                SdmTy::Usize => Self::Usize,
-                SdmTy::Isize => Self::Isize,
-                SdmTy::F32 => Self::F32,
-                SdmTy::F64 => Self::F64,
-                SdmTy::Char => Self::Char,
-                SdmTy::String => Self::String,
-                SdmTy::ByteArray => Self::ByteArray,
-                SdmTy::Option(o) => Self::Option(Box::new((*o).into())),
-                SdmTy::Unit => Self::Unit,
-                SdmTy::UnitStruct => Self::UnitStruct,
-                SdmTy::NewtypeStruct(nts) => Self::NewtypeStruct(Box::new((*nts).into())),
-                SdmTy::Seq(s) => Self::Seq(Box::new((*s).into())),
-                SdmTy::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
-                SdmTy::TupleStruct(ts) => {
+                DataModelType::Bool => Self::Bool,
+                DataModelType::I8 => Self::I8,
+                DataModelType::U8 => Self::U8,
+                DataModelType::I16 => Self::I16,
+                DataModelType::I32 => Self::I32,
+                DataModelType::I64 => Self::I64,
+                DataModelType::I128 => Self::I128,
+                DataModelType::U16 => Self::U16,
+                DataModelType::U32 => Self::U32,
+                DataModelType::U64 => Self::U64,
+                DataModelType::U128 => Self::U128,
+                DataModelType::Usize => Self::Usize,
+                DataModelType::Isize => Self::Isize,
+                DataModelType::F32 => Self::F32,
+                DataModelType::F64 => Self::F64,
+                DataModelType::Char => Self::Char,
+                DataModelType::String => Self::String,
+                DataModelType::ByteArray => Self::ByteArray,
+                DataModelType::Option(o) => Self::Option(Box::new((*o).into())),
+                DataModelType::Unit => Self::Unit,
+                DataModelType::UnitStruct => Self::UnitStruct,
+                DataModelType::NewtypeStruct(nts) => Self::NewtypeStruct(Box::new((*nts).into())),
+                DataModelType::Seq(s) => Self::Seq(Box::new((*s).into())),
+                DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
+                DataModelType::TupleStruct(ts) => {
                     Self::TupleStruct(ts.iter().map(|i| (*i).into()).collect())
                 }
-                SdmTy::Map { key, val } => Self::Map {
+                DataModelType::Map { key, val } => Self::Map {
                     key: Box::new((*key).into()),
                     val: Box::new((*val).into()),
                 },
-                SdmTy::Struct(s) => Self::Struct(s.iter().map(|i| (*i).into()).collect()),
-                SdmTy::Enum(e) => Self::Enum(e.iter().map(|i| (*i).into()).collect()),
-                SdmTy::Schema => Self::Schema,
+                DataModelType::Struct(s) => Self::Struct(s.iter().map(|i| (*i).into()).collect()),
+                DataModelType::Enum(e) => Self::Enum(e.iter().map(|i| (*i).into()).collect()),
+                DataModelType::Schema => Self::Schema,
             }
         }
     }
@@ -337,7 +337,7 @@ pub mod owned {
         /// The name of this type
         pub name: String,
         /// The type
-        pub ty: OwnedSdmTy,
+        pub ty: OwnedDataModelType,
     }
 
     impl core::fmt::Display for OwnedNamedType {
@@ -379,7 +379,7 @@ pub mod owned {
         /// The name of this variant
         pub name: String,
         /// The type of this variant
-        pub ty: OwnedSdmVariant,
+        pub ty: OwnedDataModelVariant,
     }
 
     impl From<&NamedVariant> for OwnedNamedVariant {
@@ -394,14 +394,14 @@ pub mod owned {
     impl crate::Schema for OwnedNamedType {
         const SCHEMA: &'static NamedType = &NamedType {
             name: "OwnedNamedType",
-            ty: &SdmTy::Schema,
+            ty: &DataModelType::Schema,
         };
     }
 }
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod fmt {
-    use super::owned::{OwnedNamedType, OwnedSdmTy, OwnedSdmVariant};
+    use super::owned::{OwnedNamedType, OwnedDataModelType, OwnedDataModelVariant};
 
     #[cfg(feature = "use-std")]
     use std::{string::String, vec::Vec};
@@ -412,38 +412,38 @@ pub(crate) mod fmt {
     #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
     use alloc::{format, string::String, vec::Vec};
 
-    /// Is this [`OwnedSdmTy`] a primitive?
-    pub fn is_prim(osdmty: &OwnedSdmTy) -> bool {
+    /// Is this [`OwnedDataModelType`] a primitive?
+    pub fn is_prim(osdmty: &OwnedDataModelType) -> bool {
         match osdmty {
-            OwnedSdmTy::Bool => true,
-            OwnedSdmTy::I8 => true,
-            OwnedSdmTy::U8 => true,
-            OwnedSdmTy::I16 => true,
-            OwnedSdmTy::I32 => true,
-            OwnedSdmTy::I64 => true,
-            OwnedSdmTy::I128 => true,
-            OwnedSdmTy::U16 => true,
-            OwnedSdmTy::U32 => true,
-            OwnedSdmTy::U64 => true,
-            OwnedSdmTy::U128 => true,
-            OwnedSdmTy::Usize => true,
-            OwnedSdmTy::Isize => true,
-            OwnedSdmTy::F32 => true,
-            OwnedSdmTy::F64 => true,
-            OwnedSdmTy::Char => true,
-            OwnedSdmTy::String => true,
-            OwnedSdmTy::ByteArray => true,
-            OwnedSdmTy::Option(owned_named_type) => is_prim(&owned_named_type.ty),
-            OwnedSdmTy::Unit => true,
-            OwnedSdmTy::UnitStruct => true,
-            OwnedSdmTy::NewtypeStruct(owned_named_type) => is_prim(&owned_named_type.ty),
-            OwnedSdmTy::Seq(_) => false,
-            OwnedSdmTy::Tuple(_) => false,
-            OwnedSdmTy::TupleStruct(vec) => vec.iter().all(|e| is_prim(&e.ty)),
-            OwnedSdmTy::Map { key, val } => is_prim(&key.ty) && is_prim(&val.ty),
-            OwnedSdmTy::Struct(_) => false,
-            OwnedSdmTy::Enum(_) => false,
-            OwnedSdmTy::Schema => true,
+            OwnedDataModelType::Bool => true,
+            OwnedDataModelType::I8 => true,
+            OwnedDataModelType::U8 => true,
+            OwnedDataModelType::I16 => true,
+            OwnedDataModelType::I32 => true,
+            OwnedDataModelType::I64 => true,
+            OwnedDataModelType::I128 => true,
+            OwnedDataModelType::U16 => true,
+            OwnedDataModelType::U32 => true,
+            OwnedDataModelType::U64 => true,
+            OwnedDataModelType::U128 => true,
+            OwnedDataModelType::Usize => true,
+            OwnedDataModelType::Isize => true,
+            OwnedDataModelType::F32 => true,
+            OwnedDataModelType::F64 => true,
+            OwnedDataModelType::Char => true,
+            OwnedDataModelType::String => true,
+            OwnedDataModelType::ByteArray => true,
+            OwnedDataModelType::Option(owned_named_type) => is_prim(&owned_named_type.ty),
+            OwnedDataModelType::Unit => true,
+            OwnedDataModelType::UnitStruct => true,
+            OwnedDataModelType::NewtypeStruct(owned_named_type) => is_prim(&owned_named_type.ty),
+            OwnedDataModelType::Seq(_) => false,
+            OwnedDataModelType::Tuple(_) => false,
+            OwnedDataModelType::TupleStruct(vec) => vec.iter().all(|e| is_prim(&e.ty)),
+            OwnedDataModelType::Map { key, val } => is_prim(&key.ty) && is_prim(&val.ty),
+            OwnedDataModelType::Struct(_) => false,
+            OwnedDataModelType::Enum(_) => false,
+            OwnedDataModelType::Schema => true,
         }
     }
 
@@ -453,37 +453,37 @@ pub(crate) mod fmt {
     /// when this type is contained within another type
     pub fn fmt_owned_nt_to_buf(ont: &OwnedNamedType, buf: &mut String, top_level: bool) {
         match &ont.ty {
-            OwnedSdmTy::Bool => *buf += "bool",
-            OwnedSdmTy::I8 => *buf += "i8",
-            OwnedSdmTy::U8 => *buf += "u8",
-            OwnedSdmTy::I16 => *buf += "i16",
-            OwnedSdmTy::I32 => *buf += "i32",
-            OwnedSdmTy::I64 => *buf += "i64",
-            OwnedSdmTy::I128 => *buf += "i128",
-            OwnedSdmTy::U16 => *buf += "u16",
-            OwnedSdmTy::U32 => *buf += "u32",
-            OwnedSdmTy::U64 => *buf += "u64",
-            OwnedSdmTy::U128 => *buf += "u128",
-            OwnedSdmTy::Usize => *buf += "usize",
-            OwnedSdmTy::Isize => *buf += "isize",
-            OwnedSdmTy::F32 => *buf += "f32",
-            OwnedSdmTy::F64 => *buf += "f64",
-            OwnedSdmTy::Char => *buf += "char",
-            OwnedSdmTy::String => *buf += "String",
-            OwnedSdmTy::ByteArray => *buf += "[u8]",
-            OwnedSdmTy::Option(owned_named_type) => {
+            OwnedDataModelType::Bool => *buf += "bool",
+            OwnedDataModelType::I8 => *buf += "i8",
+            OwnedDataModelType::U8 => *buf += "u8",
+            OwnedDataModelType::I16 => *buf += "i16",
+            OwnedDataModelType::I32 => *buf += "i32",
+            OwnedDataModelType::I64 => *buf += "i64",
+            OwnedDataModelType::I128 => *buf += "i128",
+            OwnedDataModelType::U16 => *buf += "u16",
+            OwnedDataModelType::U32 => *buf += "u32",
+            OwnedDataModelType::U64 => *buf += "u64",
+            OwnedDataModelType::U128 => *buf += "u128",
+            OwnedDataModelType::Usize => *buf += "usize",
+            OwnedDataModelType::Isize => *buf += "isize",
+            OwnedDataModelType::F32 => *buf += "f32",
+            OwnedDataModelType::F64 => *buf += "f64",
+            OwnedDataModelType::Char => *buf += "char",
+            OwnedDataModelType::String => *buf += "String",
+            OwnedDataModelType::ByteArray => *buf += "[u8]",
+            OwnedDataModelType::Option(owned_named_type) => {
                 *buf += "Option<";
                 fmt_owned_nt_to_buf(owned_named_type, buf, false);
                 *buf += ">";
             }
-            OwnedSdmTy::Unit => *buf += "()",
-            OwnedSdmTy::UnitStruct => {
+            OwnedDataModelType::Unit => *buf += "()",
+            OwnedDataModelType::UnitStruct => {
                 if top_level {
                     *buf += "struct ";
                 }
                 *buf += &ont.name;
             }
-            OwnedSdmTy::NewtypeStruct(owned_named_type) => {
+            OwnedDataModelType::NewtypeStruct(owned_named_type) => {
                 if top_level {
                     *buf += "struct ";
                 }
@@ -494,12 +494,12 @@ pub(crate) mod fmt {
                     *buf += ")";
                 }
             }
-            OwnedSdmTy::Seq(owned_named_type) => {
+            OwnedDataModelType::Seq(owned_named_type) => {
                 *buf += "[";
                 *buf += &owned_named_type.name;
                 *buf += "]";
             }
-            OwnedSdmTy::Tuple(vec) => {
+            OwnedDataModelType::Tuple(vec) => {
                 if !vec.is_empty() {
                     let first = &vec[0];
                     if vec.iter().all(|v| first == v) {
@@ -527,7 +527,7 @@ pub(crate) mod fmt {
                     *buf += "()";
                 }
             }
-            OwnedSdmTy::TupleStruct(vec) => {
+            OwnedDataModelType::TupleStruct(vec) => {
                 if top_level {
                     *buf += "struct ";
                     *buf += &ont.name;
@@ -547,14 +547,14 @@ pub(crate) mod fmt {
                     *buf += &ont.name;
                 }
             }
-            OwnedSdmTy::Map { key, val } => {
+            OwnedDataModelType::Map { key, val } => {
                 *buf += "Map<";
                 *buf += &key.name;
                 *buf += ", ";
                 *buf += &val.name;
                 *buf += ">";
             }
-            OwnedSdmTy::Struct(vec) => {
+            OwnedDataModelType::Struct(vec) => {
                 if top_level {
                     *buf += "struct ";
                     *buf += &ont.name;
@@ -576,7 +576,7 @@ pub(crate) mod fmt {
                     *buf += &ont.name;
                 }
             }
-            OwnedSdmTy::Enum(vec) => {
+            OwnedDataModelType::Enum(vec) => {
                 if top_level {
                     *buf += "enum ";
                     *buf += &ont.name;
@@ -588,13 +588,13 @@ pub(crate) mod fmt {
                             let mut buf = String::new();
                             buf += &v.name;
                             match &v.ty {
-                                OwnedSdmVariant::UnitVariant => {}
-                                OwnedSdmVariant::NewtypeVariant(owned_named_type) => {
+                                OwnedDataModelVariant::UnitVariant => {}
+                                OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
                                     buf += "(";
                                     fmt_owned_nt_to_buf(owned_named_type, &mut buf, false);
                                     buf += ")";
                                 }
-                                OwnedSdmVariant::TupleVariant(vec) => {
+                                OwnedDataModelVariant::TupleVariant(vec) => {
                                     buf += "(";
                                     let fields = vec
                                         .iter()
@@ -608,7 +608,7 @@ pub(crate) mod fmt {
                                     buf += &fields;
                                     buf += ")";
                                 }
-                                OwnedSdmVariant::StructVariant(vec) => {
+                                OwnedDataModelVariant::StructVariant(vec) => {
                                     buf += "{ ";
                                     let fields = vec
                                         .iter()
@@ -624,7 +624,6 @@ pub(crate) mod fmt {
                                     buf += &fields;
                                     buf += "}";
                                 }
-                                _ => unreachable!(),
                             }
                             buf
                         })
@@ -636,7 +635,7 @@ pub(crate) mod fmt {
                     *buf += &ont.name;
                 }
             }
-            OwnedSdmTy::Schema => *buf += "Schema",
+            OwnedDataModelType::Schema => *buf += "Schema",
         }
     }
 
@@ -647,76 +646,76 @@ pub(crate) mod fmt {
         discover_tys_sdm(&ont.ty, set);
     }
 
-    /// Collect unique types mentioned by this [`OwnedSdmTy`]
+    /// Collect unique types mentioned by this [`OwnedDataModelType`]
     #[cfg(feature = "use-std")]
-    pub fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut std::collections::HashSet<OwnedNamedType>) {
+    pub fn discover_tys_sdm(sdm: &OwnedDataModelType, set: &mut std::collections::HashSet<OwnedNamedType>) {
         use crate::Schema;
         match sdm {
-            OwnedSdmTy::Bool => set.insert(bool::SCHEMA.into()),
-            OwnedSdmTy::I8 => set.insert(i8::SCHEMA.into()),
-            OwnedSdmTy::U8 => set.insert(u8::SCHEMA.into()),
-            OwnedSdmTy::I16 => set.insert(i16::SCHEMA.into()),
-            OwnedSdmTy::I32 => set.insert(i32::SCHEMA.into()),
-            OwnedSdmTy::I64 => set.insert(i64::SCHEMA.into()),
-            OwnedSdmTy::I128 => set.insert(i128::SCHEMA.into()),
-            OwnedSdmTy::U16 => set.insert(u16::SCHEMA.into()),
-            OwnedSdmTy::U32 => set.insert(u32::SCHEMA.into()),
-            OwnedSdmTy::U64 => set.insert(u64::SCHEMA.into()),
-            OwnedSdmTy::U128 => set.insert(u128::SCHEMA.into()),
+            OwnedDataModelType::Bool => set.insert(bool::SCHEMA.into()),
+            OwnedDataModelType::I8 => set.insert(i8::SCHEMA.into()),
+            OwnedDataModelType::U8 => set.insert(u8::SCHEMA.into()),
+            OwnedDataModelType::I16 => set.insert(i16::SCHEMA.into()),
+            OwnedDataModelType::I32 => set.insert(i32::SCHEMA.into()),
+            OwnedDataModelType::I64 => set.insert(i64::SCHEMA.into()),
+            OwnedDataModelType::I128 => set.insert(i128::SCHEMA.into()),
+            OwnedDataModelType::U16 => set.insert(u16::SCHEMA.into()),
+            OwnedDataModelType::U32 => set.insert(u32::SCHEMA.into()),
+            OwnedDataModelType::U64 => set.insert(u64::SCHEMA.into()),
+            OwnedDataModelType::U128 => set.insert(u128::SCHEMA.into()),
 
             // TODO: usize and isize don't impl Schema, which, fair.
-            OwnedSdmTy::Usize => unreachable!(),
-            OwnedSdmTy::Isize => unreachable!(),
+            OwnedDataModelType::Usize => unreachable!(),
+            OwnedDataModelType::Isize => unreachable!(),
             //
-            OwnedSdmTy::F32 => set.insert(f32::SCHEMA.into()),
-            OwnedSdmTy::F64 => set.insert(f64::SCHEMA.into()),
-            OwnedSdmTy::Char => set.insert(char::SCHEMA.into()),
-            OwnedSdmTy::String => set.insert(String::SCHEMA.into()),
-            OwnedSdmTy::ByteArray => set.insert(<[u8]>::SCHEMA.into()),
-            OwnedSdmTy::Option(owned_named_type) => {
+            OwnedDataModelType::F32 => set.insert(f32::SCHEMA.into()),
+            OwnedDataModelType::F64 => set.insert(f64::SCHEMA.into()),
+            OwnedDataModelType::Char => set.insert(char::SCHEMA.into()),
+            OwnedDataModelType::String => set.insert(String::SCHEMA.into()),
+            OwnedDataModelType::ByteArray => set.insert(<[u8]>::SCHEMA.into()),
+            OwnedDataModelType::Option(owned_named_type) => {
                 discover_tys(owned_named_type, set);
                 false
             }
-            OwnedSdmTy::Unit => set.insert(<()>::SCHEMA.into()),
-            OwnedSdmTy::UnitStruct => false,
-            OwnedSdmTy::NewtypeStruct(owned_named_type) => {
+            OwnedDataModelType::Unit => set.insert(<()>::SCHEMA.into()),
+            OwnedDataModelType::UnitStruct => false,
+            OwnedDataModelType::NewtypeStruct(owned_named_type) => {
                 discover_tys(owned_named_type, set);
                 false
             }
-            OwnedSdmTy::Seq(owned_named_type) => {
+            OwnedDataModelType::Seq(owned_named_type) => {
                 discover_tys(owned_named_type, set);
                 false
             }
-            OwnedSdmTy::Tuple(vec) | OwnedSdmTy::TupleStruct(vec) => {
+            OwnedDataModelType::Tuple(vec) | OwnedDataModelType::TupleStruct(vec) => {
                 for v in vec.iter() {
                     discover_tys_sdm(&v.ty, set);
                 }
                 false
             }
-            OwnedSdmTy::Map { key, val } => {
+            OwnedDataModelType::Map { key, val } => {
                 discover_tys(key, set);
                 discover_tys(val, set);
                 false
             }
-            OwnedSdmTy::Struct(vec) => {
+            OwnedDataModelType::Struct(vec) => {
                 for v in vec.iter() {
                     discover_tys(&v.ty, set);
                 }
                 false
             }
-            OwnedSdmTy::Enum(vec) => {
+            OwnedDataModelType::Enum(vec) => {
                 for v in vec.iter() {
                     match &v.ty {
-                        OwnedSdmVariant::UnitVariant => {}
-                        OwnedSdmVariant::NewtypeVariant(owned_named_type) => {
+                        OwnedDataModelVariant::UnitVariant => {}
+                        OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
                             discover_tys(owned_named_type, set);
                         }
-                        OwnedSdmVariant::TupleVariant(vec) => {
+                        OwnedDataModelVariant::TupleVariant(vec) => {
                             for v in vec.iter() {
                                 discover_tys(v, set);
                             }
                         }
-                        OwnedSdmVariant::StructVariant(vec) => {
+                        OwnedDataModelVariant::StructVariant(vec) => {
                             for v in vec.iter() {
                                 discover_tys(&v.ty, set);
                             }
@@ -725,7 +724,7 @@ pub(crate) mod fmt {
                 }
                 false
             }
-            OwnedSdmTy::Schema => todo!(),
+            OwnedDataModelType::Schema => todo!(),
         };
     }
 }

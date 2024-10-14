@@ -1,5 +1,5 @@
 use crate::{
-    schema::{NamedType, SdmTy},
+    schema::{NamedType, DataModelType},
     Schema,
 };
 
@@ -7,7 +7,7 @@ use crate::{
 impl<T: Schema> Schema for std::vec::Vec<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Vec<T>",
-        ty: &SdmTy::Seq(T::SCHEMA),
+        ty: &DataModelType::Seq(T::SCHEMA),
     };
 }
 
@@ -15,7 +15,7 @@ impl<T: Schema> Schema for std::vec::Vec<T> {
 impl Schema for std::string::String {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "String",
-        ty: &SdmTy::String,
+        ty: &DataModelType::String,
     };
 }
 
@@ -23,7 +23,7 @@ impl Schema for std::string::String {
 impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "HashMap<K, V>",
-        ty: &SdmTy::Map {
+        ty: &DataModelType::Map {
             key: K::SCHEMA,
             val: V::SCHEMA,
         },
@@ -34,7 +34,7 @@ impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
 impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "BTreeMap<K, V>",
-        ty: &SdmTy::Map {
+        ty: &DataModelType::Map {
             key: K::SCHEMA,
             val: V::SCHEMA,
         },
@@ -45,7 +45,7 @@ impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
 impl<K: Schema> Schema for std::collections::HashSet<K> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "HashSet<K>",
-        ty: &SdmTy::Seq(K::SCHEMA),
+        ty: &DataModelType::Seq(K::SCHEMA),
     };
 }
 
@@ -53,6 +53,6 @@ impl<K: Schema> Schema for std::collections::HashSet<K> {
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "BTreeSet<K>",
-        ty: &SdmTy::Seq(K::SCHEMA),
+        ty: &DataModelType::Seq(K::SCHEMA),
     };
 }

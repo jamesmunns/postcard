@@ -1,5 +1,5 @@
 use crate::{
-    schema::{NamedType, SdmTy},
+    schema::{NamedType, DataModelType},
     Schema,
 };
 
@@ -23,9 +23,12 @@ pub mod heapless_v0_7;
 #[cfg(feature = "heapless-v0_8")]
 pub mod heapless_v0_8;
 
+#[cfg(feature = "nalgebra-v0_33")]
+pub mod nalgebra_v0_33;
+
 impl Schema for NamedType {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "NamedType",
-        ty: &SdmTy::Schema,
+        ty: &DataModelType::Schema,
     };
 }
