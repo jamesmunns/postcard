@@ -1,6 +1,5 @@
-use postcard_derive::Schema;
 use postcard_schema::{
-    schema_tys::{owned::OwnedNamedType, NamedType, NamedValue, NamedVariant, SdmTy, Varint},
+    schema::{owned::OwnedNamedType, NamedType, NamedValue, NamedVariant, SdmTy},
     Schema,
 };
 
@@ -10,20 +9,20 @@ const U8_SCHEMA: NamedType = NamedType {
 };
 const U32_SCHEMA: NamedType = NamedType {
     name: "u32",
-    ty: &SdmTy::Varint(Varint::U32),
+    ty: &SdmTy::U32,
 };
 const U64_SCHEMA: NamedType = NamedType {
     name: "u64",
-    ty: &SdmTy::Varint(Varint::U64),
+    ty: &SdmTy::U64,
 };
 
 const I16_SCHEMA: NamedType = NamedType {
     name: "i16",
-    ty: &SdmTy::Varint(Varint::I16),
+    ty: &SdmTy::I16,
 };
 const I32_SCHEMA: NamedType = NamedType {
     name: "i32",
-    ty: &SdmTy::Varint(Varint::I32),
+    ty: &SdmTy::I32,
 };
 
 #[allow(unused)]
@@ -203,7 +202,7 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 280);
+    assert_eq!(ser_borrowed_schema.len(), 269);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =

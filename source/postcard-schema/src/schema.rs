@@ -1,35 +1,4 @@
-use crate::Schema;
-use core::num::{
-    NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
-    NonZeroU32, NonZeroU64, NonZeroU8,
-};
 use serde::{Deserialize, Serialize};
-
-/// TODO: REMOVEME
-/// A schema type representing a variably encoded integer
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Varint {
-    /// A variably encoded i16
-    I16,
-    /// A variably encoded i32
-    I32,
-    /// A variably encoded i64
-    I64,
-    /// A variably encoded i128
-    I128,
-    /// A variably encoded u16
-    U16,
-    /// A variably encoded u32
-    U32,
-    /// A variably encoded u64
-    U64,
-    /// A variably encoded u128
-    U128,
-    /// A variably encoded usize
-    Usize,
-    /// A variably encoded isize
-    Isize,
-}
 
 /// Serde Data Model Types (and friends)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -43,8 +12,35 @@ pub enum SdmTy {
     /// The `u8` Serde Data Model Type
     U8,
 
-    /// The Serde Data Model Type for variably length encoded integers
-    Varint(Varint),
+    /// A variably encoded i16
+    I16,
+
+    /// A variably encoded i32
+    I32,
+
+    /// A variably encoded i64
+    I64,
+
+    /// A variably encoded i128
+    I128,
+
+    /// A variably encoded u16
+    U16,
+
+    /// A variably encoded u32
+    U32,
+
+    /// A variably encoded u64
+    U64,
+
+    /// A variably encoded u128
+    U128,
+
+    /// A variably encoded usize
+    Usize,
+
+    /// A variably encoded isize
+    Isize,
 
     /// The `f32` Serde Data Model Type
     F32,
@@ -139,255 +135,6 @@ pub struct NamedVariant {
     pub ty: &'static SdmTy,
 }
 
-macro_rules! impl_schema {
-    ($($t:ty: $sdm:expr),*) => {
-        $(
-            impl Schema for $t {
-                const SCHEMA: &'static NamedType = &NamedType {
-                    name: stringify!($t),
-                    ty: &$sdm,
-                };
-            }
-        )*
-    };
-    (varint => [$($t:ty: $varint:expr),*]) => {
-        impl_schema!($($t: SdmTy::Varint($varint)),*);
-    };
-    (tuple => [$(($($generic:ident),*)),*]) => {
-        $(
-            impl<$($generic: Schema),*> Schema for ($($generic,)*) {
-                const SCHEMA: &'static NamedType = &NamedType {
-                    name: stringify!(($($generic,)*)),
-                    ty: &SdmTy::Tuple(&[$($generic::SCHEMA),*]),
-                };
-            }
-        )*
-    };
-}
-
-impl_schema![
-    u8: SdmTy::U8,
-    NonZeroU8: SdmTy::U8,
-    i8: SdmTy::I8,
-    NonZeroI8: SdmTy::I8,
-    bool: SdmTy::Bool,
-    f32: SdmTy::F32,
-    f64: SdmTy::F64,
-    char: SdmTy::Char,
-    str: SdmTy::String,
-    (): SdmTy::Unit
-];
-impl_schema!(varint => [
-    i16: Varint::I16, i32: Varint::I32, i64: Varint::I64, i128: Varint::I128,
-    u16: Varint::U16, u32: Varint::U32, u64: Varint::U64, u128: Varint::U128,
-    NonZeroI16: Varint::I16, NonZeroI32: Varint::I32,
-    NonZeroI64: Varint::I64, NonZeroI128: Varint::I128,
-    NonZeroU16: Varint::U16, NonZeroU32: Varint::U32,
-    NonZeroU64: Varint::U64, NonZeroU128: Varint::U128
-]);
-impl_schema!(tuple => [
-    (A),
-    (A, B),
-    (A, B, C),
-    (A, B, C, D),
-    (A, B, C, D, E),
-    (A, B, C, D, E, F)
-]);
-
-impl<T: Schema> Schema for Option<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Option<T>",
-        ty: &SdmTy::Option(T::SCHEMA),
-    };
-}
-impl<T: Schema, E: Schema> Schema for Result<T, E> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Result<T, E>",
-        ty: &SdmTy::Enum(&[
-            &NamedVariant {
-                name: "Ok",
-                ty: &SdmTy::TupleVariant(&[T::SCHEMA]),
-            },
-            &NamedVariant {
-                name: "Err",
-                ty: &SdmTy::TupleVariant(&[E::SCHEMA]),
-            },
-        ]),
-    };
-}
-
-impl<T: Schema + ?Sized> Schema for &'_ T {
-    const SCHEMA: &'static NamedType = T::SCHEMA;
-}
-
-impl<T: Schema> Schema for [T] {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "&[T]",
-        ty: &SdmTy::Seq(T::SCHEMA),
-    };
-}
-impl<T: Schema, const N: usize> Schema for [T; N] {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "[T; N]",
-        ty: &SdmTy::Tuple(&[T::SCHEMA; N]),
-    };
-}
-
-#[cfg(feature = "heapless-v0_7")]
-#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_7")))]
-impl<T: Schema, const N: usize> Schema for heapless_v0_7::Vec<T, N> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "heapless::Vec<T, N>",
-        ty: &SdmTy::Seq(T::SCHEMA),
-    };
-}
-#[cfg(feature = "heapless-v0_7")]
-#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_7")))]
-impl<const N: usize> Schema for heapless_v0_7::String<N> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "heapless::String<N>",
-        ty: &SdmTy::String,
-    };
-}
-
-#[cfg(feature = "heapless-v0_8")]
-#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_8")))]
-impl<T: Schema, const N: usize> Schema for heapless_v0_8::Vec<T, N> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "heapless::Vec<T, N>",
-        ty: &SdmTy::Seq(T::SCHEMA),
-    };
-}
-#[cfg(feature = "heapless-v0_8")]
-#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_8")))]
-impl<const N: usize> Schema for heapless_v0_8::String<N> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "heapless::String<N>",
-        ty: &SdmTy::String,
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<T: Schema> Schema for std::vec::Vec<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Vec<T>",
-        ty: &SdmTy::Seq(T::SCHEMA),
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl Schema for std::string::String {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "String",
-        ty: &SdmTy::String,
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "HashMap<K, V>",
-        ty: &SdmTy::Map {
-            key: K::SCHEMA,
-            val: V::SCHEMA,
-        },
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeMap<K, V>",
-        ty: &SdmTy::Map {
-            key: K::SCHEMA,
-            val: V::SCHEMA,
-        },
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<K: Schema> Schema for std::collections::HashSet<K> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "HashSet<K>",
-        ty: &SdmTy::Seq(K::SCHEMA),
-    };
-}
-
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<K: Schema> Schema for std::collections::BTreeSet<K> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeSet<K>",
-        ty: &SdmTy::Seq(K::SCHEMA),
-    };
-}
-
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-extern crate alloc;
-
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-impl<T: Schema> Schema for alloc::vec::Vec<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Vec<T>",
-        ty: &SdmTy::Seq(T::SCHEMA),
-    };
-}
-
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-impl Schema for alloc::string::String {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "String",
-        ty: &SdmTy::String,
-    };
-}
-
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeMap<K, V>",
-        ty: &SdmTy::Map {
-            key: K::SCHEMA,
-            val: V::SCHEMA,
-        },
-    };
-}
-
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeSet<K>",
-        ty: &SdmTy::Seq(K::SCHEMA),
-    };
-}
-
-impl Schema for NamedType {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "NamedType",
-        ty: &SdmTy::Schema,
-    };
-}
-
-#[cfg(feature = "uuid-v1_0")]
-impl Schema for uuid::Uuid {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Uuid",
-        ty: &SdmTy::ByteArray,
-    };
-}
-
-#[cfg(feature = "chrono-v0_4")]
-impl<Tz: chrono::TimeZone> Schema for chrono::DateTime<Tz> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "DateTime",
-        ty: <&str>::SCHEMA.ty,
-    };
-}
-
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub mod owned {
     use super::*;
@@ -414,8 +161,35 @@ pub mod owned {
         /// The `u8` Serde Data Model Type
         U8,
 
-        /// The Serde Data Model Type for variably length encoded integers
-        Varint(Varint),
+        /// A variably encoded i16
+        I16,
+
+        /// A variably encoded i32
+        I32,
+
+        /// A variably encoded i64
+        I64,
+
+        /// A variably encoded i128
+        I128,
+
+        /// A variably encoded u16
+        U16,
+
+        /// A variably encoded u32
+        U32,
+
+        /// A variably encoded u64
+        U64,
+
+        /// A variably encoded u128
+        U128,
+
+        /// A variably encoded usize
+        Usize,
+
+        /// A variably encoded isize
+        Isize,
 
         /// The `f32` Serde Data Model Type
         F32,
@@ -489,7 +263,16 @@ pub mod owned {
                 SdmTy::Bool => Self::Bool,
                 SdmTy::I8 => Self::I8,
                 SdmTy::U8 => Self::U8,
-                SdmTy::Varint(v) => Self::Varint(*v),
+                SdmTy::I16 => Self::I16,
+                SdmTy::I32 => Self::I32,
+                SdmTy::I64 => Self::I64,
+                SdmTy::I128 => Self::I128,
+                SdmTy::U16 => Self::U16,
+                SdmTy::U32 => Self::U32,
+                SdmTy::U64 => Self::U64,
+                SdmTy::U128 => Self::U128,
+                SdmTy::Usize => Self::Usize,
+                SdmTy::Isize => Self::Isize,
                 SdmTy::F32 => Self::F32,
                 SdmTy::F64 => Self::F64,
                 SdmTy::Char => Self::Char,
@@ -601,7 +384,7 @@ pub mod owned {
         }
     }
 
-    impl Schema for OwnedNamedType {
+    impl crate::Schema for OwnedNamedType {
         const SCHEMA: &'static NamedType = &NamedType {
             name: "OwnedNamedType",
             ty: &SdmTy::Schema,
@@ -611,10 +394,7 @@ pub mod owned {
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub(crate) mod fmt {
-    use super::{
-        owned::{OwnedNamedType, OwnedSdmTy},
-        Varint,
-    };
+    use super::owned::{OwnedNamedType, OwnedSdmTy};
 
     #[cfg(feature = "use-std")]
     use std::{string::String, vec::Vec};
@@ -631,18 +411,16 @@ pub(crate) mod fmt {
             OwnedSdmTy::Bool => true,
             OwnedSdmTy::I8 => true,
             OwnedSdmTy::U8 => true,
-            OwnedSdmTy::Varint(varint) => match varint {
-                Varint::I16 => true,
-                Varint::I32 => true,
-                Varint::I64 => true,
-                Varint::I128 => true,
-                Varint::U16 => true,
-                Varint::U32 => true,
-                Varint::U64 => true,
-                Varint::U128 => true,
-                Varint::Usize => true,
-                Varint::Isize => true,
-            },
+            OwnedSdmTy::I16 => true,
+            OwnedSdmTy::I32 => true,
+            OwnedSdmTy::I64 => true,
+            OwnedSdmTy::I128 => true,
+            OwnedSdmTy::U16 => true,
+            OwnedSdmTy::U32 => true,
+            OwnedSdmTy::U64 => true,
+            OwnedSdmTy::U128 => true,
+            OwnedSdmTy::Usize => true,
+            OwnedSdmTy::Isize => true,
             OwnedSdmTy::F32 => true,
             OwnedSdmTy::F64 => true,
             OwnedSdmTy::Char => true,
@@ -675,18 +453,16 @@ pub(crate) mod fmt {
             OwnedSdmTy::Bool => *buf += "bool",
             OwnedSdmTy::I8 => *buf += "i8",
             OwnedSdmTy::U8 => *buf += "u8",
-            OwnedSdmTy::Varint(varint) => match varint {
-                Varint::I16 => *buf += "i16",
-                Varint::I32 => *buf += "i32",
-                Varint::I64 => *buf += "i64",
-                Varint::I128 => *buf += "i128",
-                Varint::U16 => *buf += "u16",
-                Varint::U32 => *buf += "u32",
-                Varint::U64 => *buf += "u64",
-                Varint::U128 => *buf += "u128",
-                Varint::Usize => *buf += "usize",
-                Varint::Isize => *buf += "isize",
-            },
+            OwnedSdmTy::I16 => *buf += "i16",
+            OwnedSdmTy::I32 => *buf += "i32",
+            OwnedSdmTy::I64 => *buf += "i64",
+            OwnedSdmTy::I128 => *buf += "i128",
+            OwnedSdmTy::U16 => *buf += "u16",
+            OwnedSdmTy::U32 => *buf += "u32",
+            OwnedSdmTy::U64 => *buf += "u64",
+            OwnedSdmTy::U128 => *buf += "u128",
+            OwnedSdmTy::Usize => *buf += "usize",
+            OwnedSdmTy::Isize => *buf += "isize",
             OwnedSdmTy::F32 => *buf += "f32",
             OwnedSdmTy::F64 => *buf += "f64",
             OwnedSdmTy::Char => *buf += "char",
@@ -877,26 +653,26 @@ pub(crate) mod fmt {
     /// Collect unique types mentioned by this [`OwnedSdmTy`]
     #[cfg(feature = "use-std")]
     pub fn discover_tys_sdm(sdm: &OwnedSdmTy, set: &mut std::collections::HashSet<OwnedNamedType>) {
-        use super::Schema;
+        use crate::Schema;
         use core::ops::Deref;
         match sdm {
             OwnedSdmTy::Bool => set.insert(bool::SCHEMA.into()),
             OwnedSdmTy::I8 => set.insert(i8::SCHEMA.into()),
             OwnedSdmTy::U8 => set.insert(u8::SCHEMA.into()),
-            OwnedSdmTy::Varint(varint) => match varint {
-                Varint::I16 => set.insert(i16::SCHEMA.into()),
-                Varint::I32 => set.insert(i32::SCHEMA.into()),
-                Varint::I64 => set.insert(i64::SCHEMA.into()),
-                Varint::I128 => set.insert(i128::SCHEMA.into()),
-                Varint::U16 => set.insert(u16::SCHEMA.into()),
-                Varint::U32 => set.insert(u32::SCHEMA.into()),
-                Varint::U64 => set.insert(u64::SCHEMA.into()),
-                Varint::U128 => set.insert(u128::SCHEMA.into()),
+            OwnedSdmTy::I16 => set.insert(i16::SCHEMA.into()),
+            OwnedSdmTy::I32 => set.insert(i32::SCHEMA.into()),
+            OwnedSdmTy::I64 => set.insert(i64::SCHEMA.into()),
+            OwnedSdmTy::I128 => set.insert(i128::SCHEMA.into()),
+            OwnedSdmTy::U16 => set.insert(u16::SCHEMA.into()),
+            OwnedSdmTy::U32 => set.insert(u32::SCHEMA.into()),
+            OwnedSdmTy::U64 => set.insert(u64::SCHEMA.into()),
+            OwnedSdmTy::U128 => set.insert(u128::SCHEMA.into()),
 
-                // TODO: usize and isize don't impl Schema, which, fair.
-                Varint::Usize => unreachable!(),
-                Varint::Isize => unreachable!(),
-            },
+            // TODO: usize and isize don't impl Schema, which, fair.
+            OwnedSdmTy::Usize => unreachable!(),
+            OwnedSdmTy::Isize => unreachable!(),
+            //
+
             OwnedSdmTy::F32 => set.insert(f32::SCHEMA.into()),
             OwnedSdmTy::F64 => set.insert(f64::SCHEMA.into()),
             OwnedSdmTy::Char => set.insert(char::SCHEMA.into()),

@@ -47,7 +47,7 @@ features = ["use-std"]
 default = []
 use-std = ["serde/std"]
 alloc = ["serde/alloc"]
-derive = ["postcard-derive", "postcard/experimental-derive"]
+derive = ["postcard-derive"]
 
 uuid-v1_0 = ["uuid"]
 chrono-v0_4 = ["chrono"]
