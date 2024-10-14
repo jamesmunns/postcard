@@ -1,6 +1,10 @@
 //! Owned Schema version
 
-use super::*;
+use super::{DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant};
+use serde::{Deserialize, Serialize};
+
+#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+extern crate alloc;
 
 #[cfg(feature = "use-std")]
 use std::{boxed::Box, collections::HashSet, string::String, vec::Vec};
@@ -27,7 +31,7 @@ impl OwnedNamedType {
     /// Convert an [OwnedNamedType] to a pseudo-Rust type format
     pub fn to_pseudocode(&self) -> String {
         let mut buf = String::new();
-        fmt::fmt_owned_nt_to_buf(self, &mut buf, true);
+        super::fmt::fmt_owned_nt_to_buf(self, &mut buf, true);
         buf
     }
 

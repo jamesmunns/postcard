@@ -26,7 +26,7 @@ pub mod owned;
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub mod fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// A "NamedType" is used to describe the schema of a given type.
 ///
