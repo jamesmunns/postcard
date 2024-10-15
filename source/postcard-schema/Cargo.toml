@@ -1,7 +1,24 @@
 [package]
 name = "postcard-schema"
 version = "0.1.0"
+authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/jamesmunns/postcard"
+description = "Reflection-like schemas for postcard types"
+license = "MIT OR Apache-2.0"
+categories = [
+    "embedded",
+    "no-std",
+]
+keywords = [
+    "serde",
+]
+documentation = "https://docs.rs/postcard-schema/"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 

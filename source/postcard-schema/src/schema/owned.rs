@@ -39,7 +39,7 @@ impl OwnedNamedType {
     #[cfg(feature = "use-std")]
     pub fn all_used_types(&self) -> HashSet<OwnedNamedType> {
         let mut buf = HashSet::new();
-        fmt::discover_tys(self, &mut buf);
+        super::fmt::discover_tys(self, &mut buf);
         buf
     }
 }

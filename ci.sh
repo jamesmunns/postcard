@@ -29,16 +29,16 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-# cargo_test --features=alloc,experimental-derive,use-std,use-crc
+cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features
 cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive
 
-# # CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
-# # on non-atomic systems
-# cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive
+# CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
+# on non-atomic systems
+cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive
 
-# cargo fmt --all -- --check
+cargo fmt --all -- --check
 
-# # Check docs.rs build
-# env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features
+# Check docs.rs build
+env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features
