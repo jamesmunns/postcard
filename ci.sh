@@ -29,7 +29,7 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-cargo_test --features=alloc,experimental-derive,use-std,use-crc
+cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features
 cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive

@@ -19,8 +19,8 @@ pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
         .unwrap_or_else(syn::Error::into_compile_error);
 
     let expanded = quote! {
-        impl #impl_generics ::postcard::experimental::schema::Schema for #name #ty_generics #where_clause {
-            const SCHEMA: &'static ::postcard::experimental::schema::NamedType = #ty;
+        impl #impl_generics ::postcard_schema::Schema for #name #ty_generics #where_clause {
+            const SCHEMA: &'static ::postcard_schema::schema::NamedType = #ty;
         }
     };
 
@@ -35,8 +35,8 @@ fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, s
             let ty = data.variants.iter().map(|v| generate_variants(&v.fields));
 
             quote! {
-                &::postcard::experimental::schema::SdmTy::Enum(&[
-                    #( &::postcard::experimental::schema::NamedVariant { name: #name, ty: #ty } ),*
+                &::postcard_schema::schema::DataModelType::Enum(&[
+                    #( &::postcard_schema::schema::NamedVariant { name: #name, ty: #ty } ),*
                 ])
             }
         }
@@ -49,7 +49,7 @@ fn generate_type(data: &Data, span: Span, name: String) -> Result<TokenStream, s
     };
 
     Ok(quote! {
-        &::postcard::experimental::schema::NamedType {
+        &::postcard_schema::schema::NamedType {
             name: #name,
             ty: #ty,
         }
@@ -62,9 +62,9 @@ fn generate_struct(fields: &Fields) -> TokenStream {
             let fields = fields.named.iter().map(|f| {
                 let ty = &f.ty;
                 let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => &::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
+                quote_spanned!(f.span() => &::postcard_schema::schema::NamedValue { name: #name, ty: <#ty as ::postcard_schema::Schema>::SCHEMA })
             });
-            quote! { &::postcard::experimental::schema::SdmTy::Struct(&[
+            quote! { &::postcard_schema::schema::DataModelType::Struct(&[
                 #( #fields ),*
             ]) }
         }
@@ -72,21 +72,21 @@ fn generate_struct(fields: &Fields) -> TokenStream {
             if fields.unnamed.len() == 1 {
                 let f = fields.unnamed[0].clone();
                 let ty = &f.ty;
-                let qs = quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA);
+                let qs = quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA);
 
-                quote! { &::postcard::experimental::schema::SdmTy::NewtypeStruct(#qs) }
+                quote! { &::postcard_schema::schema::DataModelType::NewtypeStruct(#qs) }
             } else {
                 let fields = fields.unnamed.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA)
+                    quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA)
                 });
-                quote! { &::postcard::experimental::schema::SdmTy::TupleStruct(&[
+                quote! { &::postcard_schema::schema::DataModelType::TupleStruct(&[
                     #( #fields ),*
                 ]) }
             }
         }
         syn::Fields::Unit => {
-            quote! { &::postcard::experimental::schema::SdmTy::UnitStruct }
+            quote! { &::postcard_schema::schema::DataModelType::UnitStruct }
         }
     }
 }
@@ -97,9 +97,9 @@ fn generate_variants(fields: &Fields) -> TokenStream {
             let fields = fields.named.iter().map(|f| {
                 let ty = &f.ty;
                 let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => &::postcard::experimental::schema::NamedValue { name: #name, ty: <#ty as ::postcard::experimental::schema::Schema>::SCHEMA })
+                quote_spanned!(f.span() => &::postcard_schema::schema::NamedValue { name: #name, ty: <#ty as ::postcard_schema::Schema>::SCHEMA })
             });
-            quote! { &::postcard::experimental::schema::SdmTy::StructVariant(&[
+            quote! { &::postcard_schema::schema::DataModelVariant::StructVariant(&[
                 #( #fields ),*
             ]) }
         }
@@ -107,21 +107,21 @@ fn generate_variants(fields: &Fields) -> TokenStream {
             if fields.unnamed.len() == 1 {
                 let f = fields.unnamed[0].clone();
                 let ty = &f.ty;
-                let qs = quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA);
+                let qs = quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA);
 
-                quote! { &::postcard::experimental::schema::SdmTy::NewtypeVariant(#qs) }
+                quote! { &::postcard_schema::schema::DataModelVariant::NewtypeVariant(#qs) }
             } else {
                 let fields = fields.unnamed.iter().map(|f| {
                     let ty = &f.ty;
-                    quote_spanned!(f.span() => <#ty as ::postcard::experimental::schema::Schema>::SCHEMA)
+                    quote_spanned!(f.span() => <#ty as ::postcard_schema::Schema>::SCHEMA)
                 });
-                quote! { &::postcard::experimental::schema::SdmTy::TupleVariant(&[
+                quote! { &::postcard_schema::schema::DataModelVariant::TupleVariant(&[
                     #( #fields ),*
                 ]) }
             }
         }
         syn::Fields::Unit => {
-            quote! { &::postcard::experimental::schema::SdmTy::UnitVariant }
+            quote! { &::postcard_schema::schema::DataModelVariant::UnitVariant }
         }
     }
 }
@@ -132,7 +132,7 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         if let GenericParam::Type(ref mut type_param) = *param {
             type_param
                 .bounds
-                .push(parse_quote!(::postcard::experimental::schema::Schema));
+                .push(parse_quote!(::postcard_schema::Schema));
         }
     }
     generics

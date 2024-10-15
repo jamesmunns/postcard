@@ -1,29 +1,30 @@
-#![cfg(feature = "experimental-derive")]
-
-use postcard::experimental::schema::{
-    NamedType, NamedValue, NamedVariant, OwnedNamedType, Schema, SdmTy, Varint,
+use postcard_schema::{
+    schema::{
+        owned::OwnedNamedType, DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant,
+    },
+    Schema,
 };
 
 const U8_SCHEMA: NamedType = NamedType {
     name: "u8",
-    ty: &SdmTy::U8,
+    ty: &DataModelType::U8,
 };
 const U32_SCHEMA: NamedType = NamedType {
     name: "u32",
-    ty: &SdmTy::Varint(Varint::U32),
+    ty: &DataModelType::U32,
 };
 const U64_SCHEMA: NamedType = NamedType {
     name: "u64",
-    ty: &SdmTy::Varint(Varint::U64),
+    ty: &DataModelType::U64,
 };
 
 const I16_SCHEMA: NamedType = NamedType {
     name: "i16",
-    ty: &SdmTy::Varint(Varint::I16),
+    ty: &DataModelType::I16,
 };
 const I32_SCHEMA: NamedType = NamedType {
     name: "i32",
-    ty: &SdmTy::Varint(Varint::I32),
+    ty: &DataModelType::I32,
 };
 
 #[allow(unused)]
@@ -58,38 +59,38 @@ fn test_enum_serialize() {
     assert_eq!(
         &NamedType {
             name: "Inner",
-            ty: &SdmTy::Enum(&[
+            ty: &DataModelType::Enum(&[
                 &NamedVariant {
                     name: "Alpha",
-                    ty: &SdmTy::UnitVariant
+                    ty: &DataModelVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Beta",
-                    ty: &SdmTy::UnitVariant
+                    ty: &DataModelVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Gamma",
-                    ty: &SdmTy::UnitVariant
+                    ty: &DataModelVariant::UnitVariant
                 },
                 &NamedVariant {
                     name: "Delta",
-                    ty: &SdmTy::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
+                    ty: &DataModelVariant::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
                 },
                 &NamedVariant {
                     name: "Epsilon",
-                    ty: &SdmTy::StructVariant(&[
+                    ty: &DataModelVariant::StructVariant(&[
                         &NamedValue {
                             name: "zeta",
                             ty: &NamedType {
                                 name: "f32",
-                                ty: &SdmTy::F32
+                                ty: &DataModelType::F32
                             },
                         },
                         &NamedValue {
                             name: "eta",
                             ty: &NamedType {
                                 name: "bool",
-                                ty: &SdmTy::Bool
+                                ty: &DataModelType::Bool
                             },
                         }
                     ]),
@@ -108,7 +109,7 @@ fn test_struct_serialize() {
         Outer::SCHEMA,
         &NamedType {
             name: "Outer",
-            ty: &SdmTy::Struct(&[
+            ty: &DataModelType::Struct(&[
                 &NamedValue {
                     name: "a",
                     ty: &U32_SCHEMA
@@ -129,16 +130,16 @@ fn test_struct_serialize() {
                     name: "e",
                     ty: &NamedType {
                         name: "[T; N]",
-                        ty: &SdmTy::Tuple(TEN_BYTES_SCHEMA),
+                        ty: &DataModelType::Tuple(TEN_BYTES_SCHEMA),
                     }
                 },
                 &NamedValue {
                     name: "f",
                     ty: &NamedType {
                         name: "&[T]",
-                        ty: &SdmTy::Seq(&NamedType {
+                        ty: &DataModelType::Seq(&NamedType {
                             name: "u8",
-                            ty: &SdmTy::U8
+                            ty: &DataModelType::U8
                         })
                     }
                 },
@@ -152,11 +153,11 @@ fn test_slice_serialize() {
     assert_eq!(
         &NamedType {
             name: "Slice",
-            ty: &SdmTy::Struct(&[&NamedValue {
+            ty: &DataModelType::Struct(&[&NamedValue {
                 name: "x",
                 ty: &NamedType {
                     name: "&[T]",
-                    ty: &SdmTy::Seq(&U8_SCHEMA)
+                    ty: &DataModelType::Seq(&U8_SCHEMA)
                 }
             },]),
         },
@@ -203,7 +204,7 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 280);
+    assert_eq!(ser_borrowed_schema.len(), 269);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
@@ -235,7 +236,7 @@ fn newtype_vs_tuple() {
         TestStruct3::SCHEMA,
         &NamedType {
             name: "TestStruct3",
-            ty: &SdmTy::NewtypeStruct(u64::SCHEMA)
+            ty: &DataModelType::NewtypeStruct(u64::SCHEMA)
         }
     );
 
@@ -243,7 +244,7 @@ fn newtype_vs_tuple() {
         TestStruct4::SCHEMA,
         &NamedType {
             name: "TestStruct4",
-            ty: &SdmTy::TupleStruct(&[u64::SCHEMA, bool::SCHEMA]),
+            ty: &DataModelType::TupleStruct(&[u64::SCHEMA, bool::SCHEMA]),
         }
     );
 
@@ -251,14 +252,14 @@ fn newtype_vs_tuple() {
         TestEnum2::SCHEMA,
         &NamedType {
             name: "TestEnum2",
-            ty: &SdmTy::Enum(&[
+            ty: &DataModelType::Enum(&[
                 &NamedVariant {
                     name: "Nt",
-                    ty: &SdmTy::NewtypeVariant(u64::SCHEMA)
+                    ty: &DataModelVariant::NewtypeVariant(u64::SCHEMA)
                 },
                 &NamedVariant {
                     name: "Tup",
-                    ty: &SdmTy::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
+                    ty: &DataModelVariant::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
                 },
             ]),
         }
