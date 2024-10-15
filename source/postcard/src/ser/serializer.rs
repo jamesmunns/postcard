@@ -356,7 +356,7 @@ where
 
         // This is the first pass through, where we just count the length of the
         // data that we are given
-        write!(&mut ctr, "{}", value).map_err(|_| Error::CollectStrError)?;
+        write!(&mut ctr, "{value}").map_err(|_| Error::CollectStrError)?;
         let len = ctr.ct;
         self.try_push_varint_usize(len)
             .map_err(|_| Error::SerializeBufferFull)?;
@@ -382,7 +382,7 @@ where
         let mut fw = FmtWriter {
             output: &mut self.output,
         };
-        write!(&mut fw, "{}", value).map_err(|_| Error::CollectStrError)?;
+        write!(&mut fw, "{value}").map_err(|_| Error::CollectStrError)?;
 
         Ok(())
     }

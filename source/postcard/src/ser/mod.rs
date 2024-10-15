@@ -255,7 +255,7 @@ where
     )
 }
 
-/// Serialize a `T` to a [core::iter::Extend],
+/// Serialize a `T` to a [`core::iter::Extend`],
 /// ## Example
 ///
 /// ```rust
@@ -287,7 +287,7 @@ where
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
 #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub fn to_eio<'b, T, W>(value: &'b T, writer: W) -> Result<W>
+pub fn to_eio<T, W>(value: &T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
     W: crate::eio::Write,
@@ -295,7 +295,7 @@ where
     serialize_with_flavor::<T, _, _>(value, flavors::eio::WriteFlavor::new(writer))
 }
 
-/// Serialize a `T` to a [std::io::Write],
+/// Serialize a `T` to a [`std::io::Write`],
 /// ## Example
 ///
 /// ```rust
@@ -856,7 +856,7 @@ mod test {
 
         let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
 
-        let x = crate::from_bytes::<RefStruct>(&output.deref_mut()[..sz]).unwrap();
+        let x = crate::from_bytes::<RefStruct<'_>>(&output.deref_mut()[..sz]).unwrap();
 
         assert_eq!(input, x);
     }

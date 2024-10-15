@@ -47,7 +47,7 @@ pub enum SdmTy {
     /// The `f32` Serde Data Model Type
     F32,
 
-    /// The `f64 Serde Data Model Type
+    /// The `f64` Serde Data Model Type
     F64,
 
     /// The `char` Serde Data Model Type
