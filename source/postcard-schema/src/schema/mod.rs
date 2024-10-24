@@ -8,7 +8,7 @@
 //!
 //! ## Borrowed vs Owned
 //!
-//! For reasons that have to do with allowing for arbitrarily sized and nexted schemas that
+//! For reasons that have to do with allowing for arbitrarily sized and nested schemas that
 //! can be created at compile/const time, as well as being usable in `no-std` contexts, the
 //! schema types in this module are implemented using a LOT of `&'static` references.
 //!
