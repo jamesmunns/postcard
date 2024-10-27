@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use postcard::experimental::schema::{OwnedNamedType, OwnedSdmTy, Varint};
+use postcard_schema::schema::owned::{OwnedDataModelType, OwnedNamedType, OwnedDataModelVariant};
 use serde_json::{Map, Number, Value};
 
 use crate::de::varint::de_zig_zag_i16;
@@ -35,9 +35,9 @@ pub fn from_slice_dyn(schema: &OwnedNamedType, data: &[u8]) -> Result<Value, Err
     Ok(val)
 }
 
-fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]), Error> {
+fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'a [u8]), Error> {
     match ty {
-        OwnedSdmTy::Bool => {
+        OwnedDataModelType::Bool => {
             let (one, rest) = data.take_one()?;
             let val = match one {
                 0 => Value::Bool(false),
@@ -46,85 +46,83 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             };
             Ok((val, rest))
         }
-        OwnedSdmTy::I8 => {
+        OwnedDataModelType::I8 => {
             let (one, rest) = data.take_one()?;
             let val = Value::Number(Number::from(one as i8));
             Ok((val, rest))
         }
-        OwnedSdmTy::U8 => {
+        OwnedDataModelType::U8 => {
             let (one, rest) = data.take_one()?;
             let val = Value::Number(Number::from(one));
             Ok((val, rest))
         }
-        OwnedSdmTy::Varint(var) => match var {
-            Varint::I16 => {
-                let (val, rest) = try_take_varint_u16(data)?;
-                let val = de_zig_zag_i16(val);
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::I32 => {
-                let (val, rest) = try_take_varint_u32(data)?;
-                let val = de_zig_zag_i32(val);
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::I64 => {
-                let (val, rest) = try_take_varint_u64(data)?;
-                let val = de_zig_zag_i64(val);
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::I128 => {
-                let (val, rest) = try_take_varint_u128(data)?;
-                let val = de_zig_zag_i128(val);
-                let val = i64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::U16 => {
-                let (val, rest) = try_take_varint_u16(data)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::U32 => {
-                let (val, rest) = try_take_varint_u32(data)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::U64 => {
-                let (val, rest) = try_take_varint_u64(data)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::U128 => {
-                let (val, rest) = try_take_varint_u128(data)?;
-                let val = u64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::Usize => {
-                let (val, rest) = try_take_varint_usize(data)?;
-                let val = Value::Number(Number::from(val));
-                Ok((val, rest))
-            }
-            Varint::Isize => {
-                let (val, rest) = try_take_varint_usize(data)?;
+        OwnedDataModelType::I16 => {
+            let (val, rest) = try_take_varint_u16(data)?;
+            let val = de_zig_zag_i16(val);
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::I32 => {
+            let (val, rest) = try_take_varint_u32(data)?;
+            let val = de_zig_zag_i32(val);
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::I64 => {
+            let (val, rest) = try_take_varint_u64(data)?;
+            let val = de_zig_zag_i64(val);
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::I128 => {
+            let (val, rest) = try_take_varint_u128(data)?;
+            let val = de_zig_zag_i128(val);
+            let val = i64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::U16 => {
+            let (val, rest) = try_take_varint_u16(data)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::U32 => {
+            let (val, rest) = try_take_varint_u32(data)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::U64 => {
+            let (val, rest) = try_take_varint_u64(data)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::U128 => {
+            let (val, rest) = try_take_varint_u128(data)?;
+            let val = u64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::Usize => {
+            let (val, rest) = try_take_varint_usize(data)?;
+            let val = Value::Number(Number::from(val));
+            Ok((val, rest))
+        }
+        OwnedDataModelType::Isize => {
+            let (val, rest) = try_take_varint_usize(data)?;
 
-                #[cfg(target_pointer_width = "16")]
-                let valu = de_zig_zag_i16(val as u16);
+            #[cfg(target_pointer_width = "16")]
+            let valu = de_zig_zag_i16(val as u16);
 
-                #[cfg(target_pointer_width = "32")]
-                let valu = de_zig_zag_i32(val as u32);
+            #[cfg(target_pointer_width = "32")]
+            let valu = de_zig_zag_i32(val as u32);
 
-                #[cfg(target_pointer_width = "64")]
-                let valu = de_zig_zag_i64(val as u64);
+            #[cfg(target_pointer_width = "64")]
+            let valu = de_zig_zag_i64(val as u64);
 
-                let valu = Value::Number(Number::from(valu));
-                Ok((valu, rest))
-            }
-        },
-        OwnedSdmTy::F32 => {
+            let valu = Value::Number(Number::from(valu));
+            Ok((valu, rest))
+        }
+        OwnedDataModelType::F32 => {
             let (val, rest) = data.take_n(4)?;
             let mut buf = [0u8; 4];
             buf.copy_from_slice(val);
@@ -132,7 +130,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let val = Value::Number(Number::from_f64(f.into()).right()?);
             Ok((val, rest))
         }
-        OwnedSdmTy::F64 => {
+        OwnedDataModelType::F64 => {
             let (val, rest) = data.take_n(8)?;
             let mut buf = [0u8; 8];
             buf.copy_from_slice(val);
@@ -140,15 +138,15 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let val = Value::Number(Number::from_f64(f).right()?);
             Ok((val, rest))
         }
-        OwnedSdmTy::Char => todo!(),
-        OwnedSdmTy::String => {
+        OwnedDataModelType::Char => todo!(),
+        OwnedDataModelType::String => {
             let (val, rest) = try_take_varint_usize(data)?;
             let (bytes, rest) = rest.take_n(val)?;
             let s = from_utf8(bytes).map_err(|_| Error::SchemaMismatch)?;
             let val = Value::String(s.to_string());
             Ok((val, rest))
         }
-        OwnedSdmTy::ByteArray => {
+        OwnedDataModelType::ByteArray => {
             let (val, rest) = try_take_varint_usize(data)?;
             let (bytes, rest) = rest.take_n(val)?;
             let vvec = bytes
@@ -158,7 +156,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             let val = Value::Array(vvec);
             Ok((val, rest))
         }
-        OwnedSdmTy::Option(nt) => {
+        OwnedDataModelType::Option(nt) => {
             let (val, rest) = data.take_one()?;
             match val {
                 0 => return Ok((Value::Null, rest)),
@@ -167,15 +165,15 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             }
             de_named_type(&nt.ty, rest)
         }
-        OwnedSdmTy::Unit | OwnedSdmTy::UnitStruct | OwnedSdmTy::UnitVariant => {
+        OwnedDataModelType::Unit | OwnedDataModelType::UnitStruct => {
             // TODO This is PROBABLY wrong, as Some(()) will be coalesced into the same
             // value as None. Fix this when we have our own Value
             Ok((Value::Null, data))
         }
-        OwnedSdmTy::NewtypeStruct(nt) | OwnedSdmTy::NewtypeVariant(nt) => {
+        OwnedDataModelType::NewtypeStruct(nt) => {
             de_named_type(&nt.ty, data)
         }
-        OwnedSdmTy::Seq(nt) => {
+        OwnedDataModelType::Seq(nt) => {
             let (val, mut rest) = try_take_varint_usize(data)?;
             let mut vec = vec![];
             for _ in 0..val {
@@ -185,7 +183,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             }
             Ok((Value::Array(vec), rest))
         }
-        OwnedSdmTy::Tuple(nts) | OwnedSdmTy::TupleStruct(nts) | OwnedSdmTy::TupleVariant(nts) => {
+        OwnedDataModelType::Tuple(nts) | OwnedDataModelType::TupleStruct(nts) => {
             match nts.as_slice() {
                 [] => {
                     // TODO: Not sure this is right...
@@ -207,12 +205,12 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
                 }
             }
         }
-        OwnedSdmTy::Map { key, val } => {
+        OwnedDataModelType::Map { key, val } => {
             // TODO: impling blind because we can't test this, oops
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedSdmTy::String {
+            if key.ty != OwnedDataModelType::String {
                 return Err(Error::ShouldSupportButDont);
             }
 
@@ -232,7 +230,7 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
 
             Ok((Value::Object(map), rest))
         }
-        OwnedSdmTy::Struct(nvs) | OwnedSdmTy::StructVariant(nvs) => {
+        OwnedDataModelType::Struct(nvs) => {
             let mut map = Map::new();
             let mut rest = data;
             for nv in nvs.iter() {
@@ -242,24 +240,38 @@ fn de_named_type<'a>(ty: &OwnedSdmTy, data: &'a [u8]) -> Result<(Value, &'a [u8]
             }
             Ok((Value::Object(map), rest))
         }
-        OwnedSdmTy::Enum(nvars) => {
+        OwnedDataModelType::Enum(nvars) => {
             let (variant, rest) = try_take_varint_usize(data)?;
             let schema = nvars.get(variant).right()?;
-            match schema.ty {
-                OwnedSdmTy::Unit | OwnedSdmTy::UnitStruct | OwnedSdmTy::UnitVariant => {
+            match &schema.ty {
+                OwnedDataModelVariant::UnitVariant => {
                     // Units become strings
                     Ok((Value::String(schema.name.to_string()), rest))
-                }
-                _ => {
+                },
+                OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
                     // everything else becomes an object with one field
-                    let (val, irest) = de_named_type(&schema.ty, rest)?;
+                    let (val, irest) = de_named_type(&owned_named_type.ty, rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
-                }
+                },
+                OwnedDataModelVariant::TupleVariant(vec) => {
+                    // everything else becomes an object with one field
+                    let (val, irest) = de_named_type(&OwnedDataModelType::Tuple(vec.clone()), rest)?;
+                    let mut map = Map::new();
+                    map.insert(schema.name.to_owned().to_string(), val);
+                    Ok((Value::Object(map), irest))
+                },
+                OwnedDataModelVariant::StructVariant(vec) => {
+                    // everything else becomes an object with one field
+                    let (val, irest) = de_named_type(&OwnedDataModelType::Struct(vec.clone()), rest)?;
+                    let mut map = Map::new();
+                    map.insert(schema.name.to_owned().to_string(), val);
+                    Ok((Value::Object(map), irest))
+                },
             }
         }
-        OwnedSdmTy::Schema => todo!(),
+        OwnedDataModelType::Schema => todo!(),
     }
 }
 
@@ -420,7 +432,7 @@ impl TakeExt for [u8] {
 
 #[cfg(test)]
 mod test {
-    use postcard::experimental::schema::Schema;
+    use postcard_schema::Schema;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 

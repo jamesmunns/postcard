@@ -6,10 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-postcard = { version = "1.0.10", features = ["use-std", "experimental-derive"] }
+postcard = { version = "1.0.10", features = ["use-std"] }
+postcard-schema = { version = "0.1", features = ["use-std", "derive"] }
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
-
-[patch.crates-io]
-# NOTE: basing this on https://github.com/jamesmunns/postcard/pull/170 which adds owned schemas
-postcard = { git = "https://github.com/jamesmunns/postcard", rev = "dbb730afa00d7a556ce02cb3ae1d984832d6c798" }

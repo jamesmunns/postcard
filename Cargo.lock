@@ -89,20 +89,21 @@ dependencies = [
 [[package]]
 name = "postcard"
 version = "1.0.10"
-source = "git+https://github.com/jamesmunns/postcard?rev=dbb730afa00d7a556ce02cb3ae1d984832d6c798#dbb730afa00d7a556ce02cb3ae1d984832d6c798"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f7f0a8d620d71c457dd1d47df76bb18960378da56af4527aaa10f515eee732e"
 dependencies = [
  "cobs",
  "embedded-io 0.4.0",
  "embedded-io 0.6.1",
  "heapless",
- "postcard-derive",
  "serde",
 ]
 
 [[package]]
 name = "postcard-derive"
-version = "0.1.2"
-source = "git+https://github.com/jamesmunns/postcard?rev=dbb730afa00d7a556ce02cb3ae1d984832d6c798#dbb730afa00d7a556ce02cb3ae1d984832d6c798"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9718c21652accb7372d8187f0df8da07eea83b0fff67276c802b15fb6d44d16"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -114,8 +115,19 @@ name = "postcard-dyn"
 version = "0.1.0"
 dependencies = [
  "postcard",
+ "postcard-schema",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "postcard-schema"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30a3e7acbdb61449280eb8c54126ecfb10571ec06add5c60d014c675f029e7d2"
+dependencies = [
+ "postcard-derive",
+ "serde",
 ]
 
 [[package]]
