@@ -319,10 +319,10 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 match &evar.ty {
                     OwnedDataModelVariant::UnitVariant => {
                         // Nothing to do
-                    },
+                    }
                     OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
                         ser_named_type(&owned_named_type.ty, v, out)?;
-                    },
+                    }
                     OwnedDataModelVariant::TupleVariant(nts) => {
                         // Tuples with arity of 1 are not arrays, but instead just a single object
                         if nts.len() == 1 {
@@ -338,7 +338,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                         for (nt, val) in nts.iter().zip(val.iter()) {
                             ser_named_type(&nt.ty, val, out)?;
                         }
-                    },
+                    }
                     OwnedDataModelVariant::StructVariant(nvs) => {
                         let val = v.as_object().right()?;
 
@@ -350,7 +350,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                             let v = val.get(&field.name).right()?;
                             ser_named_type(&field.ty.ty, v, out)?;
                         }
-                    },
+                    }
                 }
             } else {
                 return Err(Error::SchemaMismatch);

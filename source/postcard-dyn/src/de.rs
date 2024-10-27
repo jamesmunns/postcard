@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use postcard_schema::schema::owned::{OwnedDataModelType, OwnedNamedType, OwnedDataModelVariant};
+use postcard_schema::schema::owned::{OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType};
 use serde_json::{Map, Number, Value};
 
 use crate::de::varint::de_zig_zag_i16;
@@ -170,9 +170,7 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
             // value as None. Fix this when we have our own Value
             Ok((Value::Null, data))
         }
-        OwnedDataModelType::NewtypeStruct(nt) => {
-            de_named_type(&nt.ty, data)
-        }
+        OwnedDataModelType::NewtypeStruct(nt) => de_named_type(&nt.ty, data),
         OwnedDataModelType::Seq(nt) => {
             let (val, mut rest) = try_take_varint_usize(data)?;
             let mut vec = vec![];
@@ -247,28 +245,30 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
                 OwnedDataModelVariant::UnitVariant => {
                     // Units become strings
                     Ok((Value::String(schema.name.to_string()), rest))
-                },
+                }
                 OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
                     // everything else becomes an object with one field
                     let (val, irest) = de_named_type(&owned_named_type.ty, rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
-                },
+                }
                 OwnedDataModelVariant::TupleVariant(vec) => {
                     // everything else becomes an object with one field
-                    let (val, irest) = de_named_type(&OwnedDataModelType::Tuple(vec.clone()), rest)?;
+                    let (val, irest) =
+                        de_named_type(&OwnedDataModelType::Tuple(vec.clone()), rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
-                },
+                }
                 OwnedDataModelVariant::StructVariant(vec) => {
                     // everything else becomes an object with one field
-                    let (val, irest) = de_named_type(&OwnedDataModelType::Struct(vec.clone()), rest)?;
+                    let (val, irest) =
+                        de_named_type(&OwnedDataModelType::Struct(vec.clone()), rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
-                },
+                }
             }
         }
         OwnedDataModelType::Schema => todo!(),
