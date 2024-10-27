@@ -2,5 +2,7 @@
 resolver = '2'
 members = [
     "source/postcard",
-    "source/postcard-derive", "source/postcard-schema",
+    "source/postcard-derive",
+    "source/postcard-dyn",
+    "source/postcard-schema",
 ]
