@@ -35,7 +35,7 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
         DataModelType::UnitStruct => Some(0),
         DataModelType::NewtypeStruct(nt) => max_size_nt(nt),
         DataModelType::Seq(_) => None,
-        DataModelType::Tuple(nts) => {
+        DataModelType::Tuple(nts) | DataModelType::TupleStruct(nts) => {
             let mut i = 0;
             let mut ct = 0;
             while i < nts.len() {
@@ -47,7 +47,6 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
             }
             Some(ct)
         },
-        DataModelType::TupleStruct(_) => todo!(),
         DataModelType::Map { key, val } => {
             let Some(sz1) = max_size_nt(key) else {
                 return None;
