@@ -1,15 +1,21 @@
 //! .
 
-use crate::{schema::{DataModelType, DataModelVariant, NamedType}, Schema};
+use crate::{
+    schema::{DataModelType, DataModelVariant, NamedType},
+    Schema,
+};
 
+/// Calculate the max size of a type that impls Schema
 pub const fn max_size<T: Schema>() -> Option<usize> {
     max_size_nt(T::SCHEMA)
 }
 
+/// Calculate the max size of a NamedType
 pub const fn max_size_nt(nt: &NamedType) -> Option<usize> {
     max_size_dmt(nt.ty)
 }
 
+/// Calculate the max size of a DataModelType
 pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
     match dmt {
         DataModelType::Bool => Some(1),
@@ -46,16 +52,8 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
                 i += 1;
             }
             Some(ct)
-        },
-        DataModelType::Map { key, val } => {
-            let Some(sz1) = max_size_nt(key) else {
-                return None;
-            };
-            let Some(sz2) = max_size_nt(val) else {
-                return None;
-            };
-            Some(sz1 + sz2)
-        },
+        }
+        DataModelType::Map { .. } => None,
         DataModelType::Struct(nvals) => {
             let mut i = 0;
             let mut ct = 0;
@@ -67,7 +65,7 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
                 i += 1;
             }
             Some(ct)
-        },
+        }
         DataModelType::Enum(nvars) => {
             let mut i = 0;
             let mut max = 0;
@@ -79,7 +77,7 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
                             return None;
                         };
                         sz
-                    },
+                    }
                     DataModelVariant::TupleVariant(nts) => {
                         let mut j = 0;
                         let mut ct = 0;
@@ -91,7 +89,7 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
                             j += 1;
                         }
                         ct
-                    },
+                    }
                     DataModelVariant::StructVariant(nvars) => {
                         let mut j = 0;
                         let mut ct = 0;
@@ -103,7 +101,7 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
                             j += 1;
                         }
                         ct
-                    },
+                    }
                 };
 
                 if sz > max {
@@ -112,11 +110,15 @@ pub const fn max_size_dmt(dmt: &DataModelType) -> Option<usize> {
 
                 i += 1;
             }
+            let disc_size = if nvars.is_empty() {
+                1
+            } else {
+                // CEIL(variants / 7)
+                (nvars.len() + 6) / 7
+            };
             // discriminants are `varint(u32)`
-            Some(max + 5)
-        },
+            Some(max + disc_size)
+        }
         DataModelType::Schema => None,
     }
 }
-
-

@@ -4,8 +4,8 @@
 //! # Postcard Schema
 
 pub mod impls;
-pub mod schema;
 pub mod max_size;
+pub mod schema;
 
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;
