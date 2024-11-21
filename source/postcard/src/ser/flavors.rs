@@ -194,7 +194,7 @@ impl<'a> Flavor for Slice<'a> {
     }
 }
 
-impl<'a> Index<usize> for Slice<'a> {
+impl Index<usize> for Slice<'_> {
     type Output = u8;
 
     fn index(&self, idx: usize) -> &u8 {
@@ -204,7 +204,7 @@ impl<'a> Index<usize> for Slice<'a> {
     }
 }
 
-impl<'a> IndexMut<usize> for Slice<'a> {
+impl IndexMut<usize> for Slice<'_> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
