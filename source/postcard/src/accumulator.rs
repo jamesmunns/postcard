@@ -208,6 +208,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "heapless")]
     fn double_loop_test() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo {
@@ -252,6 +253,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "heapless")]
     fn loop_test_ref() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
@@ -285,6 +287,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "heapless")]
     fn double_loop_test_ref() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
@@ -344,6 +347,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "heapless")]
     fn extend_unchecked_in_bounds_test() {
         // Test bug present in revision abcb407:
         // extend_unchecked may be passed slice with size 1 greater than accumulator buffer causing panic
