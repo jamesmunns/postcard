@@ -28,6 +28,6 @@ features = ["use-std"]
 path = "../postcard"
 
 [dependencies.postcard-schema]
-version = "0.1"
+version = "0.2"
 features = ["use-std", "derive"]
 path = "../postcard-schema"
