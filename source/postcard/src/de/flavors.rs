@@ -261,6 +261,9 @@ pub mod io {
         where
             T: crate::eio::Read,
         {
+            /// Create a new [`EIOReader`] from a reader and a buffer.
+            ///
+            /// `buff` must have enough space to hold all data read during the deserialisation.
             pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
@@ -328,6 +331,9 @@ pub mod io {
         where
             T: std::io::Read,
         {
+            /// Create a new [`IOReader`] from a reader and a buffer.
+            ///
+            /// `buff` must have enough space to hold all data read during the deserialisation.
             pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
