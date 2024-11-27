@@ -90,7 +90,7 @@ impl<T: Schema + ?Sized> Schema for &'_ T {
 
 impl<T: Schema> Schema for [T] {
     const SCHEMA: &'static NamedType = &NamedType {
-        name: "&[T]",
+        name: "[T]",
         ty: &DataModelType::Seq(T::SCHEMA),
     };
 }
