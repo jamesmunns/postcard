@@ -261,7 +261,7 @@ pub mod io {
         where
             T: crate::eio::Read,
         {
-            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
                     buff: SlidingBuffer::new(buff),
@@ -328,7 +328,7 @@ pub mod io {
         where
             T: std::io::Read,
         {
-            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
                     buff: SlidingBuffer::new(buff),
