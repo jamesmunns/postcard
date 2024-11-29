@@ -63,7 +63,7 @@ impl<F: Flavor> Serializer<F> {
     }
 }
 
-impl<'a, F> ser::Serializer for &'a mut Serializer<F>
+impl<F> ser::Serializer for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -347,7 +347,7 @@ where
         }
         impl Write for CountWriter {
             fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
-                self.ct += s.as_bytes().len();
+                self.ct += s.len();
                 Ok(())
             }
         }
@@ -356,7 +356,7 @@ where
 
         // This is the first pass through, where we just count the length of the
         // data that we are given
-        write!(&mut ctr, "{}", value).map_err(|_| Error::CollectStrError)?;
+        write!(&mut ctr, "{value}").map_err(|_| Error::CollectStrError)?;
         let len = ctr.ct;
         self.try_push_varint_usize(len)
             .map_err(|_| Error::SerializeBufferFull)?;
@@ -367,7 +367,7 @@ where
         {
             output: &'a mut IF,
         }
-        impl<'a, IF> Write for FmtWriter<'a, IF>
+        impl<IF> Write for FmtWriter<'_, IF>
         where
             IF: Flavor,
         {
@@ -382,13 +382,13 @@ where
         let mut fw = FmtWriter {
             output: &mut self.output,
         };
-        write!(&mut fw, "{}", value).map_err(|_| Error::CollectStrError)?;
+        write!(&mut fw, "{value}").map_err(|_| Error::CollectStrError)?;
 
         Ok(())
     }
 }
 
-impl<'a, F> ser::SerializeSeq for &'a mut Serializer<F>
+impl<F> ser::SerializeSeq for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -413,7 +413,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTuple for &'a mut Serializer<F>
+impl<F> ser::SerializeTuple for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -434,7 +434,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTupleStruct for &'a mut Serializer<F>
+impl<F> ser::SerializeTupleStruct for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -455,7 +455,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeTupleVariant for &'a mut Serializer<F>
+impl<F> ser::SerializeTupleVariant for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -476,7 +476,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeMap for &'a mut Serializer<F>
+impl<F> ser::SerializeMap for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -505,7 +505,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeStruct for &'a mut Serializer<F>
+impl<F> ser::SerializeStruct for &mut Serializer<F>
 where
     F: Flavor,
 {
@@ -526,7 +526,7 @@ where
     }
 }
 
-impl<'a, F> ser::SerializeStructVariant for &'a mut Serializer<F>
+impl<F> ser::SerializeStructVariant for &mut Serializer<F>
 where
     F: Flavor,
 {

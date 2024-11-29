@@ -139,7 +139,7 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     }
 }
 
-struct SeqAccess<'a, 'b: 'a, F: Flavor<'b>> {
+struct SeqAccess<'a, 'b, F: Flavor<'b>> {
     deserializer: &'a mut Deserializer<'b, F>,
     len: usize,
 }
@@ -169,7 +169,7 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b, F
     }
 }
 
-struct MapAccess<'a, 'b: 'a, F: Flavor<'b>> {
+struct MapAccess<'a, 'b, F: Flavor<'b>> {
     deserializer: &'a mut Deserializer<'b, F>,
     len: usize,
 }
@@ -201,7 +201,7 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::MapAccess<'b> for MapAccess<'a, 'b, F
     }
 }
 
-impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
 
     #[inline]
@@ -539,7 +539,7 @@ impl<'de, 'a, F: Flavor<'de>> de::Deserializer<'de> for &'a mut Deserializer<'de
     }
 }
 
-impl<'de, 'a, F: Flavor<'de>> serde::de::VariantAccess<'de> for &'a mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
 
     #[inline]
@@ -567,7 +567,7 @@ impl<'de, 'a, F: Flavor<'de>> serde::de::VariantAccess<'de> for &'a mut Deserial
     }
 }
 
-impl<'de, 'a, F: Flavor<'de>> serde::de::EnumAccess<'de> for &'a mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde::de::EnumAccess<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
     type Variant = Self;
 

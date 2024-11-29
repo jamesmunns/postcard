@@ -115,18 +115,18 @@ pub trait Flavor {
     /// such as a slice or a Vec of some sort.
     type Output;
 
-    /// The try_extend() trait method can be implemented when there is a more efficient way of processing
-    /// multiple bytes at once, such as copying a slice to the output, rather than iterating over one byte
-    /// at a time.
+    /// Override this method when you want to customize processing
+    /// multiple bytes at once, such as copying a slice to the output,
+    /// rather than iterating over one byte at a time.
     #[inline]
     fn try_extend(&mut self, data: &[u8]) -> Result<()> {
         data.iter().try_for_each(|d| self.try_push(*d))
     }
 
-    /// The try_push() trait method can be used to push a single byte to be modified and/or stored
+    /// Push a single byte to be modified and/or stored.
     fn try_push(&mut self, data: u8) -> Result<()>;
 
-    /// Finalize the serialization process
+    /// Finalize the serialization process.
     fn finalize(self) -> Result<Self::Output>;
 }
 
@@ -194,7 +194,7 @@ impl<'a> Flavor for Slice<'a> {
     }
 }
 
-impl<'a> Index<usize> for Slice<'a> {
+impl Index<usize> for Slice<'_> {
     type Output = u8;
 
     fn index(&self, idx: usize) -> &u8 {
@@ -204,7 +204,7 @@ impl<'a> Index<usize> for Slice<'a> {
     }
 }
 
-impl<'a> IndexMut<usize> for Slice<'a> {
+impl IndexMut<usize> for Slice<'_> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
@@ -212,7 +212,7 @@ impl<'a> IndexMut<usize> for Slice<'a> {
     }
 }
 
-/// Wrapper over a [`std::iter::Extend<u8>`] that implements the flavor trait
+/// Wrapper over a [`core::iter::Extend<u8>`] that implements the flavor trait
 pub struct ExtendFlavor<T> {
     iter: T,
 }
@@ -221,7 +221,7 @@ impl<T> ExtendFlavor<T>
 where
     T: core::iter::Extend<u8>,
 {
-    /// Create a new [Self] flavor from a given [`std::iter::Extend<u8>`]
+    /// Create a new [`Self`] flavor from a given [`core::iter::Extend<u8>`]
     pub fn new(iter: T) -> Self {
         Self { iter }
     }
@@ -241,7 +241,7 @@ where
 
     #[inline(always)]
     fn try_extend(&mut self, b: &[u8]) -> Result<()> {
-        self.iter.extend(b.iter().cloned());
+        self.iter.extend(b.iter().copied());
         Ok(())
     }
 
@@ -266,7 +266,7 @@ pub mod eio {
     where
         T: crate::eio::Write,
     {
-        /// Create a new [Self] flavor from a given [`embedded_io Write`](crate::eio::Write)
+        /// Create a new [`Self`] flavor from a given [`embedded_io Write`](crate::eio::Write)
         pub fn new(writer: T) -> Self {
             Self { writer }
         }
@@ -303,14 +303,14 @@ pub mod eio {
     }
 }
 
-/// Support for the [std::io] traits
+/// Support for the [`std::io`] traits
 #[cfg(feature = "use-std")]
 pub mod io {
 
     use super::Flavor;
     use crate::{Error, Result};
 
-    /// Wrapper over a [std::io::Write] that implements the flavor trait
+    /// Wrapper over a [`std::io::Write`] that implements the flavor trait
     pub struct WriteFlavor<T> {
         writer: T,
     }
@@ -319,7 +319,7 @@ pub mod io {
     where
         T: std::io::Write,
     {
-        /// Create a new [Self] flavor from a given [std::io::Write]
+        /// Create a new [`Self`] flavor from a given [`std::io::Write`]
         pub fn new(writer: T) -> Self {
             Self { writer }
         }
@@ -377,7 +377,7 @@ mod heapless_vec {
     }
 
     impl<const B: usize> HVec<B> {
-        /// Create a new, currently empty, [heapless::Vec] to be used for storing serialized
+        /// Create a new, currently empty, [`heapless::Vec`] to be used for storing serialized
         /// output data.
         pub fn new() -> Self {
             Self::default()
@@ -436,7 +436,7 @@ mod alloc_vec {
     use crate::Result;
     use alloc::vec::Vec;
 
-    /// The `AllocVec` flavor is a wrapper type around an [alloc::vec::Vec].
+    /// The `AllocVec` flavor is a wrapper type around an [`alloc::vec::Vec`].
     ///
     /// This type is only available when the (non-default) `alloc` feature is active
     #[derive(Default)]
@@ -446,7 +446,7 @@ mod alloc_vec {
     }
 
     impl AllocVec {
-        /// Create a new, currently empty, [alloc::vec::Vec] to be used for storing serialized
+        /// Create a new, currently empty, [`alloc::vec::Vec`] to be used for storing serialized
         /// output data.
         pub fn new() -> Self {
             Self::default()
@@ -564,11 +564,11 @@ where
 ////////////////////////////////////////
 
 /// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
-/// the serialized data. The output of this flavor receives the CRC appended to the bytes.
+/// the serialized data.
 ///
+/// The output of this flavor receives the CRC appended to the bytes.
 /// CRCs are used for error detection when reading data back.
-///
-/// The `crc` feature requires enabling to use this module.
+/// Requires the `crc` feature.
 ///
 /// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
 #[cfg(feature = "use-crc")]

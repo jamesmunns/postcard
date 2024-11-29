@@ -5,9 +5,9 @@ use core::fmt::{Display, Formatter};
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
-    /// This is a feature that PostCard will never implement
+    /// This is a feature that postcard will never implement
     WontImplement,
-    /// This is a feature that Postcard intends to support, but does not yet
+    /// This is a feature that postcard intends to support, but does not yet
     NotYetImplemented,
     /// The serialize buffer is full
     SerializeBufferFull,
@@ -25,7 +25,7 @@ pub enum Error {
     DeserializeBadUtf8,
     /// Found an Option discriminant that wasn't 0 or 1
     DeserializeBadOption,
-    /// Found an enum discriminant that was > u32::max_value()
+    /// Found an enum discriminant that was > `u32::MAX`
     DeserializeBadEnum,
     /// The original data was not well encoded
     DeserializeBadEncoding,
@@ -40,7 +40,7 @@ pub enum Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         use Error::*;
         write!(
             f,
