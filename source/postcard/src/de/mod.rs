@@ -385,7 +385,7 @@ mod test_heapless {
         bytes: &'a [u8],
     }
 
-    impl<'a> Serialize for ByteSliceStruct<'a> {
+    impl Serialize for ByteSliceStruct<'_> {
         fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
         where
             S: Serializer,
