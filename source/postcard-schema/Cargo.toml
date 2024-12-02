@@ -63,6 +63,10 @@ path = "../postcard-derive"
 version = "0.2.0"
 optional = true
 
+[dependencies.schemars]
+version = "0.8.21"
+optional = true
+
 [dev-dependencies.postcard]
 path = "../postcard"
 version = "1.0"
@@ -85,3 +89,5 @@ chrono-v0_4 = ["chrono_v0_4"]
 heapless-v0_7 = ["heapless_v0_7"]
 heapless-v0_8 = ["heapless_v0_8"]
 nalgebra-v0_33 = ["nalgebra_v0_33"]
+
+schemars-v0_8 = ["schemars"]

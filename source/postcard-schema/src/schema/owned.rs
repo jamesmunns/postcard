@@ -20,6 +20,7 @@ use alloc::{
 
 /// The owned version of [`NamedType`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars-v0_8", derive(schemars::JsonSchema))]
 pub struct OwnedNamedType {
     /// The name of this type
     pub name: String,
@@ -71,6 +72,7 @@ impl crate::Schema for OwnedNamedType {
 
 /// The owned version of [`DataModelType`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars-v0_8", derive(schemars::JsonSchema))]
 pub enum OwnedDataModelType {
     /// The `bool` Serde Data Model Type
     Bool,
@@ -210,6 +212,7 @@ impl From<&DataModelType> for OwnedDataModelType {
 
 /// The owned version of [`DataModelVariant`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars-v0_8", derive(schemars::JsonSchema))]
 pub enum OwnedDataModelVariant {
     /// The "unit variant" Serde Data Model Type
     UnitVariant,
@@ -240,6 +243,7 @@ impl From<&DataModelVariant> for OwnedDataModelVariant {
 
 /// The owned version of [`NamedValue`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars-v0_8", derive(schemars::JsonSchema))]
 pub struct OwnedNamedValue {
     /// The name of this value
     pub name: String,
@@ -260,6 +264,7 @@ impl From<&NamedValue> for OwnedNamedValue {
 
 /// The owned version of [`NamedVariant`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars-v0_8", derive(schemars::JsonSchema))]
 pub struct OwnedNamedVariant {
     /// The name of this variant
     pub name: String,
