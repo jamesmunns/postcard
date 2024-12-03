@@ -3,12 +3,15 @@
 //! These implementations are always available
 
 use crate::{
-    schema::{DataModelType, DataModelVariant, NamedType, NamedVariant},
+    schema::{DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant},
     Schema,
 };
-use core::num::{
-    NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
-    NonZeroU32, NonZeroU64, NonZeroU8,
+use core::{
+    num::{
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
+        NonZeroU32, NonZeroU64, NonZeroU8,
+    },
+    ops::{Range, RangeFrom, RangeInclusive, RangeTo},
 };
 
 macro_rules! impl_schema {
@@ -98,5 +101,57 @@ impl<T: Schema, const N: usize> Schema for [T; N] {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "[T; N]",
         ty: &DataModelType::Tuple(&[T::SCHEMA; N]),
+    };
+}
+
+impl<T: Schema> Schema for Range<T> {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+        name: "Range<T>",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "start",
+                ty: T::SCHEMA,
+            },
+            &NamedValue {
+                name: "end",
+                ty: T::SCHEMA,
+            },
+        ]),
+    };
+}
+
+impl<T: Schema> Schema for RangeInclusive<T> {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+        name: "RangeInclusive<T>",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "start",
+                ty: T::SCHEMA,
+            },
+            &NamedValue {
+                name: "end",
+                ty: T::SCHEMA,
+            },
+        ]),
+    };
+}
+
+impl<T: Schema> Schema for RangeFrom<T> {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+        name: "RangeFrom<T>",
+        ty: &DataModelType::Struct(&[&NamedValue {
+            name: "start",
+            ty: T::SCHEMA,
+        }]),
+    };
+}
+
+impl<T: Schema> Schema for RangeTo<T> {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+        name: "RangeTo<T>",
+        ty: &DataModelType::Struct(&[&NamedValue {
+            name: "end",
+            ty: T::SCHEMA,
+        }]),
     };
 }
