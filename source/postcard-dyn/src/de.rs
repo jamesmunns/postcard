@@ -6,7 +6,7 @@ use crate::Error;
 pub fn from_slice_dyn(
     schema: &OwnedNamedType,
     data: &[u8],
-) -> Result<Value, Error<serde_json::Error>> {
+) -> Result<Value, Error<postcard::Error, serde_json::Error>> {
     // Matches current value type (`serde_json::Value`)'s representation
     crate::reserialize::lossy::reserialize_with_structs_and_enums_as_maps(
         schema,

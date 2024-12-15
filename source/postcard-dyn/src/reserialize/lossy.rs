@@ -6,17 +6,22 @@
 //!   instead of actual structs and enums.
 
 use postcard::de_flavors::Flavor;
-use postcard_schema::schema::owned::{
-    OwnedDataModelVariant, OwnedNamedType, OwnedNamedValue, OwnedNamedVariant,
-};
+use postcard_schema::schema::owned::OwnedNamedType;
 use serde::{
-    ser::{SerializeMap, SerializeSeq, SerializeTuple},
-    Serialize, Serializer,
+    de::{Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
 };
 
-use crate::Error;
+use crate::{reserialize, Error};
 
-use super::{reserialize, structs_and_enums::Reserialize};
+use super::{
+    expecting,
+    strategy::{self, Strategy as _},
+    Context,
+};
+
+mod enums;
+mod structs;
 
 /// Reserialize [`postcard`]-encoded data, transforming structs and enums into maps.
 ///
@@ -64,129 +69,87 @@ pub fn reserialize_with_structs_and_enums_as_maps<'de, F, S>(
     schema: &OwnedNamedType,
     deserializer: &mut postcard::Deserializer<'de, F>,
     serializer: S,
-) -> Result<S::Ok, Error<S::Error>>
+) -> Result<S::Ok, Error<postcard::Error, S::Error>>
 where
     F: Flavor<'de>,
     S: Serializer,
 {
-    reserialize(schema, deserializer, serializer, Strategy)
+    Strategy.reserialize(schema, deserializer, serializer)
 }
 
 /// Reserialize structs and enums as maps similar to [`serde_json`].
 struct Strategy;
 
-impl super::structs_and_enums::Strategy for Strategy {
-    fn serialize_unit_struct<S: Serializer>(
-        &self,
+impl strategy::Strategy for Strategy {
+    fn reserialize_unit_struct<'de, D: Deserializer<'de>, S: Serializer>(
+        _context: &Context<'_, Self>,
+        deserializer: D,
         serializer: S,
         _name: &str,
-    ) -> Result<S::Ok, S::Error> {
-        serializer.serialize_unit()
+    ) -> Result<Result<S::Ok, S::Error>, D::Error> {
+        <()>::deserialize(deserializer)?;
+        Ok(serializer.serialize_unit())
     }
 
-    fn serialize_newtype_struct<S: Serializer, T: ?Sized + Serialize>(
-        &self,
+    fn reserialize_newtype_struct<'de, D: Deserializer<'de>, S: Serializer>(
+        context: &Context<'_, Self>,
+        deserializer: D,
         serializer: S,
-        _name: &str,
-        value: &T,
-    ) -> Result<S::Ok, S::Error> {
-        value.serialize(serializer)
+        expecting: expecting::Struct<'_, expecting::data::Newtype>,
+    ) -> Result<Result<S::Ok, S::Error>, D::Error> {
+        context.reserialize_ty(expecting.data.schema, deserializer, |inner| {
+            inner.serialize(serializer)
+        })
     }
 
-    fn serialize_tuple_struct<S: Serializer>(
-        &self,
+    fn reserialize_tuple_struct<'de, D: Deserializer<'de>, S: Serializer>(
+        context: &Context<'_, Self>,
+        deserializer: D,
         serializer: S,
-        reserialize: impl Reserialize,
-        _name: &str,
-        fields: &[OwnedNamedType],
-    ) -> Result<S::Ok, S::Error> {
-        let mut serializer = serializer.serialize_seq(Some(fields.len()))?;
-        for field in fields {
-            serializer.serialize_element(&reserialize.with_schema(field))?;
-        }
-        serializer.end()
+        expecting: expecting::Struct<'_, expecting::data::Tuple<'_>>,
+    ) -> Result<Result<S::Ok, S::Error>, D::Error> {
+        deserializer.deserialize_tuple(
+            expecting.data.elements.len(),
+            reserialize::tuple::Visitor {
+                context,
+                serializer,
+                fields: expecting.data.elements,
+                reserializer: expecting::Tuple,
+            },
+        )
     }
 
-    fn serialize_struct<S: Serializer>(
-        &self,
+    fn reserialize_struct<'de, D: Deserializer<'de>, S: Serializer>(
+        context: &Context<'_, Self>,
+        deserializer: D,
         serializer: S,
-        reserialize: impl Reserialize,
-        _name: &str,
-        fields: &[OwnedNamedValue],
-    ) -> Result<S::Ok, S::Error> {
-        let mut serializer = serializer.serialize_map(Some(fields.len()))?;
-        for field in fields {
-            serializer.serialize_entry(&field.name, &reserialize.with_schema(&field.ty))?;
-        }
-        serializer.end()
+        expecting: expecting::Struct<'_, expecting::data::Struct<'_>>,
+    ) -> Result<Result<S::Ok, S::Error>, D::Error> {
+        deserializer.deserialize_tuple(
+            expecting.data.fields.len(),
+            reserialize::tuple::Visitor {
+                context,
+                serializer,
+                fields: expecting.data.fields.iter().map(|f| &f.ty),
+                reserializer: structs::ReserializeStructAsMap { expecting },
+            },
+        )
     }
 
-    fn serialize_enum<S: Serializer>(
-        &self,
+    fn reserialize_enum<'de, D: Deserializer<'de>, S: Serializer>(
+        context: &Context<'_, Self>,
+        deserializer: D,
         serializer: S,
-        reserialize: impl Reserialize,
-        _name: &str,
-        _variant_index: u32,
-        variant: &OwnedNamedVariant,
-    ) -> Result<S::Ok, S::Error> {
-        struct ReserializeTuple<'a, Reserialize> {
-            reserialize: Reserialize,
-            elements: &'a [OwnedNamedType],
-        }
-        impl<R: Reserialize> Serialize for ReserializeTuple<'_, R> {
-            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                let mut serializer = serializer.serialize_tuple(self.elements.len())?;
-                for element in self.elements {
-                    serializer.serialize_element(&self.reserialize.with_schema(element))?;
-                }
-                serializer.end()
-            }
-        }
-
-        struct ReserializeFields<'a, Reserialize> {
-            reserialize: Reserialize,
-            fields: &'a [OwnedNamedValue],
-        }
-        impl<R: Reserialize> Serialize for ReserializeFields<'_, R> {
-            fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-                let mut serializer = serializer.serialize_map(Some(self.fields.len()))?;
-                for field in self.fields {
-                    serializer
-                        .serialize_entry(&field.name, &self.reserialize.with_schema(&field.ty))?;
-                }
-                serializer.end()
-            }
-        }
-
-        match &variant.ty {
-            OwnedDataModelVariant::UnitVariant => serializer.serialize_str(&variant.name),
-            OwnedDataModelVariant::NewtypeVariant(inner) => {
-                let mut serializer = serializer.serialize_map(Some(1))?;
-                serializer.serialize_entry(&variant.name, &reserialize.with_schema(inner))?;
-                serializer.end()
-            }
-            OwnedDataModelVariant::TupleVariant(fields) => {
-                let mut serializer = serializer.serialize_map(Some(1))?;
-                serializer.serialize_entry(
-                    &variant.name,
-                    &ReserializeTuple {
-                        reserialize,
-                        elements: fields,
-                    },
-                )?;
-                serializer.end()
-            }
-            OwnedDataModelVariant::StructVariant(fields) => {
-                let mut serializer = serializer.serialize_map(Some(1))?;
-                serializer.serialize_entry(
-                    &variant.name,
-                    &ReserializeFields {
-                        reserialize,
-                        fields,
-                    },
-                )?;
-                serializer.end()
-            }
-        }
+        expecting: expecting::Enum<'_, '_>,
+    ) -> Result<Result<S::Ok, S::Error>, D::Error> {
+        // Postcard encodes enums as (index, value)
+        deserializer.deserialize_tuple(
+            2,
+            enums::Visitor {
+                serializer,
+                context,
+                expecting,
+            },
+        )
     }
 }

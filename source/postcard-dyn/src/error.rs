@@ -2,12 +2,12 @@ use core::fmt::{self, Display};
 
 /// Errors encountered by `postcard-dyn`
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error<SerializeError> {
-    Deserialize(postcard::Error),
+pub enum Error<DeserializeError, SerializeError> {
+    Deserialize(DeserializeError),
     Serialize(SerializeError),
 }
 
-impl<SerializeError: Display> Display for Error<SerializeError> {
+impl<D: Display, S: Display> Display for Error<D, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Deserialize(err) => Display::fmt(err, f),
@@ -16,7 +16,7 @@ impl<SerializeError: Display> Display for Error<SerializeError> {
     }
 }
 
-impl<SerializeError: core::error::Error> core::error::Error for Error<SerializeError> {
+impl<D: core::error::Error, S: core::error::Error> core::error::Error for Error<D, S> {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Self::Deserialize(err) => err.source(),
