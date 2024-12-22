@@ -219,7 +219,7 @@ fn std_eio_loopback() {
     use postcard::from_eio;
     use postcard::to_eio;
 
-    fn test_io<'a, 'de, T>(data: T, ser_rep: &'a [u8])
+    fn test_io<T>(data: T, ser_rep: &[u8])
     where
         T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
     {

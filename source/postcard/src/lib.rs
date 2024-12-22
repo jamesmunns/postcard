@@ -1,6 +1,6 @@
 #![cfg_attr(not(any(test, feature = "use-std")), no_std)]
 #![warn(missing_docs)]
-#![cfg_attr(not(doctest), doc = include_str!("../../../README.md"))]
+#![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod accumulator;
@@ -16,10 +16,6 @@ mod varint;
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
 
-/// The schema types and macros.
-#[cfg(feature = "experimental-derive")]
-pub(crate) mod schema;
-
 /// # Experimental Postcard Features
 ///
 /// Items inside this module require various feature flags, and are not
@@ -28,10 +24,9 @@ pub(crate) mod schema;
 ///
 /// ## Derive
 ///
-/// The `experimental-derive` feature enables two experimental features:
+/// The `experimental-derive` feature enables one experimental feature:
 ///
 /// * Max size calculation
-/// * Message schema generation
 ///
 /// ### Max Size Calculation
 ///
@@ -50,16 +45,7 @@ pub(crate) mod schema;
 ///
 /// ### Message Schema Generation
 ///
-/// This feature enables the generation of a schema of a given message at compile
-/// time. At the moment, this is only exposed as a [`NamedType`](crate::experimental::schema::NamedType)
-/// which is a recursive data structure describing the schema. In the future, it is planned
-/// to provide formatting functions that emit this as a human or machine readable schema.
-///
-/// NOTE: This only covers the schema of "plain" flavored messages, e.g. not with COBS
-/// or any other Flavors applied. The format of these flavors must be calculated
-/// separately.
-///
-/// Please report any missing types, or any incorrectly calculated schemas.
+/// This now lives in the `postcard-schema` crate.
 pub mod experimental {
     /// Compile time max-serialization size calculation
     #[cfg(feature = "experimental-derive")]
@@ -72,16 +58,6 @@ pub mod experimental {
     }
 
     pub use crate::ser::serialized_size;
-
-    /// Compile time Schema generation
-    #[cfg(feature = "experimental-derive")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "experimental-derive")))]
-    pub mod schema {
-        // NOTE: This is the trait...
-        pub use crate::schema::{NamedType, NamedValue, NamedVariant, Schema, SdmTy, Varint};
-        // NOTE: ...and this is the derive macro
-        pub use postcard_derive::Schema;
-    }
 }
 
 pub use de::deserializer::Deserializer;

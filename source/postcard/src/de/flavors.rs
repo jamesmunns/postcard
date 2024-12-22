@@ -189,7 +189,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
-/// Support for [std::io] or `embedded-io` traits
+/// Support for [`std::io`] or `embedded-io` traits
 #[cfg(any(
     feature = "embedded-io-04",
     feature = "embedded-io-06",
@@ -248,7 +248,7 @@ pub mod io {
         use super::SlidingBuffer;
         use crate::{Error, Result};
 
-        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [Flavor] trait
+        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [`Flavor`] trait
         pub struct EIOReader<'de, T>
         where
             T: crate::eio::Read,
@@ -261,7 +261,10 @@ pub mod io {
         where
             T: crate::eio::Read,
         {
-            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+            /// Create a new [`EIOReader`] from a reader and a buffer.
+            ///
+            /// `buff` must have enough space to hold all data read during the deserialisation.
+            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
                     buff: SlidingBuffer::new(buff),
@@ -307,7 +310,7 @@ pub mod io {
         }
     }
 
-    /// Support for [std::io] traits
+    /// Support for [`std::io`] traits
     #[allow(clippy::module_inception)]
     #[cfg(feature = "use-std")]
     pub mod io {
@@ -315,7 +318,7 @@ pub mod io {
         use super::SlidingBuffer;
         use crate::{Error, Result};
 
-        /// Wrapper over a [std::io::Read] and a sliding buffer to implement the [Flavor] trait
+        /// Wrapper over a [`std::io::Read`] and a sliding buffer to implement the [Flavor] trait
         pub struct IOReader<'de, T>
         where
             T: std::io::Read,
@@ -328,7 +331,10 @@ pub mod io {
         where
             T: std::io::Read,
         {
-            pub(crate) fn new(reader: T, buff: &'de mut [u8]) -> Self {
+            /// Create a new [`IOReader`] from a reader and a buffer.
+            ///
+            /// `buff` must have enough space to hold all data read during the deserialisation.
+            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
                 Self {
                     reader,
                     buff: SlidingBuffer::new(buff),
@@ -380,11 +386,11 @@ pub mod io {
 ////////////////////////////////////////
 
 /// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
-/// the serialized data. The flavor will check the CRC assuming that it has been appended to the bytes.
+/// the serialized data.
 ///
+/// The flavor will check the CRC assuming that it has been appended to the bytes.
 /// CRCs are used for error detection when reading data back.
-///
-/// The `crc` feature requires enabling to use this module.
+/// Requires the `crc` feature.
 ///
 /// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
 #[cfg(feature = "use-crc")]

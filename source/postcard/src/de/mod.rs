@@ -18,8 +18,9 @@ where
     Ok(t)
 }
 
-/// Deserialize a message of type `T` from a cobs-encoded byte slice. The
-/// unused portion (if any) of the byte slice is not returned.
+/// Deserialize a message of type `T` from a cobs-encoded byte slice.
+///
+/// The unused portion (if any) of the byte slice is not returned.
 /// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<T>
@@ -30,8 +31,9 @@ where
     from_bytes::<T>(&s[..sz])
 }
 
-/// Deserialize a message of type `T` from a cobs-encoded byte slice. The
-/// unused portion (if any) of the byte slice is returned for further usage.
+/// Deserialize a message of type `T` from a cobs-encoded byte slice.
+///
+/// The unused portion (if any) of the byte slice is returned for further usage.
 /// The used portion of the input slice is modified during deserialization (even if an error is returned).
 /// Therefore, if this is not desired, pass a clone of the original slice.
 pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
@@ -80,7 +82,7 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a [std::io::Read].
+/// Deserialize a message of type `T` from a [`std::io::Read`].
 #[cfg(feature = "use-std")]
 pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
@@ -383,7 +385,7 @@ mod test_heapless {
         bytes: &'a [u8],
     }
 
-    impl<'a> Serialize for ByteSliceStruct<'a> {
+    impl Serialize for ByteSliceStruct<'_> {
         fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -427,7 +429,7 @@ mod test_heapless {
         let x = ByteSliceStruct { bytes: &[0u8; 32] };
         let output: Vec<u8, 128> = to_vec(&x).unwrap();
         assert_eq!(output.len(), 33);
-        let out: ByteSliceStruct = from_bytes(output.deref()).unwrap();
+        let out: ByteSliceStruct<'_> = from_bytes(output.deref()).unwrap();
         assert_eq!(out, ByteSliceStruct { bytes: &[0u8; 32] });
     }
 
@@ -488,7 +490,7 @@ mod test_heapless {
             output.deref()
         );
 
-        let out: RefStruct = from_bytes(output.deref()).unwrap();
+        let out: RefStruct<'_> = from_bytes(output.deref()).unwrap();
         assert_eq!(
             out,
             RefStruct {
@@ -548,7 +550,7 @@ mod test_heapless {
 
         let mut encode_buf = [0u8; 32];
         let sz = cobs::encode(output.deref(), &mut encode_buf);
-        let out = from_bytes_cobs::<RefStruct>(&mut encode_buf[..sz]).unwrap();
+        let out = from_bytes_cobs::<RefStruct<'_>>(&mut encode_buf[..sz]).unwrap();
 
         assert_eq!(input, out);
     }
