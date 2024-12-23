@@ -1,28 +1,28 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
-    parse_macro_input, parse_quote, spanned::Spanned, Data, DeriveInput, Fields, GenericParam,
-    Generics, Path,
+    parse_quote, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Fields, GenericParam,
+    Generics, Path, Token,
 };
 
-pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(item as DeriveInput);
-
+pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     let span = input.span();
     let name = &input.ident;
 
-    let generator = match Generator::new(&input) {
-        Ok(generator) => generator,
-        Err(err) => return err.into_compile_error().into(),
-    };
+    let mut generator = Generator::new(&input)?;
 
-    // Add a bound `T: Schema` to every type parameter T.
-    let generics = generator.add_trait_bounds(input.generics);
+    // Add a bound `T: Schema` to every type parameter T unless overridden by `#[postcard(bound = "...")]`
+    let generics = match generator.bound.take() {
+        Some(bounds) => {
+            let mut generics = input.generics;
+            generics.make_where_clause().predicates.extend(bounds);
+            generics
+        }
+        None => generator.add_trait_bounds(input.generics),
+    };
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let ty = generator
-        .generate_type(&input.data, span, name.to_string())
-        .unwrap_or_else(syn::Error::into_compile_error);
+    let ty = generator.generate_type(&input.data, span, name.to_string())?;
 
     let postcard_schema = &generator.postcard_schema;
     let expanded = quote! {
@@ -31,17 +31,19 @@ pub fn do_derive_schema(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
         }
     };
 
-    expanded.into()
+    Ok(expanded)
 }
 
 struct Generator {
     postcard_schema: Path,
+    bound: Option<Punctuated<syn::WherePredicate, Token![,]>>,
 }
 
 impl Generator {
     fn new(input: &DeriveInput) -> syn::Result<Self> {
         let mut generator = Self {
             postcard_schema: parse_quote!(::postcard_schema),
+            bound: None,
         };
         for attr in &input.attrs {
             if attr.path().is_ident("postcard") {
@@ -49,6 +51,19 @@ impl Generator {
                     // #[postcard(crate = path::to::postcard)]
                     if meta.path.is_ident("crate") {
                         generator.postcard_schema = meta.value()?.parse()?;
+                        return Ok(());
+                    }
+
+                    // #[postcard(bound = "T: Schema")]
+                    if meta.path.is_ident("bound") {
+                        let bound = meta.value()?.parse::<syn::LitStr>()?;
+                        let bound = bound.parse_with(
+                            Punctuated::<syn::WherePredicate, Token![,]>::parse_terminated,
+                        )?;
+                        if generator.bound.is_some() {
+                            return Err(meta.error("duplicate #[postcard(bound = \"...\")]"));
+                        }
+                        generator.bound = Some(bound);
                         return Ok(());
                     }
 
@@ -169,7 +184,7 @@ impl Generator {
         }
     }
 
-    /// Add a bound `T: MaxSize` to every type parameter T.
+    /// Add a bound `T: Schema` to every type parameter T.
     fn add_trait_bounds(&self, mut generics: Generics) -> Generics {
         let postcard_schema = &self.postcard_schema;
         for param in &mut generics.params {
