@@ -39,6 +39,22 @@ pub mod schema;
 ///     y: i32,
 /// }
 /// ```
+///
+/// ## `#[postcard(bound = ...)]`
+///
+/// The `#[postcard(bound = ...)]` attribute can be used to overwrite the default bounds when
+/// deriving [`Schema`]. The default bounds are `T: Schema` for each type parameter `T`.
+///
+/// ```
+/// # use postcard_schema::Schema;
+///
+/// #[derive(Schema)]
+/// #[postcard(bound = "")]
+/// struct Foo<F: Bar, T: Schema>(F::Wrap<T>);
+/// trait Bar {
+///     type Wrap<T: Schema>: Schema;
+/// }
+/// ```
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;
 
