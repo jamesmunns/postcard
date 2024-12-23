@@ -47,13 +47,20 @@ pub mod schema;
 ///
 /// ```
 /// # use postcard_schema::Schema;
-///
 /// #[derive(Schema)]
 /// #[postcard(bound = "")]
 /// struct Foo<F: Bar, T: Schema>(F::Wrap<T>);
+///
 /// trait Bar {
 ///     type Wrap<T: Schema>: Schema;
 /// }
+///
+/// struct NoSchema;
+/// impl Bar for NoSchema {
+///     type Wrap<T: Schema> = Option<T>;
+/// }
+///
+/// Foo::<NoSchema, u8>::SCHEMA;
 /// ```
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;
