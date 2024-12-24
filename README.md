@@ -129,6 +129,24 @@ postcard = "1.0.0"
 serde = { version = "1.0.*", default-features = false }
 ```
 
+## Unsupported serde attributes
+
+In the case `serde` attributes are used with `postcard`, the serialization and deserialization
+process should be tested extensively as multiple attributes can cause problems.
+
+> See the [tracking issue](https://github.com/jamesmunns/postcard/issues/125)
+
+Some serde attributes break serialization/deserialization like:
+
+- `serde(flatten)`
+- `serde(skip_serializing_if($COND))`
+
+Some attributes can cause silent issues:
+
+- `serde(skip)` Can break deserialization. If used for enum variants, make sure that
+the skipped fields are the last variants, otherwise `postcard` will attempt to deserialize
+based on an offsetted discriminant, causing failure, or silent mismatch on C-like enums.
+
 ## License
 
 Licensed under either of
