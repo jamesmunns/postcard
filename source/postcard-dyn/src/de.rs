@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use postcard_schema::schema::owned::{OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType};
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
 
 use crate::de::varint::de_zig_zag_i16;
@@ -30,12 +30,12 @@ impl<T> GetExt for Option<T> {
     }
 }
 
-pub fn from_slice_dyn(schema: &OwnedNamedType, data: &[u8]) -> Result<Value, Error> {
-    let (val, _remain) = de_named_type(&schema.ty, data)?;
+pub fn from_slice_dyn(schema: &OwnedDataModelType, data: &[u8]) -> Result<Value, Error> {
+    let (val, _remain) = deserialize(schema, data)?;
     Ok(val)
 }
 
-fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'a [u8]), Error> {
+fn deserialize<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'a [u8]), Error> {
     match ty {
         OwnedDataModelType::Bool => {
             let (one, rest) = data.take_one()?;
@@ -156,46 +156,57 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
             let val = Value::Array(vvec);
             Ok((val, rest))
         }
-        OwnedDataModelType::Option(nt) => {
+        OwnedDataModelType::Option(inner) => {
             let (val, rest) = data.take_one()?;
             match val {
                 0 => return Ok((Value::Null, rest)),
                 1 => {}
                 _ => return Err(Error::SchemaMismatch),
             }
-            de_named_type(&nt.ty, rest)
+            deserialize(inner, rest)
         }
-        OwnedDataModelType::Unit | OwnedDataModelType::UnitStruct => {
+        OwnedDataModelType::Unit
+        | OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Unit,
+        } => {
             // TODO This is PROBABLY wrong, as Some(()) will be coalesced into the same
             // value as None. Fix this when we have our own Value
             Ok((Value::Null, data))
         }
-        OwnedDataModelType::NewtypeStruct(nt) => de_named_type(&nt.ty, data),
-        OwnedDataModelType::Seq(nt) => {
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Newtype(ty),
+        } => deserialize(ty, data),
+        OwnedDataModelType::Seq(ty) => {
             let (val, mut rest) = try_take_varint_usize(data)?;
             let mut vec = vec![];
             for _ in 0..val {
-                let (v, irest) = de_named_type(&nt.ty, rest)?;
+                let (v, irest) = deserialize(ty, rest)?;
                 rest = irest;
                 vec.push(v);
             }
             Ok((Value::Array(vec), rest))
         }
-        OwnedDataModelType::Tuple(nts) | OwnedDataModelType::TupleStruct(nts) => {
-            match nts.as_slice() {
+        OwnedDataModelType::Tuple(tys)
+        | OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Tuple(tys),
+        } => {
+            match &tys[..] {
                 [] => {
                     // TODO: Not sure this is right...
                     Ok((Value::Null, data))
                 }
-                [nt] => {
+                [ty] => {
                     // Single item, NOT an array
-                    de_named_type(&nt.ty, data)
+                    deserialize(ty, data)
                 }
                 multi => {
                     let mut vec = vec![];
                     let mut rest = data;
-                    for nt in multi.iter() {
-                        let (val, irest) = de_named_type(&nt.ty, rest)?;
+                    for ty in multi.iter() {
+                        let (val, irest) = deserialize(ty, rest)?;
                         rest = irest;
                         vec.push(val);
                     }
@@ -208,7 +219,7 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedDataModelType::String {
+            if **key != OwnedDataModelType::String {
                 return Err(Error::ShouldSupportButDont);
             }
 
@@ -220,7 +231,7 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
                 let (bytes, irest) = irest.take_n(str_len)?;
                 let s = from_utf8(bytes).map_err(|_| Error::SchemaMismatch)?;
 
-                let (v, irest) = de_named_type(&val.ty, irest)?;
+                let (v, irest) = deserialize(val, irest)?;
                 rest = irest;
 
                 map.insert(s.to_string(), v);
@@ -228,43 +239,53 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
 
             Ok((Value::Object(map), rest))
         }
-        OwnedDataModelType::Struct(nvs) => {
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Struct(nvs),
+        } => {
             let mut map = Map::new();
             let mut rest = data;
             for nv in nvs.iter() {
-                let (val, irest) = de_named_type(&nv.ty.ty, rest)?;
+                let (val, irest) = deserialize(&nv.ty, rest)?;
                 rest = irest;
                 map.insert(nv.name.to_string(), val);
             }
             Ok((Value::Object(map), rest))
         }
-        OwnedDataModelType::Enum(nvars) => {
+        OwnedDataModelType::Enum {
+            name: _,
+            variants: nvars,
+        } => {
             let (variant, rest) = try_take_varint_usize(data)?;
             let schema = nvars.get(variant).right()?;
-            match &schema.ty {
-                OwnedDataModelVariant::UnitVariant => {
+            match &schema.data {
+                OwnedData::Unit => {
                     // Units become strings
                     Ok((Value::String(schema.name.to_string()), rest))
                 }
-                OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
+                OwnedData::Newtype(ty) => {
                     // everything else becomes an object with one field
-                    let (val, irest) = de_named_type(&owned_named_type.ty, rest)?;
+                    let (val, irest) = deserialize(ty, rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
                 }
-                OwnedDataModelVariant::TupleVariant(vec) => {
+                OwnedData::Tuple(vec) => {
                     // everything else becomes an object with one field
-                    let (val, irest) =
-                        de_named_type(&OwnedDataModelType::Tuple(vec.clone()), rest)?;
+                    let (val, irest) = deserialize(&OwnedDataModelType::Tuple(vec.clone()), rest)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))
                 }
-                OwnedDataModelVariant::StructVariant(vec) => {
+                OwnedData::Struct(vec) => {
                     // everything else becomes an object with one field
-                    let (val, irest) =
-                        de_named_type(&OwnedDataModelType::Struct(vec.clone()), rest)?;
+                    let (val, irest) = deserialize(
+                        &OwnedDataModelType::Struct {
+                            name: schema.name.clone(),
+                            data: OwnedData::Struct(vec.clone()),
+                        },
+                        rest,
+                    )?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Ok((Value::Object(map), irest))

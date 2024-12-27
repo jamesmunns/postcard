@@ -1,32 +1,8 @@
 use postcard_schema::{
-    schema::{
-        owned::OwnedNamedType, DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant,
-    },
+    schema::{owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant},
     Schema,
 };
 use std::path::PathBuf;
-
-const U8_SCHEMA: NamedType = NamedType {
-    name: "u8",
-    ty: &DataModelType::U8,
-};
-const U32_SCHEMA: NamedType = NamedType {
-    name: "u32",
-    ty: &DataModelType::U32,
-};
-const U64_SCHEMA: NamedType = NamedType {
-    name: "u64",
-    ty: &DataModelType::U64,
-};
-
-const I16_SCHEMA: NamedType = NamedType {
-    name: "i16",
-    ty: &DataModelType::I16,
-};
-const I32_SCHEMA: NamedType = NamedType {
-    name: "i32",
-    ty: &DataModelType::I32,
-};
 
 #[allow(unused)]
 #[derive(Schema)]
@@ -78,45 +54,39 @@ mod bound {
 #[test]
 fn test_enum_serialize() {
     assert_eq!(
-        &NamedType {
+        &DataModelType::Enum {
             name: "Inner",
-            ty: &DataModelType::Enum(&[
-                &NamedVariant {
+            variants: &[
+                &Variant {
                     name: "Alpha",
-                    ty: &DataModelVariant::UnitVariant
+                    data: Data::Unit
                 },
-                &NamedVariant {
+                &Variant {
                     name: "Beta",
-                    ty: &DataModelVariant::UnitVariant
+                    data: Data::Unit
                 },
-                &NamedVariant {
+                &Variant {
                     name: "Gamma",
-                    ty: &DataModelVariant::UnitVariant
+                    data: Data::Unit
                 },
-                &NamedVariant {
+                &Variant {
                     name: "Delta",
-                    ty: &DataModelVariant::TupleVariant(&[&I32_SCHEMA, &I16_SCHEMA,])
+                    data: Data::Tuple(&[i32::SCHEMA, i16::SCHEMA,])
                 },
-                &NamedVariant {
+                &Variant {
                     name: "Epsilon",
-                    ty: &DataModelVariant::StructVariant(&[
-                        &NamedValue {
+                    data: Data::Struct(&[
+                        &NamedField {
                             name: "zeta",
-                            ty: &NamedType {
-                                name: "f32",
-                                ty: &DataModelType::F32
-                            },
+                            ty: f32::SCHEMA,
                         },
-                        &NamedValue {
+                        &NamedField {
                             name: "eta",
-                            ty: &NamedType {
-                                name: "bool",
-                                ty: &DataModelType::Bool
-                            },
+                            ty: bool::SCHEMA,
                         }
                     ]),
                 }
-            ]),
+            ],
         },
         Inner::SCHEMA
     );
@@ -124,45 +94,34 @@ fn test_enum_serialize() {
 
 #[test]
 fn test_struct_serialize() {
-    const TEN_BYTES_SCHEMA: &[&NamedType] = &[&U8_SCHEMA; 10];
-
     assert_eq!(
         Outer::SCHEMA,
-        &NamedType {
+        &DataModelType::Struct {
             name: "Outer",
-            ty: &DataModelType::Struct(&[
-                &NamedValue {
+            data: Data::Struct(&[
+                &NamedField {
                     name: "a",
-                    ty: &U32_SCHEMA
+                    ty: u32::SCHEMA
                 },
-                &NamedValue {
+                &NamedField {
                     name: "b",
-                    ty: &U64_SCHEMA
+                    ty: u64::SCHEMA
                 },
-                &NamedValue {
+                &NamedField {
                     name: "c",
-                    ty: &U8_SCHEMA
+                    ty: u8::SCHEMA
                 },
-                &NamedValue {
+                &NamedField {
                     name: "d",
                     ty: Inner::SCHEMA
                 },
-                &NamedValue {
+                &NamedField {
                     name: "e",
-                    ty: &NamedType {
-                        name: "[T; N]",
-                        ty: &DataModelType::Tuple(TEN_BYTES_SCHEMA),
-                    }
+                    ty: &DataModelType::Tuple(&[u8::SCHEMA; 10]),
                 },
-                &NamedValue {
+                &NamedField {
                     name: "f",
-                    ty: &NamedType {
-                        name: "[T]",
-                        ty: &DataModelType::Seq(&NamedType {
-                            name: "u8",
-                            ty: &DataModelType::U8
-                        })
-                    }
+                    ty: &DataModelType::Seq(u8::SCHEMA),
                 },
             ]),
         }
@@ -172,15 +131,12 @@ fn test_struct_serialize() {
 #[test]
 fn test_slice_serialize() {
     assert_eq!(
-        &NamedType {
+        &DataModelType::Struct {
             name: "Slice",
-            ty: &DataModelType::Struct(&[&NamedValue {
+            data: Data::Struct(&[&NamedField {
                 name: "x",
-                ty: &NamedType {
-                    name: "[T]",
-                    ty: &DataModelType::Seq(&U8_SCHEMA)
-                }
-            },]),
+                ty: &DataModelType::Seq(u8::SCHEMA),
+            }]),
         },
         Slice::SCHEMA
     );
@@ -189,11 +145,11 @@ fn test_slice_serialize() {
 #[test]
 fn test_bound_serialize() {
     assert_eq!(
-        &NamedType {
+        &DataModelType::Struct {
             name: "Bound",
-            ty: &DataModelType::Struct(&[&NamedValue {
+            data: Data::Struct(&[&NamedField {
                 name: "x",
-                ty: &U8_SCHEMA
+                ty: u8::SCHEMA
             }]),
         },
         Bound::<bound::Id>::SCHEMA,
@@ -230,7 +186,7 @@ struct TestStruct2<'a> {
 #[test]
 fn owned_punning() {
     let borrowed_schema = TestStruct2::SCHEMA;
-    let owned_schema: OwnedNamedType = borrowed_schema.into();
+    let owned_schema: OwnedDataModelType = borrowed_schema.into();
 
     // Check that they are the same on the wire when serialized
     let ser_borrowed_schema = postcard::to_stdvec(borrowed_schema).unwrap();
@@ -239,12 +195,12 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 268);
+    assert_eq!(ser_borrowed_schema.len(), 187);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
-        postcard::from_bytes::<OwnedNamedType>(&ser_borrowed_schema).unwrap();
-    let deser_owned_schema = postcard::from_bytes::<OwnedNamedType>(&ser_owned_schema).unwrap();
+        postcard::from_bytes::<OwnedDataModelType>(&ser_borrowed_schema).unwrap();
+    let deser_owned_schema = postcard::from_bytes::<OwnedDataModelType>(&ser_owned_schema).unwrap();
     assert_eq!(deser_borrowed_schema, deser_owned_schema);
     assert_eq!(deser_borrowed_schema, owned_schema);
     assert_eq!(deser_owned_schema, owned_schema);
@@ -269,34 +225,34 @@ enum TestEnum2 {
 fn newtype_vs_tuple() {
     assert_eq!(
         TestStruct3::SCHEMA,
-        &NamedType {
+        &DataModelType::Struct {
             name: "TestStruct3",
-            ty: &DataModelType::NewtypeStruct(u64::SCHEMA)
+            data: Data::Newtype(u64::SCHEMA)
         }
     );
 
     assert_eq!(
         TestStruct4::SCHEMA,
-        &NamedType {
+        &DataModelType::Struct {
             name: "TestStruct4",
-            ty: &DataModelType::TupleStruct(&[u64::SCHEMA, bool::SCHEMA]),
+            data: Data::Tuple(&[u64::SCHEMA, bool::SCHEMA]),
         }
     );
 
     assert_eq!(
         TestEnum2::SCHEMA,
-        &NamedType {
+        &DataModelType::Enum {
             name: "TestEnum2",
-            ty: &DataModelType::Enum(&[
-                &NamedVariant {
+            variants: &[
+                &Variant {
                     name: "Nt",
-                    ty: &DataModelVariant::NewtypeVariant(u64::SCHEMA)
+                    data: Data::Newtype(u64::SCHEMA)
                 },
-                &NamedVariant {
+                &Variant {
                     name: "Tup",
-                    ty: &DataModelVariant::TupleVariant(&[u64::SCHEMA, bool::SCHEMA])
+                    data: Data::Tuple(&[u64::SCHEMA, bool::SCHEMA])
                 },
-            ]),
+            ],
         }
     );
 }
@@ -304,7 +260,7 @@ fn newtype_vs_tuple() {
 // Formatting
 
 fn dewit<T: Schema>() -> String {
-    let schema: OwnedNamedType = T::SCHEMA.into();
+    let schema: OwnedDataModelType = T::SCHEMA.into();
     schema.to_pseudocode()
 }
 

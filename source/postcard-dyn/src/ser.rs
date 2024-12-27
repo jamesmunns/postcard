@@ -1,6 +1,6 @@
 use std::num::TryFromIntError;
 
-use postcard_schema::schema::owned::{OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType};
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
 use varint::{
     varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128,
@@ -15,10 +15,10 @@ pub enum Error {
     Unsupported,
 }
 
-pub fn to_stdvec_dyn(schema: &OwnedNamedType, value: &Value) -> Result<Vec<u8>, Error> {
+pub fn to_stdvec_dyn(schema: &OwnedDataModelType, value: &Value) -> Result<Vec<u8>, Error> {
     let mut out = vec![];
 
-    ser_named_type(&schema.ty, value, &mut out)?;
+    ser_named_type(schema, value, &mut out)?;
 
     Ok(out)
 }
@@ -190,20 +190,26 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 out.push(val);
             }
         }
-        OwnedDataModelType::Option(nt) => {
+        OwnedDataModelType::Option(ty) => {
             if value.is_null() {
                 out.push(0x00);
             } else {
                 out.push(0x01);
-                ser_named_type(&nt.ty, value, out)?;
+                ser_named_type(ty, value, out)?;
             }
         }
         OwnedDataModelType::Unit => {}
-        OwnedDataModelType::UnitStruct => {}
-        OwnedDataModelType::NewtypeStruct(nt) => {
-            ser_named_type(&nt.ty, value, out)?;
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Unit,
+        } => {}
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Newtype(ty),
+        } => {
+            ser_named_type(ty, value, out)?;
         }
-        OwnedDataModelType::Seq(nt) => {
+        OwnedDataModelType::Seq(ty) => {
             let val = value.as_array().right()?;
 
             // First add len
@@ -214,23 +220,27 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
 
             // Then add values
             for b in val {
-                ser_named_type(&nt.ty, b, out)?;
+                ser_named_type(ty, b, out)?;
             }
         }
-        OwnedDataModelType::Tuple(nts) | OwnedDataModelType::TupleStruct(nts) => {
+        OwnedDataModelType::Tuple(tys)
+        | OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Tuple(tys),
+        } => {
             // Tuples with arity of 1 are not arrays, but instead just a single object
-            if nts.len() == 1 {
-                return ser_named_type(&nts[0].ty, value, out);
+            if tys.len() == 1 {
+                return ser_named_type(&tys[0], value, out);
             }
 
             let val = value.as_array().right()?;
 
-            if val.len() != nts.len() {
+            if val.len() != tys.len() {
                 return Err(Error::SchemaMismatch);
             }
 
-            for (nt, val) in nts.iter().zip(val.iter()) {
-                ser_named_type(&nt.ty, val, out)?;
+            for (ty, val) in tys.iter().zip(val.iter()) {
+                ser_named_type(ty, val, out)?;
             }
         }
         OwnedDataModelType::Map { key, val } => {
@@ -238,7 +248,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedDataModelType::String {
+            if **key != OwnedDataModelType::String {
                 return Err(Error::ShouldSupportButDont);
             }
 
@@ -263,10 +273,13 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 out.extend_from_slice(k.as_bytes());
 
                 // VALUE
-                ser_named_type(&val.ty, v, out)?;
+                ser_named_type(val, v, out)?;
             }
         }
-        OwnedDataModelType::Struct(nvs) => {
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Struct(nvs),
+        } => {
             let val = value.as_object().right()?;
 
             if val.len() != nvs.len() {
@@ -274,11 +287,14 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             }
 
             for field in nvs.iter() {
-                let v = val.get(&field.name).right()?;
-                ser_named_type(&field.ty.ty, v, out)?;
+                let v = val.get(field.name.as_ref()).right()?;
+                ser_named_type(&field.ty, v, out)?;
             }
         }
-        OwnedDataModelType::Enum(nvars) => {
+        OwnedDataModelType::Enum {
+            name: _,
+            variants: nvars,
+        } => {
             // This is a bit serde_json::Value specific, if we make our own value
             // type we might be able to handle this "better"
 
@@ -288,9 +304,9 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 let (idx, evar) = nvars
                     .iter()
                     .enumerate()
-                    .find(|(_i, v)| v.name == s)
+                    .find(|(_i, v)| *v.name == *s)
                     .right()?;
-                if evar.ty != OwnedDataModelVariant::UnitVariant {
+                if evar.data != OwnedData::Unit {
                     return Err(Error::SchemaMismatch);
                 }
 
@@ -307,7 +323,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 let (idx, evar) = nvars
                     .iter()
                     .enumerate()
-                    .find(|(_i, v)| &v.name == k)
+                    .find(|(_i, v)| *v.name == *k)
                     .right()?;
 
                 // cool, we found it, serialize as a varint usize
@@ -316,30 +332,30 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 out.extend_from_slice(used);
 
                 // then serialize the value
-                match &evar.ty {
-                    OwnedDataModelVariant::UnitVariant => {
+                match &evar.data {
+                    OwnedData::Unit => {
                         // Nothing to do
                     }
-                    OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
-                        ser_named_type(&owned_named_type.ty, v, out)?;
+                    OwnedData::Newtype(ty) => {
+                        ser_named_type(ty, v, out)?;
                     }
-                    OwnedDataModelVariant::TupleVariant(nts) => {
+                    OwnedData::Tuple(tys) => {
                         // Tuples with arity of 1 are not arrays, but instead just a single object
-                        if nts.len() == 1 {
-                            return ser_named_type(&nts[0].ty, v, out);
+                        if tys.len() == 1 {
+                            return ser_named_type(&tys[0], v, out);
                         }
 
                         let val = v.as_array().right()?;
 
-                        if val.len() != nts.len() {
+                        if val.len() != tys.len() {
                             return Err(Error::SchemaMismatch);
                         }
 
-                        for (nt, val) in nts.iter().zip(val.iter()) {
-                            ser_named_type(&nt.ty, val, out)?;
+                        for (ty, val) in tys.iter().zip(val.iter()) {
+                            ser_named_type(ty, val, out)?;
                         }
                     }
-                    OwnedDataModelVariant::StructVariant(nvs) => {
+                    OwnedData::Struct(nvs) => {
                         let val = v.as_object().right()?;
 
                         if val.len() != nvs.len() {
@@ -347,8 +363,8 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                         }
 
                         for field in nvs.iter() {
-                            let v = val.get(&field.name).right()?;
-                            ser_named_type(&field.ty.ty, v, out)?;
+                            let v = val.get(field.name.as_ref()).right()?;
+                            ser_named_type(&field.ty, v, out)?;
                         }
                     }
                 }

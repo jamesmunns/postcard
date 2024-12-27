@@ -1,70 +1,45 @@
 //! Owned Schema version
 
-use super::{DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant};
+use super::{Data, DataModelType, NamedField, Variant};
 use serde::{Deserialize, Serialize};
 
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(feature = "use-std")]
-use std::{boxed::Box, collections::HashSet, string::String, vec::Vec};
+use std::{boxed::Box, collections::HashSet, string::String};
 
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-use alloc::{
-    boxed::Box,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{boxed::Box, string::String};
 
 // ---
 
-/// The owned version of [`NamedType`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OwnedNamedType {
-    /// The name of this type
-    pub name: String,
-    /// The type
-    pub ty: OwnedDataModelType,
-}
-
-impl OwnedNamedType {
-    /// Convert an [OwnedNamedType] to a pseudo-Rust type format
+impl OwnedDataModelType {
+    /// Convert an `[OwnedDataModelType]` to a pseudo-Rust type format
     pub fn to_pseudocode(&self) -> String {
         let mut buf = String::new();
-        super::fmt::fmt_owned_nt_to_buf(self, &mut buf, true);
+        super::fmt::fmt_owned_dmt_to_buf(self, &mut buf, true);
         buf
     }
 
     /// Collect all types used recursively by this type
     #[cfg(feature = "use-std")]
-    pub fn all_used_types(&self) -> HashSet<OwnedNamedType> {
+    pub fn all_used_types(&self) -> HashSet<Self> {
         let mut buf = HashSet::new();
         super::fmt::discover_tys(self, &mut buf);
         buf
     }
 }
 
-impl core::fmt::Display for OwnedNamedType {
+impl core::fmt::Display for OwnedDataModelType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let pc = self.to_pseudocode();
         f.write_str(&pc)
     }
 }
 
-impl From<&NamedType> for OwnedNamedType {
-    fn from(value: &NamedType) -> Self {
-        Self {
-            name: value.name.to_string(),
-            ty: value.ty.into(),
-        }
-    }
-}
-
-impl crate::Schema for OwnedNamedType {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "OwnedNamedType",
-        ty: &DataModelType::Schema,
-    };
+impl crate::Schema for OwnedDataModelType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
 }
 
 // ---
@@ -127,41 +102,42 @@ pub enum OwnedDataModelType {
     ByteArray,
 
     /// The `Option<T>` Serde Data Model Type
-    Option(Box<OwnedNamedType>),
+    Option(Box<Self>),
 
     /// The `()` Serde Data Model Type
     Unit,
 
-    /// The "unit struct" Serde Data Model Type
-    UnitStruct,
-
-    /// The "newtype struct" Serde Data Model Type
-    NewtypeStruct(Box<OwnedNamedType>),
-
     /// The "Sequence" Serde Data Model Type
-    Seq(Box<OwnedNamedType>),
+    Seq(Box<Self>),
 
     /// The "Tuple" Serde Data Model Type
-    Tuple(Vec<OwnedNamedType>),
-
-    /// The "Tuple Struct" Serde Data Model Type
-    TupleStruct(Vec<OwnedNamedType>),
+    Tuple(Box<[Self]>),
 
     /// The "Map" Serde Data Model Type
     Map {
         /// The map "Key" type
-        key: Box<OwnedNamedType>,
+        key: Box<Self>,
         /// The map "Value" type
-        val: Box<OwnedNamedType>,
+        val: Box<Self>,
     },
 
-    /// The "Struct" Serde Data Model Type
-    Struct(Vec<OwnedNamedValue>),
+    /// One of the struct Serde Data Model types
+    Struct {
+        /// The name of this struct
+        name: Box<str>,
+        /// The data contained in this struct
+        data: OwnedData,
+    },
 
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
-    Enum(Vec<OwnedNamedVariant>),
+    Enum {
+        /// The name of this struct
+        name: Box<str>,
+        /// The variants contained in this enum
+        variants: Box<[OwnedVariant]>,
+    },
 
-    /// A NamedType/OwnedNamedType
+    /// A [`DataModelType`]/[`OwnedDataModelType`]
     Schema,
 }
 
@@ -188,19 +164,20 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::ByteArray => Self::ByteArray,
             DataModelType::Option(o) => Self::Option(Box::new((*o).into())),
             DataModelType::Unit => Self::Unit,
-            DataModelType::UnitStruct => Self::UnitStruct,
-            DataModelType::NewtypeStruct(nts) => Self::NewtypeStruct(Box::new((*nts).into())),
             DataModelType::Seq(s) => Self::Seq(Box::new((*s).into())),
             DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
-            DataModelType::TupleStruct(ts) => {
-                Self::TupleStruct(ts.iter().map(|i| (*i).into()).collect())
-            }
             DataModelType::Map { key, val } => Self::Map {
                 key: Box::new((*key).into()),
                 val: Box::new((*val).into()),
             },
-            DataModelType::Struct(s) => Self::Struct(s.iter().map(|i| (*i).into()).collect()),
-            DataModelType::Enum(e) => Self::Enum(e.iter().map(|i| (*i).into()).collect()),
+            DataModelType::Struct { name, data } => Self::Struct {
+                name: (*name).into(),
+                data: data.into(),
+            },
+            DataModelType::Enum { name, variants } => Self::Enum {
+                name: (*name).into(),
+                variants: variants.iter().map(|i| (*i).into()).collect(),
+            },
             DataModelType::Schema => Self::Schema,
         }
     }
@@ -208,49 +185,48 @@ impl From<&DataModelType> for OwnedDataModelType {
 
 // ---
 
-/// The owned version of [`DataModelVariant`]
+/// The owned version of [`Data`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum OwnedDataModelVariant {
-    /// The "unit variant" Serde Data Model Type
-    UnitVariant,
-    /// The "newtype variant" Serde Data Model Type
-    NewtypeVariant(Box<OwnedNamedType>),
-    /// The "Tuple Variant" Serde Data Model Type
-    TupleVariant(Vec<OwnedNamedType>),
-    /// The "Struct Variant" Serde Data Model Type
-    StructVariant(Vec<OwnedNamedValue>),
+pub enum OwnedData {
+    /// The "Unit Struct" or "Unit Variant" Serde Data Model Type
+    Unit,
+
+    /// The "Newtype Struct" or "Newtype Variant" Serde Data Model Type
+    Newtype(Box<OwnedDataModelType>),
+
+    /// The "Tuple Struct" or "Tuple Variant" Serde Data Model Type
+    Tuple(Box<[OwnedDataModelType]>),
+
+    /// The "Struct" or "Struct Variant" Serde Data Model Type
+    Struct(Box<[OwnedNamedField]>),
 }
 
-impl From<&DataModelVariant> for OwnedDataModelVariant {
-    fn from(value: &DataModelVariant) -> Self {
-        match value {
-            DataModelVariant::UnitVariant => Self::UnitVariant,
-            DataModelVariant::NewtypeVariant(d) => Self::NewtypeVariant(Box::new((*d).into())),
-            DataModelVariant::TupleVariant(d) => {
-                Self::TupleVariant(d.iter().map(|i| (*i).into()).collect())
-            }
-            DataModelVariant::StructVariant(d) => {
-                Self::StructVariant(d.iter().map(|i| (*i).into()).collect())
-            }
+impl From<&Data> for OwnedData {
+    fn from(data: &Data) -> Self {
+        match data {
+            Data::Unit => Self::Unit,
+            Data::Newtype(d) => Self::Newtype(Box::new((*d).into())),
+            Data::Tuple(d) => Self::Tuple(d.iter().map(|i| (*i).into()).collect()),
+            Data::Struct(d) => Self::Struct(d.iter().map(|i| (*i).into()).collect()),
         }
     }
 }
 
 // ---
 
-/// The owned version of [`NamedValue`]
+/// The owned version of [`NamedField`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OwnedNamedValue {
+pub struct OwnedNamedField {
     /// The name of this value
-    pub name: String,
+    pub name: Box<str>,
     /// The type of this value
-    pub ty: OwnedNamedType,
+    pub ty: OwnedDataModelType,
 }
 
-impl From<&NamedValue> for OwnedNamedValue {
-    fn from(value: &NamedValue) -> Self {
+impl From<&NamedField> for OwnedNamedField {
+    fn from(value: &NamedField) -> Self {
         Self {
-            name: value.name.to_string(),
+            name: value.name.into(),
             ty: value.ty.into(),
         }
     }
@@ -258,20 +234,20 @@ impl From<&NamedValue> for OwnedNamedValue {
 
 // ---
 
-/// The owned version of [`NamedVariant`]
+/// The owned version of [`Variant`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct OwnedNamedVariant {
+pub struct OwnedVariant {
     /// The name of this variant
-    pub name: String,
-    /// The type of this variant
-    pub ty: OwnedDataModelVariant,
+    pub name: Box<str>,
+    /// The data contained in this variant
+    pub data: OwnedData,
 }
 
-impl From<&NamedVariant> for OwnedNamedVariant {
-    fn from(value: &NamedVariant) -> Self {
+impl From<&Variant> for OwnedVariant {
+    fn from(value: &Variant) -> Self {
         Self {
-            name: value.name.to_string(),
-            ty: value.ty.into(),
+            name: value.name.into(),
+            data: (&value.data).into(),
         }
     }
 }
