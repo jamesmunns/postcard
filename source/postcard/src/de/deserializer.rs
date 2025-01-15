@@ -326,9 +326,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.flavor.try_take_n(4)?;
-        let mut buf = [0u8; 4];
-        buf.copy_from_slice(bytes);
+        let buf = self.flavor.try_take_n_const::<4>()?;
         visitor.visit_f32(f32::from_bits(u32::from_le_bytes(buf)))
     }
 
@@ -337,9 +335,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.flavor.try_take_n(8)?;
-        let mut buf = [0u8; 8];
-        buf.copy_from_slice(bytes);
+        let buf = self.flavor.try_take_n_const::<8>()?;
         visitor.visit_f64(f64::from_bits(u64::from_le_bytes(buf)))
     }
 
@@ -352,7 +348,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         if sz > 4 {
             return Err(Error::DeserializeBadChar);
         }
-        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
+        let bytes: &[u8] = self.flavor.try_take_n_temp(sz)?;
         // we pass the character through string conversion because
         // this handles transforming the array of code units to a
         // codepoint. we can't use char::from_u32() because it expects
@@ -371,7 +367,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n_borrowed(sz)?;
         let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
         visitor.visit_borrowed_str(str_sl)
@@ -382,7 +378,11 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_str(visitor)
+        let sz = self.try_take_varint_usize()?;
+        let bytes: &[u8] = self.flavor.try_take_n_temp(sz)?;
+        let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
+
+        visitor.visit_str(str_sl)
     }
 
     #[inline]
@@ -391,7 +391,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n_borrowed(sz)?;
         visitor.visit_borrowed_bytes(bytes)
     }
 
@@ -400,7 +400,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        self.deserialize_bytes(visitor)
+        let sz = self.try_take_varint_usize()?;
+        let bytes: &[u8] = self.flavor.try_take_n_temp(sz)?;
+        visitor.visit_bytes(bytes)
     }
 
     #[inline]
