@@ -4,6 +4,7 @@ use postcard_schema::{
     },
     Schema,
 };
+use std::path::PathBuf;
 
 const U8_SCHEMA: NamedType = NamedType {
     name: "u8",
@@ -391,6 +392,7 @@ fn smoke() {
         ),
         (dewit::<Option<Classic>>, "Option<Classic>"),
         (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
+        (dewit::<PathBuf>, "struct PathBuf"),
     ];
     for (f, s) in tests {
         assert_eq!(f().as_str(), *s);

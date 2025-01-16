@@ -22,6 +22,14 @@ impl Schema for std::string::String {
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl Schema for std::path::PathBuf {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "PathBuf",
+        ty: &DataModelType::UnitStruct,
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "HashMap<K, V>",
