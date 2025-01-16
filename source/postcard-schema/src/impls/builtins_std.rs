@@ -21,11 +21,11 @@ impl Schema for std::string::String {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
 impl Schema for std::path::PathBuf {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "PathBuf",
-        ty: &DataModelType::UnitStruct,
+        ty: &DataModelType::String,
     };
 }
 

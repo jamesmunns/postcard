@@ -392,7 +392,7 @@ fn smoke() {
         ),
         (dewit::<Option<Classic>>, "Option<Classic>"),
         (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
-        (dewit::<PathBuf>, "struct PathBuf"),
+        (dewit::<PathBuf>, "String"),
     ];
     for (f, s) in tests {
         assert_eq!(f().as_str(), *s);
