@@ -10,7 +10,7 @@ use crate::{
 pub mod builtins_nostd;
 
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(all(not(feature = "use-std"), feature = "alloc"))))]
 pub mod builtins_alloc;
 
 #[cfg(feature = "use-std")]
