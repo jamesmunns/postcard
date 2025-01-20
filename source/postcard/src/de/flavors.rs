@@ -283,7 +283,7 @@ pub mod io {
             fn pop(&mut self) -> Result<u8> {
                 let mut val = [0; 1];
                 self.reader
-                    .read(&mut val)
+                    .read_exact(&mut val)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
                 Ok(val[0])
             }
@@ -353,7 +353,7 @@ pub mod io {
             fn pop(&mut self) -> Result<u8> {
                 let mut val = [0; 1];
                 self.reader
-                    .read(&mut val)
+                    .read_exact(&mut val)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
                 Ok(val[0])
             }
