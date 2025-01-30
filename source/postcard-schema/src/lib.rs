@@ -4,6 +4,7 @@
 //! # Postcard Schema
 
 pub mod impls;
+pub mod key;
 pub mod schema;
 
 /// Derive [`Schema`] for a struct or enum
