@@ -262,11 +262,11 @@ where
 /// use postcard::to_extend;
 /// let mut vec = Vec::new();
 ///
-/// let ser = to_extend(&true, vec).unwrap();
-/// let vec = to_extend("Hi!", ser).unwrap();
+/// to_extend(&true, &mut vec).unwrap();
+/// to_extend("Hi!", &mut vec).unwrap();
 /// assert_eq!(&vec[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-pub fn to_extend<T, W>(value: &T, writer: W) -> Result<W>
+pub fn to_extend<T, W>(value: &T, writer: &mut W) -> Result<()>
 where
     T: Serialize + ?Sized,
     W: core::iter::Extend<u8>,
