@@ -408,7 +408,33 @@ pub mod fnv1a64_owned {
 
 #[cfg(test)]
 mod test {
+    use postcard_derive::Schema;
+
     use super::fnv1a64::hash_ty_path;
+
+    #[test]
+    fn hash_stability() {
+        #![allow(dead_code)]
+
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        struct Foo {
+            a: u32,
+            b: String,
+        }
+
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        enum Bar {
+            A,
+            B(Foo),
+        }
+
+        assert_eq!(
+            hash_ty_path::<Bar>("test_path"),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+    }
 
     #[test]
     fn type_punning_good() {
