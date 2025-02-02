@@ -106,7 +106,7 @@ impl Generator {
             }
             Data::Union(_) => Err(syn::Error::new(
                 span,
-                "unions are not supported by `postcard::experimental::schema`",
+                "#[derive(Schema)] does not support unions",
             )),
         }
     }
