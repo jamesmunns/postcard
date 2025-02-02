@@ -162,7 +162,7 @@ pub mod fnv1a64 {
                 }
                 state
             }
-            DataModelType::Schema => hash_update(state, &[0xB3]),
+            DataModelType::Schema => hash_update(state, &[0xE5]),
         }
     }
 
@@ -332,7 +332,7 @@ pub mod fnv1a64_owned {
                 }
                 state
             }
-            OwnedDataModelType::Schema => hash_update(state, &[0xB3]),
+            OwnedDataModelType::Schema => hash_update(state, &[0xE5]),
         }
     }
 
