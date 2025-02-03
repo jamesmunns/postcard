@@ -65,7 +65,10 @@ pub use de::flavors as de_flavors;
 pub use de::{from_bytes, from_bytes_cobs, take_from_bytes, take_from_bytes_cobs};
 pub use error::{Error, Result};
 pub use ser::flavors as ser_flavors;
-pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice, to_slice_cobs};
+pub use ser::{
+    serialize_with_flavor, serializer::Serializer, to_extend, to_extend_ref, to_slice,
+    to_slice_cobs,
+};
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
