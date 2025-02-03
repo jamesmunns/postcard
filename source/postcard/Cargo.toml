@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "1.1.1"
+version = "1.2.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
 readme = "README.md"
@@ -25,7 +25,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 
 [dependencies.heapless]
-version = "0.7.0"
+version = "0.8.0"
 default-features = false
 features = ["serde"]
 optional = true
@@ -77,7 +77,7 @@ embedded-io-04 = ["dep:embedded-io-04"]
 embedded-io-06 = ["dep:embedded-io-06"]
 
 use-std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
+heapless-cas = ["heapless", "dep:heapless"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc", "paste"]
