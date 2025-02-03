@@ -3,7 +3,7 @@
 //! These implementations are always available
 
 use crate::{
-    schema::{DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant},
+    schema::{Data, DataModelType, NamedField, Variant},
     Schema,
 };
 use core::{
@@ -18,20 +18,14 @@ macro_rules! impl_schema {
     ($($t:ty: $sdm:expr),*) => {
         $(
             impl Schema for $t {
-                const SCHEMA: &'static NamedType = &NamedType {
-                    name: stringify!($t),
-                    ty: &$sdm,
-                };
+                const SCHEMA: &'static DataModelType = &$sdm;
             }
         )*
     };
     (tuple => [$(($($generic:ident),*)),*]) => {
         $(
             impl<$($generic: Schema),*> Schema for ($($generic,)*) {
-                const SCHEMA: &'static NamedType = &NamedType {
-                    name: stringify!(($($generic,)*)),
-                    ty: &DataModelType::Tuple(&[$($generic::SCHEMA),*]),
-                };
+                const SCHEMA: &'static DataModelType = &DataModelType::Tuple(&[$($generic::SCHEMA),*]);
             }
         )*
     };
@@ -66,53 +60,46 @@ impl_schema!(tuple => [
 ]);
 
 impl<T: Schema> Schema for Option<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Option<T>",
-        ty: &DataModelType::Option(T::SCHEMA),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::Option(T::SCHEMA);
 }
+
 impl<T: Schema, E: Schema> Schema for Result<T, E> {
-    const SCHEMA: &'static NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
         name: "Result<T, E>",
-        ty: &DataModelType::Enum(&[
-            &NamedVariant {
+        variants: &[
+            &Variant {
                 name: "Ok",
-                ty: &DataModelVariant::TupleVariant(&[T::SCHEMA]),
+                data: Data::Newtype(T::SCHEMA),
             },
-            &NamedVariant {
+            &Variant {
                 name: "Err",
-                ty: &DataModelVariant::TupleVariant(&[E::SCHEMA]),
+                data: Data::Newtype(E::SCHEMA),
             },
-        ]),
+        ],
     };
 }
 
 impl<T: Schema + ?Sized> Schema for &'_ T {
-    const SCHEMA: &'static NamedType = T::SCHEMA;
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
 impl<T: Schema> Schema for [T] {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "[T]",
-        ty: &DataModelType::Seq(T::SCHEMA),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq(T::SCHEMA);
 }
+
 impl<T: Schema, const N: usize> Schema for [T; N] {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "[T; N]",
-        ty: &DataModelType::Tuple(&[T::SCHEMA; N]),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::Tuple(&[T::SCHEMA; N]);
 }
 
 impl<T: Schema> Schema for Range<T> {
-    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
         name: "Range<T>",
-        ty: &DataModelType::Struct(&[
-            &NamedValue {
+        data: Data::Struct(&[
+            &NamedField {
                 name: "start",
                 ty: T::SCHEMA,
             },
-            &NamedValue {
+            &NamedField {
                 name: "end",
                 ty: T::SCHEMA,
             },
@@ -121,14 +108,14 @@ impl<T: Schema> Schema for Range<T> {
 }
 
 impl<T: Schema> Schema for RangeInclusive<T> {
-    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
         name: "RangeInclusive<T>",
-        ty: &DataModelType::Struct(&[
-            &NamedValue {
+        data: Data::Struct(&[
+            &NamedField {
                 name: "start",
                 ty: T::SCHEMA,
             },
-            &NamedValue {
+            &NamedField {
                 name: "end",
                 ty: T::SCHEMA,
             },
@@ -137,9 +124,9 @@ impl<T: Schema> Schema for RangeInclusive<T> {
 }
 
 impl<T: Schema> Schema for RangeFrom<T> {
-    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
         name: "RangeFrom<T>",
-        ty: &DataModelType::Struct(&[&NamedValue {
+        data: Data::Struct(&[&NamedField {
             name: "start",
             ty: T::SCHEMA,
         }]),
@@ -147,9 +134,9 @@ impl<T: Schema> Schema for RangeFrom<T> {
 }
 
 impl<T: Schema> Schema for RangeTo<T> {
-    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
         name: "RangeTo<T>",
-        ty: &DataModelType::Struct(&[&NamedValue {
+        data: Data::Struct(&[&NamedField {
             name: "end",
             ty: T::SCHEMA,
         }]),

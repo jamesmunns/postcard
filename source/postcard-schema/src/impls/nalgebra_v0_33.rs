@@ -1,9 +1,6 @@
 //! Implementations of the [`Schema`] trait for the `nalgebra` crate v0.33
 
-use crate::{
-    schema::{DataModelType, NamedType},
-    Schema,
-};
+use crate::{schema::DataModelType, Schema};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 impl<T, const R: usize, const C: usize> Schema
@@ -16,10 +13,7 @@ impl<T, const R: usize, const C: usize> Schema
 where
     T: Schema + nalgebra_v0_33::Scalar,
 {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "nalgebra::Matrix<T, R, C, ArrayStorage<T, R, C>>",
-        ty: &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C])),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C]));
 }
 
 /// Const version of the const-unstable [`<[[T; N]]>::as_flattened()`]
@@ -37,7 +31,7 @@ const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
 #[test]
 fn flattened() {
     type T = nalgebra_v0_33::SMatrix<u8, 3, 3>;
-    assert_eq!(T::SCHEMA.ty, <[u8; 9]>::SCHEMA.ty);
+    assert_eq!(T::SCHEMA, <[u8; 9]>::SCHEMA);
 }
 
 #[test]
