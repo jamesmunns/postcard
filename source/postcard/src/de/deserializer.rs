@@ -326,7 +326,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let buf = self.flavor.try_take_n_const::<4>()?;
+        let bytes = self.flavor.try_take_n_temp(4)?;
+        let mut buf = [0u8; 4];
+        buf.copy_from_slice(bytes);
         visitor.visit_f32(f32::from_bits(u32::from_le_bytes(buf)))
     }
 
@@ -335,7 +337,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let buf = self.flavor.try_take_n_const::<8>()?;
+        let bytes = self.flavor.try_take_n_temp(8)?;
+        let mut buf = [0u8; 8];
+        buf.copy_from_slice(bytes);
         visitor.visit_f64(f64::from_bits(u64::from_le_bytes(buf)))
     }
 

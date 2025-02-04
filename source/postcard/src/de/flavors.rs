@@ -122,13 +122,6 @@ pub trait Flavor<'de>: 'de {
     /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
 
-    /// Attempt to take the next `N` bytes from the serialized message.
-    ///
-    /// This variant copies the data into a fixed-size buffer.
-    fn try_take_n_const<const N: usize>(&mut self) -> Result<[u8; N]> {
-        Ok(self.try_take_n(N)?.try_into().unwrap())
-    }
-
     /// Attempt to take the next `ct` bytes from the serialized message.
     ///
     /// This variant does not guarantee that the returned value is borrowed from the input, so it
@@ -342,15 +335,6 @@ pub mod io {
             }
 
             #[inline]
-            fn try_take_n_const<const N: usize>(&mut self) -> Result<[u8; N]> {
-                let mut buff = [0; N];
-                self.reader
-                    .read_exact(&mut buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            #[inline]
             fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
             where
                 'de: 'a,
@@ -453,15 +437,6 @@ pub mod io {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
                     .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            #[inline]
-            fn try_take_n_const<const N: usize>(&mut self) -> Result<[u8; N]> {
-                let mut buff = [0; N];
-                self.reader
-                    .read_exact(&mut buff)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
                 Ok(buff)
             }
