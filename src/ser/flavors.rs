@@ -443,7 +443,7 @@ mod tinyvec_vec {
     }
 
     impl<const B: usize> TVec<B> {
-        /// Create a new, currently empty, [heapless::Vec] to be used for storing serialized
+        /// Create a new, currently empty, [tinyvec::ArrayVec] to be used for storing serialized
         /// output data.
         pub fn new() -> Self {
             Self::default()
