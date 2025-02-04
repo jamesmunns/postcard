@@ -367,7 +367,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n_borrowed(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
         visitor.visit_borrowed_str(str_sl)
@@ -391,7 +391,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n_borrowed(sz)?;
+        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
         visitor.visit_borrowed_bytes(bytes)
     }
 

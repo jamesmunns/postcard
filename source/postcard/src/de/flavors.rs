@@ -120,13 +120,13 @@ pub trait Flavor<'de>: 'de {
     ///
     /// This variant borrows the data from the input for zero-copy deserialization. If zero-copy
     /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
-    fn try_take_n_borrowed(&mut self, ct: usize) -> Result<&'de [u8]>;
+    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
 
     /// Attempt to take the next `N` bytes from the serialized message.
     ///
     /// This variant copies the data into a fixed-size buffer.
     fn try_take_n_const<const N: usize>(&mut self) -> Result<[u8; N]> {
-        Ok(self.try_take_n_borrowed(N)?.try_into().unwrap())
+        Ok(self.try_take_n(N)?.try_into().unwrap())
     }
 
     /// Attempt to take the next `ct` bytes from the serialized message.
@@ -145,7 +145,7 @@ pub trait Flavor<'de>: 'de {
     where
         'de: 'a,
     {
-        self.try_take_n_borrowed(ct)
+        self.try_take_n(ct)
     }
 
     /// Complete the deserialization process.
@@ -198,7 +198,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 
     #[inline]
-    fn try_take_n_borrowed(&mut self, ct: usize) -> Result<&'de [u8]> {
+    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
         let remain = (self.end as usize) - (self.cursor as usize);
         if remain < ct {
             Err(Error::DeserializeUnexpectedEnd)
@@ -333,7 +333,7 @@ pub mod io {
             }
 
             #[inline]
-            fn try_take_n_borrowed(&mut self, ct: usize) -> Result<&'de [u8]> {
+            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
                     .read_exact(buff)
@@ -449,7 +449,7 @@ pub mod io {
             }
 
             #[inline]
-            fn try_take_n_borrowed(&mut self, ct: usize) -> Result<&'de [u8]> {
+            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
                     .read_exact(buff)
@@ -591,8 +591,8 @@ pub mod crc {
                         }
 
                         #[inline]
-                        fn try_take_n_borrowed(&mut self, ct: usize) -> Result<&'de [u8]> {
-                            match self.flav.try_take_n_borrowed(ct) {
+                        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+                            match self.flav.try_take_n(ct) {
                                 Ok(bytes) => {
                                     self.digest.update(bytes);
                                     Ok(bytes)
@@ -602,7 +602,7 @@ pub mod crc {
                         }
 
                         fn finalize(mut self) -> Result<Self::Remainder> {
-                            match self.flav.try_take_n_borrowed(core::mem::size_of::<$int>()) {
+                            match self.flav.try_take_n(core::mem::size_of::<$int>()) {
                                 Ok(prev_crc_bytes) => match self.flav.finalize() {
                                     Ok(remainder) => {
                                         let crc = self.digest.finalize();
