@@ -2,7 +2,7 @@
 
 [![Documentation](https://docs.rs/postcard/badge.svg)](https://docs.rs/postcard)
 
-<img align="right" src="assets/logo-512.png" alt="the postcard logo">
+<img align="right" src="assets/logo-512.png" alt="the postcard logo" width=256px>
 
 Postcard is a `#![no_std]` focused serializer and deserializer for Serde.
 
