@@ -1,7 +1,8 @@
 use core::fmt::{Display, Formatter};
+use serde::{Serialize, Deserialize};
 
 /// This is the error type used by Postcard
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
