@@ -1,5 +1,5 @@
 use core::fmt::{Display, Formatter};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// This is the error type used by Postcard
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
