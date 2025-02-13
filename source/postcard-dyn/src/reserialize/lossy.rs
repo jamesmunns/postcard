@@ -6,7 +6,7 @@
 //!   instead of actual structs and enums.
 
 use postcard::de_flavors::Flavor;
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{
     de::{Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -66,7 +66,7 @@ mod structs;
 /// # }
 /// ```
 pub fn reserialize_with_structs_and_enums_as_maps<'de, F, S>(
-    schema: &OwnedNamedType,
+    schema: &OwnedDataModelType,
     deserializer: &mut postcard::Deserializer<'de, F>,
     serializer: S,
 ) -> Result<S::Ok, Error<postcard::Error, S::Error>>

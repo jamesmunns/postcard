@@ -1,6 +1,6 @@
 use core::fmt;
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{
     de::{self, DeserializeSeed, SeqAccess},
     ser::SerializeTuple,
@@ -46,7 +46,7 @@ impl<'de, 'schema, S, Strategy, Fields, Reserializer> de::Visitor<'de>
 where
     S: Serializer,
     Strategy: super::Strategy,
-    Fields: IntoIterator<Item = &'schema OwnedNamedType, IntoIter: ExactSizeIterator>,
+    Fields: IntoIterator<Item = &'schema OwnedDataModelType, IntoIter: ExactSizeIterator>,
     Reserializer: self::Reserializer<S>,
 {
     type Value = Result<S::Ok, S::Error>;
@@ -86,7 +86,7 @@ where
 struct ElementSeed<'a, S, Strategy> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
-    field: &'a OwnedNamedType,
+    field: &'a OwnedDataModelType,
 }
 
 impl<'de, S, Strategy> DeserializeSeed<'de> for ElementSeed<'_, S, Strategy>

@@ -1,6 +1,6 @@
 use core::slice;
 
-use postcard_schema::schema::owned::OwnedNamedValue;
+use postcard_schema::schema::owned::OwnedNamedField;
 use serde::{
     de,
     ser::{Serialize, SerializeMap, SerializeTuple, Serializer},
@@ -34,7 +34,7 @@ impl<'a, S: Serializer> reserialize::tuple::Reserializer<S> for ReserializeStruc
 
 pub struct SerializeFieldsAsMapEntries<'a, S> {
     serializer: S,
-    fields: slice::Iter<'a, OwnedNamedValue>,
+    fields: slice::Iter<'a, OwnedNamedField>,
 }
 
 impl<S: SerializeMap> SerializeTuple for SerializeFieldsAsMapEntries<'_, S> {

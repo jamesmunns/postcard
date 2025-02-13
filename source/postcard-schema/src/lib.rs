@@ -4,6 +4,7 @@
 //! # Postcard Schema
 
 pub mod impls;
+pub mod key;
 pub mod schema;
 
 /// Derive [`Schema`] for a struct or enum
@@ -39,6 +40,29 @@ pub mod schema;
 ///     y: i32,
 /// }
 /// ```
+///
+/// ## `#[postcard(bound = ...)]`
+///
+/// The `#[postcard(bound = ...)]` attribute can be used to overwrite the default bounds when
+/// deriving [`Schema`]. The default bounds are `T: Schema` for each type parameter `T`.
+///
+/// ```
+/// # use postcard_schema::Schema;
+/// #[derive(Schema)]
+/// #[postcard(bound = "")]
+/// struct Foo<F: Bar, T: Schema>(F::Wrap<T>);
+///
+/// trait Bar {
+///     type Wrap<T: Schema>: Schema;
+/// }
+///
+/// struct NoSchema;
+/// impl Bar for NoSchema {
+///     type Wrap<T: Schema> = Option<T>;
+/// }
+///
+/// Foo::<NoSchema, u8>::SCHEMA;
+/// ```
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;
 
@@ -46,7 +70,7 @@ pub use postcard_derive::Schema;
 pub trait Schema {
     /// A recursive data structure that describes the schema of the given
     /// type.
-    const SCHEMA: &'static schema::NamedType;
+    const SCHEMA: &'static schema::DataModelType;
 }
 
 #[cfg(test)]
@@ -65,14 +89,14 @@ mod tests {
 
         assert_eq!(
             Point::SCHEMA,
-            &schema::NamedType {
+            &schema::DataModelType::Struct {
                 name: "Point",
-                ty: &schema::DataModelType::Struct(&[
-                    &schema::NamedValue {
+                data: schema::Data::Struct(&[
+                    &schema::NamedField {
                         name: "x",
                         ty: i32::SCHEMA
                     },
-                    &schema::NamedValue {
+                    &schema::NamedField {
                         name: "y",
                         ty: i32::SCHEMA
                     },

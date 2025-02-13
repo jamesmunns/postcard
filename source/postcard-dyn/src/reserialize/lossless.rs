@@ -6,7 +6,7 @@
 
 use core::{cell::RefCell, fmt, str};
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{
     de::{self, Deserializer},
     ser::Serializer,
@@ -62,7 +62,7 @@ mod tuples;
 /// # }
 /// ```
 pub fn reserialize_leaky<'de, D, S>(
-    schema: &OwnedNamedType,
+    schema: &OwnedDataModelType,
     deserializer: D,
     serializer: S,
 ) -> Result<S::Ok, Error<D::Error, S::Error>>
@@ -204,7 +204,7 @@ impl strategy::Strategy for Strategy {
         let fields = expecting.data.fields;
         let (name, field_names) = context.strategy.with_interned(|interned| {
             let name = interned.intern_identifier(expecting.name);
-            let field_names = interned.intern_slice(fields.iter().map(|f| f.name.as_str()));
+            let field_names = interned.intern_slice(fields.iter().map(|f| f.name.as_ref()));
             (name, field_names)
         });
         deserializer.deserialize_struct(
@@ -232,7 +232,7 @@ impl strategy::Strategy for Strategy {
         let variants = expecting.variants;
         let (name, variant_names) = context.strategy.with_interned(|interned| {
             let name = interned.intern_identifier(expecting.name);
-            let variant_names = interned.intern_slice(variants.iter().map(|v| v.name.as_str()));
+            let variant_names = interned.intern_slice(variants.iter().map(|v| v.name.as_ref()));
             (name, variant_names)
         });
         deserializer.deserialize_enum(

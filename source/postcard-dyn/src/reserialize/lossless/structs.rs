@@ -1,7 +1,7 @@
 use core::fmt;
 use std::collections::HashMap;
 
-use postcard_schema::schema::owned::{OwnedNamedType, OwnedNamedValue};
+use postcard_schema::schema::owned::{OwnedDataModelType, OwnedNamedField};
 use serde::{
     de::{self, DeserializeSeed, Deserializer, Error as _, MapAccess, SeqAccess},
     ser::{self, Error as _, Serialize, SerializeStruct, Serializer},
@@ -18,7 +18,7 @@ pub struct Visitor<'a, S, Strategy, Reserializer> {
     pub context: &'a Context<'a, Strategy>,
     pub serializer: S,
     pub reserializer: Reserializer,
-    pub fields: &'a [OwnedNamedValue],
+    pub fields: &'a [OwnedNamedField],
     pub field_names: &'static [&'static str],
 }
 
@@ -195,7 +195,7 @@ struct FieldSeed<'a, S> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
     name: &'static str,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S: SerializeStruct> DeserializeSeed<'de> for FieldSeed<'_, S> {
@@ -210,14 +210,14 @@ impl<'de, S: SerializeStruct> DeserializeSeed<'de> for FieldSeed<'_, S> {
 }
 
 struct FieldVisitor<'a> {
-    fields: &'a [OwnedNamedValue],
+    fields: &'a [OwnedNamedField],
     field_names: &'static [&'static str],
 }
 
 struct Ignored;
 
 impl<'a, 'de> DeserializeSeed<'de> for &FieldVisitor<'a> {
-    type Value = Result<(&'static str, &'a OwnedNamedType), Ignored>;
+    type Value = Result<(&'static str, &'a OwnedDataModelType), Ignored>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
     where
@@ -228,7 +228,7 @@ impl<'a, 'de> DeserializeSeed<'de> for &FieldVisitor<'a> {
 }
 
 impl<'a> de::Visitor<'_> for &FieldVisitor<'a> {
-    type Value = Result<(&'static str, &'a OwnedNamedType), Ignored>;
+    type Value = Result<(&'static str, &'a OwnedDataModelType), Ignored>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "field identifier")
@@ -253,7 +253,7 @@ impl<'a> de::Visitor<'_> for &FieldVisitor<'a> {
 }
 
 impl<'a> FieldVisitor<'a> {
-    fn find(&self, field: &[u8]) -> Result<(&'static str, &'a OwnedNamedType), Ignored> {
+    fn find(&self, field: &[u8]) -> Result<(&'static str, &'a OwnedDataModelType), Ignored> {
         self.field_names
             .iter()
             .zip(self.fields)

@@ -1,6 +1,6 @@
 use core::fmt;
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{
     de::{self, DeserializeSeed, Error as _, SeqAccess},
     ser::SerializeSeq,
@@ -12,7 +12,7 @@ use super::{Context, Expected};
 pub struct Visitor<'a, S, Strategy> {
     pub context: &'a Context<'a, Strategy>,
     pub serializer: S,
-    pub schemas: &'a [OwnedNamedType],
+    pub schemas: &'a [OwnedDataModelType],
 }
 
 impl<'de, S, Strategy> de::Visitor<'de> for Visitor<'_, S, Strategy>
@@ -50,7 +50,7 @@ where
 struct ElementSeed<'a, S: 'a, Strategy> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
-    schemas: &'a [OwnedNamedType],
+    schemas: &'a [OwnedDataModelType],
     idx: usize,
 }
 

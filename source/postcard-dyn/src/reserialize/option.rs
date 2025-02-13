@@ -1,6 +1,6 @@
 use core::fmt;
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{de, Deserializer, Serializer};
 
 use super::Context;
@@ -8,7 +8,7 @@ use super::Context;
 pub struct Visitor<'a, S, Strategy> {
     pub context: &'a Context<'a, Strategy>,
     pub serializer: S,
-    pub schema: &'a OwnedNamedType,
+    pub schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S, Strategy> de::Visitor<'de> for Visitor<'_, S, Strategy>

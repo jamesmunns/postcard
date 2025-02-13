@@ -1,6 +1,6 @@
 use core::{fmt, marker::PhantomData};
 
-use postcard_schema::schema::owned::{OwnedDataModelVariant, OwnedNamedType};
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde::{
     de::{self, DeserializeSeed, Deserializer, SeqAccess},
     ser::{Error as _, SerializeMap, SerializeTuple, Serializer},
@@ -38,9 +38,9 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
             })?;
 
         let err = || S::Error::custom("missing variant data");
-        Ok(match &variant.ty {
-            OwnedDataModelVariant::UnitVariant => self.serializer.serialize_str(&variant.name),
-            OwnedDataModelVariant::NewtypeVariant(inner) => seq
+        Ok(match &variant.data {
+            OwnedData::Unit => self.serializer.serialize_str(&variant.name),
+            OwnedData::Newtype(inner) => seq
                 .next_element_seed(NewtypeVariantSeed {
                     serializer: self.serializer,
                     context: self.context,
@@ -49,7 +49,7 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
                 })?
                 .ok_or_else(err)
                 .and_then(|res| res),
-            OwnedDataModelVariant::TupleVariant(fields) => seq
+            OwnedData::Tuple(fields) => seq
                 .next_element_seed(TupleVariantVisitor {
                     serializer: self.serializer,
                     context: self.context,
@@ -62,7 +62,7 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
                 })?
                 .ok_or_else(err)
                 .and_then(|res| res),
-            OwnedDataModelVariant::StructVariant(fields) => seq
+            OwnedData::Struct(fields) => seq
                 .next_element_seed(StructVariantVisitor {
                     serializer: self.serializer,
                     context: self.context,
@@ -83,7 +83,7 @@ struct NewtypeVariantSeed<'a, S> {
     serializer: S,
     context: &'a Context<'a, Strategy>,
     variant: &'a str,
-    inner: &'a OwnedNamedType,
+    inner: &'a OwnedDataModelType,
 }
 
 impl<'de, S: Serializer> DeserializeSeed<'de> for NewtypeVariantSeed<'_, S> {
@@ -157,7 +157,7 @@ struct ReserializeTupleVariant<'de, 'a, A> {
 struct ElementSeed<'a, S> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S: SerializeTuple> DeserializeSeed<'de> for ElementSeed<'_, S> {
@@ -250,7 +250,7 @@ struct FieldSeed<'a, S> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
     key: &'a str,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S: SerializeMap> DeserializeSeed<'de> for FieldSeed<'_, S> {

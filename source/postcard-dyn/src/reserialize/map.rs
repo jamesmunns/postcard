@@ -1,6 +1,6 @@
 use core::fmt;
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{
     de::{self, DeserializeSeed, MapAccess},
     ser::SerializeMap,
@@ -12,8 +12,8 @@ use super::Context;
 pub struct Visitor<'a, S, Strategy> {
     pub context: &'a Context<'a, Strategy>,
     pub serializer: S,
-    pub key: &'a OwnedNamedType,
-    pub val: &'a OwnedNamedType,
+    pub key: &'a OwnedDataModelType,
+    pub val: &'a OwnedDataModelType,
 }
 
 impl<'de, S, Strategy> de::Visitor<'de> for Visitor<'_, S, Strategy>
@@ -58,7 +58,7 @@ where
 struct KeySeed<'a, S, Strategy> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S, Strategy> DeserializeSeed<'de> for KeySeed<'_, S, Strategy>
@@ -79,7 +79,7 @@ where
 struct ValueSeed<'a, S, Strategy> {
     context: &'a Context<'a, Strategy>,
     serializer: &'a mut S,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
 }
 
 impl<'de, S, Strategy> DeserializeSeed<'de> for ValueSeed<'_, S, Strategy>

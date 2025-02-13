@@ -23,7 +23,7 @@
 
 use core::{cell::Cell, fmt, marker::PhantomData, slice};
 
-use postcard_schema::schema::owned::{OwnedDataModelType, OwnedNamedType};
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde::{de, ser::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::Error;
@@ -92,7 +92,7 @@ impl<Strategy: strategy::Strategy> Context<'_, Strategy> {
 
     fn reserialize_ty<'de, D: Deserializer<'de>, T>(
         &self,
-        schema: &OwnedNamedType,
+        schema: &OwnedDataModelType,
         deserializer: D,
         f: impl FnOnce(&Reserialize<ReserializeTy<'_, 'de, D, Strategy>>) -> T,
     ) -> Result<T, D::Error> {
@@ -111,7 +111,7 @@ impl<Strategy: strategy::Strategy> Context<'_, Strategy> {
 struct ReserializeTy<'a, 'de, D, Strategy> {
     context: &'a Context<'a, Strategy>,
     deserializer: D,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
     de: PhantomData<&'de ()>,
 }
 
@@ -136,8 +136,8 @@ where
             T::deserialize(deserializer).map_err(Error::Deserialize)
         }
         let (context, deserializer, schema) = (self.context, self.deserializer, self.schema);
-        match &schema.ty {
-            OwnedDataModelType::Schema => OwnedNamedType::deserialize(deserializer)
+        match schema {
+            OwnedDataModelType::Schema => OwnedDataModelType::deserialize(deserializer)
                 .map_err(Error::Deserialize)?
                 .serialize(serializer),
             OwnedDataModelType::Unit => serializer.serialize_unit(),
@@ -196,48 +196,47 @@ where
                     },
                 )
                 .map_err(Error::Deserialize)?,
-            OwnedDataModelType::UnitStruct => {
-                Strategy::reserialize_unit_struct(context, deserializer, serializer, &schema.name)
-                    .map_err(Error::Deserialize)?
-            }
-            OwnedDataModelType::NewtypeStruct(inner) => Strategy::reserialize_newtype_struct(
+            OwnedDataModelType::Struct { name, data } => match data {
+                OwnedData::Unit => {
+                    Strategy::reserialize_unit_struct(context, deserializer, serializer, name)
+                        .map_err(Error::Deserialize)?
+                }
+                OwnedData::Newtype(inner) => Strategy::reserialize_newtype_struct(
+                    context,
+                    deserializer,
+                    serializer,
+                    expecting::Struct {
+                        name,
+                        data: expecting::data::Newtype { schema: inner },
+                    },
+                )
+                .map_err(Error::Deserialize)?,
+                OwnedData::Tuple(fields) => Strategy::reserialize_tuple_struct(
+                    context,
+                    deserializer,
+                    serializer,
+                    expecting::Struct {
+                        name,
+                        data: expecting::data::Tuple { elements: fields },
+                    },
+                )
+                .map_err(Error::Deserialize)?,
+                OwnedData::Struct(fields) => Strategy::reserialize_struct(
+                    context,
+                    deserializer,
+                    serializer,
+                    expecting::Struct {
+                        name,
+                        data: expecting::data::Struct { fields },
+                    },
+                )
+                .map_err(Error::Deserialize)?,
+            },
+            OwnedDataModelType::Enum { name, variants } => Strategy::reserialize_enum(
                 context,
                 deserializer,
                 serializer,
-                expecting::Struct {
-                    name: &schema.name,
-                    data: expecting::data::Newtype { schema: inner },
-                },
-            )
-            .map_err(Error::Deserialize)?,
-            OwnedDataModelType::TupleStruct(fields) => Strategy::reserialize_tuple_struct(
-                context,
-                deserializer,
-                serializer,
-                expecting::Struct {
-                    name: &schema.name,
-                    data: expecting::data::Tuple { elements: fields },
-                },
-            )
-            .map_err(Error::Deserialize)?,
-            OwnedDataModelType::Struct(fields) => Strategy::reserialize_struct(
-                context,
-                deserializer,
-                serializer,
-                expecting::Struct {
-                    name: &schema.name,
-                    data: expecting::data::Struct { fields },
-                },
-            )
-            .map_err(Error::Deserialize)?,
-            OwnedDataModelType::Enum(variants) => Strategy::reserialize_enum(
-                context,
-                deserializer,
-                serializer,
-                expecting::Enum {
-                    name: &schema.name,
-                    variants,
-                },
+                expecting::Enum { name, variants },
             )
             .map_err(Error::Deserialize)?,
         }

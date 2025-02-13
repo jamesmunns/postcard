@@ -2,15 +2,12 @@
 //!
 //! Each module requires the matching feature flag to be enabled.
 
-use crate::{
-    schema::{DataModelType, NamedType},
-    Schema,
-};
+use crate::{schema::DataModelType, Schema};
 
 pub mod builtins_nostd;
 
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(all(not(feature = "use-std"), feature = "alloc"))))]
 pub mod builtins_alloc;
 
 #[cfg(feature = "use-std")]
@@ -37,9 +34,6 @@ pub mod heapless_v0_8;
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;
 
-impl Schema for NamedType {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "NamedType",
-        ty: &DataModelType::Schema,
-    };
+impl Schema for DataModelType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
 }

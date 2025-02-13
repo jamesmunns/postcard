@@ -1,6 +1,6 @@
 use core::{fmt, str};
 
-use postcard_schema::schema::owned::{OwnedDataModelVariant, OwnedNamedType, OwnedNamedVariant};
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType, OwnedVariant};
 use serde::{
     de::{self, DeserializeSeed, EnumAccess, VariantAccess},
     Deserializer, Serializer,
@@ -35,7 +35,7 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
                 variant_names: self.variant_names,
             })?;
         match variant {
-            OwnedDataModelVariant::UnitVariant => {
+            OwnedData::Unit => {
                 deserializer.unit_variant()?;
                 Ok(self.serializer.serialize_unit_variant(
                     self.expecting.name,
@@ -43,20 +43,18 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
                     variant_name,
                 ))
             }
-            OwnedDataModelVariant::NewtypeVariant(inner) => {
-                deserializer.newtype_variant_seed(NewtypeVariantSeed {
-                    context: self.context,
-                    schema: inner,
-                    serializer: self.serializer,
-                    location: expecting::Variant {
-                        enum_name: self.expecting.name,
-                        variant_index,
-                        variant_name,
-                        data: expecting::data::Newtype { schema: inner },
-                    },
-                })
-            }
-            OwnedDataModelVariant::TupleVariant(fields) => deserializer.tuple_variant(
+            OwnedData::Newtype(inner) => deserializer.newtype_variant_seed(NewtypeVariantSeed {
+                context: self.context,
+                schema: inner,
+                serializer: self.serializer,
+                location: expecting::Variant {
+                    enum_name: self.expecting.name,
+                    variant_index,
+                    variant_name,
+                    data: expecting::data::Newtype { schema: inner },
+                },
+            }),
+            OwnedData::Tuple(fields) => deserializer.tuple_variant(
                 fields.len(),
                 reserialize::tuple::Visitor {
                     context: self.context,
@@ -70,9 +68,9 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
                     },
                 },
             ),
-            OwnedDataModelVariant::StructVariant(fields) => {
+            OwnedData::Struct(fields) => {
                 let field_names = self.context.strategy.with_interned(|interned| {
-                    interned.intern_slice(fields.iter().map(|f| f.name.as_str()))
+                    interned.intern_slice(fields.iter().map(|f| f.name.as_ref()))
                 });
                 deserializer.struct_variant(
                     field_names,
@@ -95,12 +93,12 @@ impl<'de, S: Serializer> de::Visitor<'de> for Visitor<'_, S> {
 }
 
 struct VariantVisitor<'a> {
-    variants: &'a [OwnedNamedVariant],
+    variants: &'a [OwnedVariant],
     variant_names: &'static [&'static str],
 }
 
 impl<'a, 'de> DeserializeSeed<'de> for VariantVisitor<'a> {
-    type Value = (u32, &'static str, &'a OwnedDataModelVariant);
+    type Value = (u32, &'static str, &'a OwnedData);
 
     fn deserialize<D: Deserializer<'de>>(self, deserializer: D) -> Result<Self::Value, D::Error> {
         deserializer.deserialize_identifier(self)
@@ -108,7 +106,7 @@ impl<'a, 'de> DeserializeSeed<'de> for VariantVisitor<'a> {
 }
 
 impl<'a> de::Visitor<'_> for VariantVisitor<'a> {
-    type Value = (u32, &'static str, &'a OwnedDataModelVariant);
+    type Value = (u32, &'static str, &'a OwnedData);
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "variant identifier")
@@ -123,7 +121,7 @@ impl<'a> de::Visitor<'_> for VariantVisitor<'a> {
                 .zip(self.variants.get(idx))
                 .ok_or_else(err)?
         };
-        Ok((index, name, &schema.ty))
+        Ok((index, name, &schema.data))
     }
 
     fn visit_str<E: de::Error>(self, value: &str) -> Result<Self::Value, E> {
@@ -140,19 +138,19 @@ impl<'a> de::Visitor<'_> for VariantVisitor<'a> {
 }
 
 impl<'a> VariantVisitor<'a> {
-    fn find(&self, variant: &[u8]) -> Option<(u32, &'static str, &'a OwnedDataModelVariant)> {
+    fn find(&self, variant: &[u8]) -> Option<(u32, &'static str, &'a OwnedData)> {
         (self.variant_names.iter())
             .zip(self.variants)
             .enumerate()
             .find_map(|(index, (&name, schema))| {
-                (name.as_bytes() == variant).then_some((index as u32, name, &schema.ty))
+                (name.as_bytes() == variant).then_some((index as u32, name, &schema.data))
             })
     }
 }
 
 struct NewtypeVariantSeed<'a, S> {
     context: &'a Context<'a, Strategy>,
-    schema: &'a OwnedNamedType,
+    schema: &'a OwnedDataModelType,
     serializer: S,
     location: expecting::Variant<'static, expecting::data::Newtype<'a>>,
 }

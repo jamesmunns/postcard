@@ -1,7 +1,7 @@
 //! How to reserialize structs and enums to work around [`Deserializer`] and [`Serializer`]'s
 //! `&'static str` requirements.
 
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde::{Deserializer, Serialize, Serializer};
 
 use crate::Error;
@@ -48,7 +48,7 @@ pub(super) trait Strategy: Sized {
 
     fn reserialize<'de, D: Deserializer<'de>, S: Serializer>(
         &self,
-        schema: &OwnedNamedType,
+        schema: &OwnedDataModelType,
         deserializer: D,
         serializer: S,
     ) -> Result<S::Ok, Error<D::Error, S::Error>> {

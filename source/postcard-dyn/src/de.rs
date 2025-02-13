@@ -1,10 +1,10 @@
-use postcard_schema::schema::owned::OwnedNamedType;
+use postcard_schema::schema::owned::OwnedDataModelType;
 use serde_json::Value;
 
 use crate::Error;
 
 pub fn from_slice_dyn(
-    schema: &OwnedNamedType,
+    schema: &OwnedDataModelType,
     data: &[u8],
 ) -> Result<Value, Error<postcard::Error, serde_json::Error>> {
     // Matches current value type (`serde_json::Value`)'s representation

@@ -3,7 +3,7 @@ use core::{
     ops::RangeTo,
 };
 
-use postcard_schema::schema::owned::OwnedNamedVariant;
+use postcard_schema::schema::owned::OwnedVariant;
 use serde::de::{self, Expected};
 
 pub trait Unexpected: de::Error {
@@ -36,7 +36,7 @@ pub struct Struct<'a, Data> {
 
 pub struct Enum<'name, 'schema> {
     pub name: &'name str,
-    pub variants: &'schema [OwnedNamedVariant],
+    pub variants: &'schema [OwnedVariant],
 }
 
 pub struct Variant<'a, Data> {
@@ -47,17 +47,17 @@ pub struct Variant<'a, Data> {
 }
 
 pub mod data {
-    use postcard_schema::schema::owned::{OwnedNamedType, OwnedNamedValue};
+    use postcard_schema::schema::owned::{OwnedDataModelType, OwnedNamedField};
 
     pub struct Unit;
     pub struct Newtype<'a> {
-        pub schema: &'a OwnedNamedType,
+        pub schema: &'a OwnedDataModelType,
     }
     pub struct Tuple<'a> {
-        pub elements: &'a [OwnedNamedType],
+        pub elements: &'a [OwnedDataModelType],
     }
     pub struct Struct<'a> {
-        pub fields: &'a [OwnedNamedValue],
+        pub fields: &'a [OwnedNamedField],
     }
 }
 
