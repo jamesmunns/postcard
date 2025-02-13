@@ -19,7 +19,9 @@ documentation = "https://docs.rs/postcard-dyn/"
 
 
 [dependencies]
+hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
 serde = { version = "1.0.202", features = ["derive"] }
+serde-content = "0.1.0"
 serde_json = "1.0.117"
 
 [dependencies.postcard]
@@ -31,3 +33,7 @@ path = "../postcard"
 version = "0.2"
 features = ["use-std", "derive"]
 path = "../postcard-schema"
+
+[dev-dependencies.serde_json]
+version = "1.0"
+features = ["preserve_order"]
