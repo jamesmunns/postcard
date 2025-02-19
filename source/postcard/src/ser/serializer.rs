@@ -521,6 +521,11 @@ where
     }
 
     #[inline]
+    fn skip_field(&mut self, _key: &'static str) -> Result<()> {
+        None::<()>.serialize(&mut **self)
+    }
+
+    #[inline]
     fn end(self) -> Result<()> {
         Ok(())
     }
@@ -539,6 +544,11 @@ where
         T: ?Sized + Serialize,
     {
         value.serialize(&mut **self)
+    }
+
+    #[inline]
+    fn skip_field(&mut self, _key: &'static str) -> Result<()> {
+        None::<()>.serialize(&mut **self)
     }
 
     #[inline]
