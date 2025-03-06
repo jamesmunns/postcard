@@ -76,8 +76,7 @@ pub enum FeedResult<'a, T> {
     /// Buffer was filled. Contains remaining section of input, if any.
     OverFull(&'a [u8]),
 
-    /// Reached end of chunk, but deserialization failed. Contains remaining section of input, if.
-    /// any
+    /// Reached end of chunk, but deserialization failed. Contains remaining section of input, if any
     DeserError(&'a [u8]),
 
     /// Deserialization complete. Contains deserialized data and remaining section of input, if any.
