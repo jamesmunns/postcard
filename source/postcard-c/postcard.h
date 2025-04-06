@@ -578,7 +578,7 @@ inline static postcard_error_t
 encode_signed_varint(postcard_slice_t* slice, int64_t value, size_t max_bytes)
 {
     // Zigzag encoding: (n << 1) ^ (n >> 63)
-    uint64_t zigzag = (value << 1) ^ (value >> 63);
+    uint64_t zigzag = ((uint64_t) value << 1) ^ ((uint64_t) value >> 63);
     return encode_unsigned_varint(slice, zigzag, max_bytes);
 }
 
