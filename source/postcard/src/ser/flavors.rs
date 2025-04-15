@@ -585,7 +585,7 @@ pub mod crc {
 
     use crate::serialize_with_flavor;
     use crate::Result;
-    use paste::paste;
+    use with_builtin_macros::with_eager_expansions;
 
     /// Manages CRC modifications as a flavor.
     pub struct CrcModifier<'a, B, W>
@@ -611,7 +611,7 @@ pub mod crc {
     macro_rules! impl_flavor {
         ($( $int:ty ),*) => {
             $(
-                paste! {
+                with_eager_expansions! {
                     impl<'a, B> Flavor for CrcModifier<'a, B, $int>
                     where
                         B: Flavor,
@@ -638,7 +638,7 @@ pub mod crc {
                     ///
                     /// When successful, this function returns the slice containing the
                     /// serialized and encoded message.
-                    pub fn [<to_slice_ $int>]<'a, T>(
+                    pub fn #{concat_idents!(to_slice_, $int)}<'a, T>(
                         value: &T,
                         buf: &'a mut [u8],
                         digest: Digest<'_, $int>,
@@ -653,7 +653,7 @@ pub mod crc {
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "heapless")]
                     #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
-                    pub fn [<to_vec_ $int>]<T, const B: usize>(
+                    pub fn #{concat_idents!(to_vec_, $int)}<T, const B: usize>(
                         value: &T,
                         digest: Digest<'_, $int>,
                     ) -> Result<heapless::Vec<u8, B>>
@@ -669,7 +669,7 @@ pub mod crc {
                     /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
                     #[cfg(feature = "alloc")]
                     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-                    pub fn [<to_allocvec_ $int>]<T>(value: &T, digest: Digest<'_, $int>) -> Result<alloc::vec::Vec<u8>>
+                    pub fn #{concat_idents!(to_allocvec_, $int)}<T>(value: &T, digest: Digest<'_, $int>) -> Result<alloc::vec::Vec<u8>>
                     where
                         T: Serialize + ?Sized,
                     {

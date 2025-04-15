@@ -61,8 +61,8 @@ optional = true
 version = "3.0.1"
 optional = true
 
-[dependencies.paste]
-version = "1.0.12"
+[dependencies.with_builtin_macros]
+version = "0.1.0"
 optional = true
 
 [features]
@@ -80,7 +80,7 @@ use-std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
-use-crc = ["crc", "paste"]
+use-crc = ["crc", "with_builtin_macros"]
 
 # Experimental features!
 #
@@ -89,5 +89,5 @@ experimental-derive = ["postcard-derive"]
 crc = ["dep:crc"]
 defmt = ["dep:defmt"]
 heapless = ["dep:heapless"]
-paste = ["dep:paste"]
+with_builtin_macros = ["dep:with_builtin_macros"]
 postcard-derive = ["dep:postcard-derive"]

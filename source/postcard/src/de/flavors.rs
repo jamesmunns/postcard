@@ -458,7 +458,7 @@ pub mod crc {
     use crate::Deserializer;
     use crate::Error;
     use crate::Result;
-    use paste::paste;
+    use with_builtin_macros::with_eager_expansions;
 
     /// Manages CRC modifications as a flavor.
     pub struct CrcModifier<'de, B, W>
@@ -484,7 +484,7 @@ pub mod crc {
     macro_rules! impl_flavor {
         ($( $int:ty ),*) => {
             $(
-                paste! {
+                with_eager_expansions! {
                     impl<'de, B> Flavor<'de> for CrcModifier<'de, B, $int>
                     where
                         B: Flavor<'de>,
@@ -544,7 +544,7 @@ pub mod crc {
 
                     /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
                     /// of the byte slice is not returned.
-                    pub fn [<from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<T>
+                    pub fn #{concat_idents!(from_bytes_, $int)}<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<T>
                     where
                         T: Deserialize<'a>,
                     {
@@ -557,7 +557,7 @@ pub mod crc {
 
                     /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
                     /// of the byte slice is returned for further usage
-                    pub fn [<take_from_bytes_ $int>]<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<(T, &'a [u8])>
+                    pub fn #{concat_idents!(take_from_bytes_, $int)}<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<(T, &'a [u8])>
                     where
                         T: Deserialize<'a>,
                     {
