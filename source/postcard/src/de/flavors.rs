@@ -5,7 +5,7 @@
 //!
 //! 1. The source medium of the deserialization, e.g. whether the data is serialized from a `[u8]` slice, or some other container
 //! 2. The format of the deserialization, such as if the original data is encoded in a COBS format, contains a CRC32 checksum
-//!      appended to the message, etc.
+//!    appended to the message, etc.
 //!
 //! Flavors are implemented using the [`Flavor`] trait, which acts as a "middleware" for retrieving the bytes before they
 //! are passed to `serde` for deserialization
