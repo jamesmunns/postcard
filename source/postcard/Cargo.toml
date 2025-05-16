@@ -24,6 +24,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
+[dependencies.serde_spanned]
+version = "0.6.8"
+features = ["serde"]
+optional = true
+
 [dependencies.heapless]
 version = "0.7.0"
 default-features = false
@@ -86,6 +91,7 @@ use-crc = ["crc"]
 
 # Does nothing, for compat only
 paste = []
+serde_spanned = ["dep:serde_spanned"]
 
 # Experimental features!
 #
