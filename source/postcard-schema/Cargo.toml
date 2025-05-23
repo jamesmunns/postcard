@@ -68,6 +68,11 @@ package = "defmt"
 version = "0.3.5"
 optional = true
 
+[dependencies.serde-big-array_v0_5]
+package = "serde-big-array"
+version = "0.5.1"
+optional = true
+
 [dev-dependencies.postcard]
 path = "../postcard"
 version = "1.0"
@@ -91,3 +96,4 @@ chrono-v0_4 = ["chrono_v0_4"]
 heapless-v0_7 = ["heapless_v0_7"]
 heapless-v0_8 = ["heapless_v0_8"]
 nalgebra-v0_33 = ["nalgebra_v0_33"]
+serde-big-array-v0_5 = ["serde-big-array_v0_5"]
