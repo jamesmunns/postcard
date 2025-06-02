@@ -42,3 +42,8 @@ impl<K: Schema> Schema for std::collections::HashSet<K> {
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
 }
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: ?Sized + Schema + std::borrow::ToOwned> Schema for std::borrow::Cow<'_, T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}

@@ -22,3 +22,7 @@ impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
 impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
 }
+
+impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<'_, T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
