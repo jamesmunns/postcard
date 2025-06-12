@@ -142,3 +142,101 @@ impl<T: Schema> Schema for RangeTo<T> {
         }]),
     };
 }
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::Ipv4Addr {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "Ipv4Addr",
+        data: Data::Struct(&[&NamedField {
+            name: "octets",
+            ty: <[u8; 4]>::SCHEMA,
+        }]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::Ipv6Addr {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "Ipv6Addr",
+        data: Data::Struct(&[&NamedField {
+            name: "octets",
+            ty: <[u8; 16]>::SCHEMA,
+        }]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::IpAddr {
+    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
+        name: "IpAddr",
+        variants: &[
+            &Variant {
+                name: "V4",
+                data: Data::Newtype(core::net::Ipv4Addr::SCHEMA),
+            },
+            &Variant {
+                name: "V6",
+                data: Data::Newtype(core::net::Ipv6Addr::SCHEMA),
+            },
+        ],
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddrV4 {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "SocketAddrV4",
+        data: Data::Struct(&[
+            &NamedField {
+                name: "ip",
+                ty: core::net::Ipv4Addr::SCHEMA,
+            },
+            &NamedField {
+                name: "port",
+                ty: u16::SCHEMA,
+            },
+        ]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddrV6 {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "SocketAddrV6",
+        data: Data::Struct(&[
+            &NamedField {
+                name: "ip",
+                ty: core::net::Ipv6Addr::SCHEMA,
+            },
+            &NamedField {
+                name: "port",
+                ty: u16::SCHEMA,
+            },
+            &NamedField {
+                name: "flowinfo",
+                ty: u32::SCHEMA,
+            },
+            &NamedField {
+                name: "scope_id",
+                ty: u32::SCHEMA,
+            },
+        ]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddr {
+    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
+        name: "SocketAddr",
+        variants: &[
+            &Variant {
+                name: "V4",
+                data: Data::Newtype(core::net::SocketAddrV4::SCHEMA),
+            },
+            &Variant {
+                name: "V6",
+                data: Data::Newtype(core::net::SocketAddrV6::SCHEMA),
+            },
+        ],
+    };
+}

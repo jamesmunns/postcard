@@ -85,6 +85,8 @@ use-std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["postcard-derive"]
 
+core-net = []
+
 defmt-v0_3 = ["defmt_v0_3"]
 uuid-v1_0 = ["uuid_v1_0"]
 chrono-v0_4 = ["chrono_v0_4"]
