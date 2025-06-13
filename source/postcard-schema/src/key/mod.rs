@@ -65,14 +65,8 @@ impl Key {
         Key(hash::fnv1a64::hash_ty_path::<T>(path))
     }
 
-    /// Unsafely create a key from a given 8-byte value
-    ///
-    /// ## Safety
-    ///
-    /// This MUST only be used with pre-calculated values. Incorrectly
-    /// created keys could lead to the improper deserialization of
-    /// messages.
-    pub const unsafe fn from_bytes(bytes: [u8; 8]) -> Self {
+    /// Create a key from a given 8-byte value
+    pub const fn from_bytes(bytes: [u8; 8]) -> Self {
         Self(bytes)
     }
 
