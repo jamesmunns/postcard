@@ -47,3 +47,8 @@ impl<K: Schema> Schema for std::collections::BTreeSet<K> {
 impl<T: Schema> Schema for std::boxed::Box<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: ?Sized + Schema + std::borrow::ToOwned> Schema for std::borrow::Cow<'_, T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
