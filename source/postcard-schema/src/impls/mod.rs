@@ -34,6 +34,10 @@ pub mod heapless_v0_8;
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;
 
+#[cfg(feature = "serde-big-array-v0_5")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde-big-array-v0_5")))]
+pub mod serde_big_array_v0_5;
+
 impl Schema for DataModelType {
     const SCHEMA: &'static DataModelType = &DataModelType::Schema;
 }
