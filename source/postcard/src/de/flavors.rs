@@ -138,9 +138,10 @@ pub struct Slice<'de> {
 impl<'de> Slice<'de> {
     /// Create a new [Slice] from the given buffer
     pub fn new(sli: &'de [u8]) -> Self {
+        let range = sli.as_ptr_range();
         Self {
-            cursor: sli.as_ptr(),
-            end: unsafe { sli.as_ptr().add(sli.len()) },
+            cursor: range.start,
+            end: range.end,
             _pl: PhantomData,
         }
     }
@@ -155,6 +156,8 @@ impl<'de> Flavor<'de> for Slice<'de> {
         if self.cursor == self.end {
             Err(Error::DeserializeUnexpectedEnd)
         } else {
+            // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
+            // have checked above.
             unsafe {
                 let res = Ok(*self.cursor);
                 self.cursor = self.cursor.add(1);
@@ -174,6 +177,8 @@ impl<'de> Flavor<'de> for Slice<'de> {
         if remain < ct {
             Err(Error::DeserializeUnexpectedEnd)
         } else {
+            // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented past `self.end` as we
+            // have checked above.
             unsafe {
                 let sli = core::slice::from_raw_parts(self.cursor, ct);
                 self.cursor = self.cursor.add(ct);
@@ -185,6 +190,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     /// Return the remaining (unused) bytes in the Deserializer
     fn finalize(self) -> Result<&'de [u8]> {
         let remain = (self.end as usize) - (self.cursor as usize);
+        // SAFETY: `self.cursor` is valid for `remain` elements
         unsafe { Ok(core::slice::from_raw_parts(self.cursor, remain)) }
     }
 }
@@ -207,9 +213,10 @@ pub mod io {
 
     impl<'de> SlidingBuffer<'de> {
         pub fn new(sli: &'de mut [u8]) -> Self {
+            let range = sli.as_mut_ptr_range();
             Self {
-                cursor: sli.as_mut_ptr(),
-                end: unsafe { sli.as_ptr().add(sli.len()) },
+                cursor: range.start,
+                end: range.end,
                 _pl: PhantomData,
             }
         }
@@ -225,6 +232,8 @@ pub mod io {
             let buff = if remain < ct {
                 return Err(Error::DeserializeUnexpectedEnd);
             } else {
+                // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented
+                // past `self.end` as we have checked above.
                 unsafe {
                     let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
                     self.cursor = self.cursor.add(ct);
@@ -237,6 +246,7 @@ pub mod io {
 
         fn complete(self) -> Result<&'de mut [u8]> {
             let remain = (self.end as usize) - (self.cursor as usize);
+            // SAFETY: `self.cursor` is valid for `remain` elements
             unsafe { Ok(core::slice::from_raw_parts_mut(self.cursor, remain)) }
         }
     }
