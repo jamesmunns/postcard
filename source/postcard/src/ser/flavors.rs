@@ -146,11 +146,11 @@ pub struct Slice<'a> {
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
-        let ptr = buf.as_mut_ptr();
+        let ptr = buf.as_mut_ptr_range();
         Slice {
-            start: ptr,
-            cursor: ptr,
-            end: unsafe { ptr.add(buf.len()) },
+            start: ptr.start,
+            cursor: ptr.start,
+            end: ptr.end,
             _pl: PhantomData,
         }
     }
@@ -164,6 +164,8 @@ impl<'a> Flavor for Slice<'a> {
         if self.cursor == self.end {
             Err(Error::SerializeBufferFull)
         } else {
+            // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
+            // have checked above.
             unsafe {
                 self.cursor.write(b);
                 self.cursor = self.cursor.add(1);
@@ -179,6 +181,8 @@ impl<'a> Flavor for Slice<'a> {
         if blen > remain {
             Err(Error::SerializeBufferFull)
         } else {
+            // SAFETY: `self.cursor` is in-bounds for `blen` elements and won't be incremented past
+            // `self.end` as we have checked above.
             unsafe {
                 core::ptr::copy_nonoverlapping(b.as_ptr(), self.cursor, blen);
                 self.cursor = self.cursor.add(blen);
@@ -189,6 +193,7 @@ impl<'a> Flavor for Slice<'a> {
 
     fn finalize(self) -> Result<Self::Output> {
         let used = (self.cursor as usize) - (self.start as usize);
+        // SAFETY: `self.cursor` is in-bounds for `used` elements
         let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
         Ok(sli)
     }
@@ -200,6 +205,7 @@ impl Index<usize> for Slice<'_> {
     fn index(&self, idx: usize) -> &u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
+        // SAFETY: `self.start` is in-bounds at `idx`
         unsafe { &*self.start.add(idx) }
     }
 }
@@ -208,6 +214,7 @@ impl IndexMut<usize> for Slice<'_> {
     fn index_mut(&mut self, idx: usize) -> &mut u8 {
         let len = (self.end as usize) - (self.start as usize);
         assert!(idx < len);
+        // SAFETY: `self.start` is in-bounds at `idx`
         unsafe { &mut *self.start.add(idx) }
     }
 }
