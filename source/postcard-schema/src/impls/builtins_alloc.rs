@@ -22,3 +22,7 @@ impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
 impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
 }
+
+impl<T: Schema> Schema for alloc::boxed::Box<T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}

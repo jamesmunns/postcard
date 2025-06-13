@@ -42,3 +42,8 @@ impl<K: Schema> Schema for std::collections::HashSet<K> {
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
 }
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: Schema> Schema for std::boxed::Box<T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
