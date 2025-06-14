@@ -116,8 +116,30 @@ pub trait Flavor<'de>: 'de {
         None
     }
 
-    /// Attempt to take the next `ct` bytes from the serialized message
+    /// Attempt to take the next `ct` bytes from the serialized message.
+    ///
+    /// This variant borrows the data from the input for zero-copy deserialization. If zero-copy
+    /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
+
+    /// Attempt to take the next `ct` bytes from the serialized message.
+    ///
+    /// This variant does not guarantee that the returned value is borrowed from the input, so it
+    /// cannot be used for zero-copy deserialization, but it also avoids needing to potentially
+    /// allocate a data in a temporary buffer.
+    ///
+    /// This variant should be used instead of `try_take_n`
+    /// if zero-copy deserialization is not necessary.
+    ///
+    /// It is only necessary to implement this method if the flavor requires storing data in a
+    /// temporary buffer in order to implement the borrow semantics, e.g. the `std::io::Read`
+    /// flavor.
+    fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+    where
+        'de: 'a,
+    {
+        self.try_take_n(ct)
+    }
 
     /// Complete the deserialization process.
     ///
@@ -222,11 +244,6 @@ pub mod io {
         }
 
         #[inline]
-        fn size(&self) -> usize {
-            (self.end as usize) - (self.cursor as usize)
-        }
-
-        #[inline]
         fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8]> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
@@ -237,6 +254,21 @@ pub mod io {
                 unsafe {
                     let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
                     self.cursor = self.cursor.add(ct);
+                    sli
+                }
+            };
+
+            Ok(buff)
+        }
+
+        #[inline]
+        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8]> {
+            let remain = (self.end as usize) - (self.cursor as usize);
+            let buff = if remain < ct {
+                return Err(Error::DeserializeUnexpectedEnd);
+            } else {
+                unsafe {
+                    let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
                     sli
                 }
             };
@@ -300,12 +332,24 @@ pub mod io {
 
             #[inline]
             fn size_hint(&self) -> Option<usize> {
-                Some(self.buff.size())
+                None
             }
 
             #[inline]
             fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
+                self.reader
+                    .read_exact(buff)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(buff)
+            }
+
+            #[inline]
+            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+            where
+                'de: 'a,
+            {
+                let buff = self.buff.take_n_temp(ct)?;
                 self.reader
                     .read_exact(buff)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
@@ -395,12 +439,24 @@ pub mod io {
 
             #[inline]
             fn size_hint(&self) -> Option<usize> {
-                Some(self.buff.size())
+                None
             }
 
             #[inline]
             fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
                 let buff = self.buff.take_n(ct)?;
+                self.reader
+                    .read_exact(buff)
+                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                Ok(buff)
+            }
+
+            #[inline]
+            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+            where
+                'de: 'a,
+            {
+                let buff = self.buff.take_n_temp(ct)?;
                 self.reader
                     .read_exact(buff)
                     .map_err(|_| Error::DeserializeUnexpectedEnd)?;
