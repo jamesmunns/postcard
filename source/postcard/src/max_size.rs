@@ -15,6 +15,7 @@ use core::{
         NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
     },
     ops::{Range, RangeFrom, RangeInclusive, RangeTo},
+    time::Duration,
 };
 
 /// This trait is used to enforce the maximum size required to
@@ -161,6 +162,10 @@ impl MaxSize for NonZeroUsize {
     const POSTCARD_MAX_SIZE: usize = usize::POSTCARD_MAX_SIZE;
 }
 
+impl MaxSize for Duration {
+    const POSTCARD_MAX_SIZE: usize = u64::POSTCARD_MAX_SIZE + u32::POSTCARD_MAX_SIZE;
+}
+
 impl<T> MaxSize for PhantomData<T> {
     const POSTCARD_MAX_SIZE: usize = 0;
 }
@@ -215,6 +220,16 @@ impl<T: MaxSize> MaxSize for RangeFrom<T> {
 }
 
 impl<T: MaxSize> MaxSize for RangeTo<T> {
+    const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
+}
+
+impl<T: MaxSize> MaxSize for core::num::Wrapping<T> {
+    const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
+}
+
+#[cfg(all(feature = "core-num-saturating", feature = "experimental-derive"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "core-num-saturating")))]
+impl<T: MaxSize> MaxSize for core::num::Saturating<T> {
     const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
 }
 

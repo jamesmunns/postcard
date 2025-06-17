@@ -82,6 +82,7 @@ use-crc = ["crc"]
 #
 # NOT subject to SemVer guarantees!
 experimental-derive = ["postcard-derive"]
+core-num-saturating = []
 crc = ["dep:crc"]
 defmt = ["dep:defmt"]
 heapless = ["dep:heapless"]

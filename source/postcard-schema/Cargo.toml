@@ -86,6 +86,7 @@ alloc = ["serde/alloc"]
 derive = ["postcard-derive"]
 
 core-net = []
+core-num-saturating = []
 
 defmt-v0_3 = ["defmt_v0_3"]
 uuid-v1_0 = ["uuid_v1_0"]
