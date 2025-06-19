@@ -34,6 +34,10 @@ pub mod heapless_v0_8;
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;
 
+#[cfg(feature = "fixed-v1_0")]
+#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
+pub mod fixed_v1_0;
+
 impl Schema for DataModelType {
     const SCHEMA: &'static DataModelType = &DataModelType::Schema;
 }
