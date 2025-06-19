@@ -27,8 +27,7 @@ version = "1.0.10"
 features = ["use-std"]
 path = "../postcard"
 
-[dependencies.postcard-schema]
-package = "postcard-schema-ng"
+[dependencies.postcard-schema-ng]
 version = "0.3"
 features = ["use-std", "derive"]
 path = "../postcard-schema-ng"

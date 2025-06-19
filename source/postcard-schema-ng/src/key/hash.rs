@@ -407,7 +407,7 @@ pub mod fnv1a64_owned {
 
 #[cfg(test)]
 mod test {
-    use postcard_derive::Schema;
+    use postcard_derive_ng::Schema;
 
     use super::fnv1a64::hash_ty_path;
 

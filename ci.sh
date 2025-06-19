@@ -33,12 +33,12 @@ cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-
 
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
-cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn
-cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive --exclude postcard-dyn
+cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn --exclude postcard-dyn-ng
+cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
 
 # CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
 # on non-atomic systems
-cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn
+cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
 
 cargo fmt --all -- --check
 
@@ -46,4 +46,4 @@ cargo fmt --all -- --check
 #
 # TODO: We SHOULDN'T exclude postcard-dyn but it does weird things with feature unification and
 # makes the embedded-io stuff break
-env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features --exclude postcard-dyn
+env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features --exclude postcard-dyn --exclude postcard-dyn-ng

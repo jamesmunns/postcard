@@ -12,7 +12,7 @@ pub mod schema;
 /// # Examples
 ///
 /// ```
-/// use postcard_schema::Schema;
+/// use postcard_schema_ng::Schema;
 ///
 /// #[derive(Schema)]
 /// struct Point {
@@ -30,8 +30,8 @@ pub mod schema;
 /// code. This is normally only applicable when invoking re-exported derives from a different crate.
 ///
 /// ```
-/// # use postcard_schema::Schema;
-/// use postcard_schema as reexported_postcard_schema;
+/// # use postcard_schema_ng::Schema;
+/// use postcard_schema_ng as reexported_postcard_schema;
 ///
 /// #[derive(Schema)]
 /// #[postcard(crate = reexported_postcard_schema)]
@@ -47,7 +47,7 @@ pub mod schema;
 /// deriving [`Schema`]. The default bounds are `T: Schema` for each type parameter `T`.
 ///
 /// ```
-/// # use postcard_schema::Schema;
+/// # use postcard_schema_ng::Schema;
 /// #[derive(Schema)]
 /// #[postcard(bound = "")]
 /// struct Foo<F: Bar, T: Schema>(F::Wrap<T>);
@@ -64,7 +64,7 @@ pub mod schema;
 /// Foo::<NoSchema, u8>::SCHEMA;
 /// ```
 #[cfg(feature = "derive")]
-pub use postcard_derive::Schema;
+pub use postcard_derive_ng::Schema;
 
 /// A trait that represents a compile time calculated schema
 pub trait Schema {

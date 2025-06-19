@@ -1,6 +1,6 @@
 use std::num::TryFromIntError;
 
-use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
+use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
 use varint::{
     varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128,
@@ -502,7 +502,7 @@ mod test {
     use serde_json::json;
 
     use crate::to_stdvec_dyn;
-    use postcard_schema::Schema;
+    use postcard_schema_ng::Schema;
 
     #[derive(Serialize, Deserialize, Schema)]
     struct UnitStruct;

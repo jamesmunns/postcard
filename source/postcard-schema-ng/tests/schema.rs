@@ -1,4 +1,4 @@
-use postcard_schema::{
+use postcard_schema_ng::{
     schema::{owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant},
     Schema,
 };

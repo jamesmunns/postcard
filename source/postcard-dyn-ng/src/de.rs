@@ -1,6 +1,6 @@
 use std::str::from_utf8;
 
-use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
+use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
 
 use crate::de::varint::de_zig_zag_i16;
@@ -453,7 +453,7 @@ impl TakeExt for [u8] {
 
 #[cfg(test)]
 mod test {
-    use postcard_schema::Schema;
+    use postcard_schema_ng::Schema;
     use serde::{Deserialize, Serialize};
     use serde_json::json;
 
