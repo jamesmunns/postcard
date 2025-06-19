@@ -7,11 +7,13 @@ use crate::{
     Schema,
 };
 use core::{
+    marker::PhantomData,
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
         NonZeroU32, NonZeroU64, NonZeroU8,
     },
     ops::{Range, RangeFrom, RangeInclusive, RangeTo},
+    time::Duration,
 };
 
 macro_rules! impl_schema {
@@ -153,5 +155,136 @@ impl<T: Schema> Schema for RangeTo<T> {
             name: "end",
             ty: T::SCHEMA,
         }]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::Ipv4Addr {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Ipv4Addr",
+        ty: &DataModelType::Struct(&[&NamedValue {
+            name: "octets",
+            ty: <[u8; 4]>::SCHEMA,
+        }]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::Ipv6Addr {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Ipv6Addr",
+        ty: &DataModelType::Struct(&[&NamedValue {
+            name: "octets",
+            ty: <[u8; 16]>::SCHEMA,
+        }]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::IpAddr {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "IpAddr",
+        ty: &DataModelType::Enum(&[
+            &NamedVariant {
+                name: "V4",
+                ty: &DataModelVariant::NewtypeVariant(core::net::Ipv4Addr::SCHEMA),
+            },
+            &NamedVariant {
+                name: "V6",
+                ty: &DataModelVariant::NewtypeVariant(core::net::Ipv6Addr::SCHEMA),
+            },
+        ]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddrV4 {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "SocketAddrV4",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "ip",
+                ty: core::net::Ipv4Addr::SCHEMA,
+            },
+            &NamedValue {
+                name: "port",
+                ty: u16::SCHEMA,
+            },
+        ]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddrV6 {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "SocketAddrV6",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "ip",
+                ty: core::net::Ipv6Addr::SCHEMA,
+            },
+            &NamedValue {
+                name: "port",
+                ty: u16::SCHEMA,
+            },
+            &NamedValue {
+                name: "flowinfo",
+                ty: u32::SCHEMA,
+            },
+            &NamedValue {
+                name: "scope_id",
+                ty: u32::SCHEMA,
+            },
+        ]),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+impl Schema for core::net::SocketAddr {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "SocketAddr",
+        ty: &DataModelType::Enum(&[
+            &NamedVariant {
+                name: "V4",
+                ty: &DataModelVariant::NewtypeVariant(core::net::SocketAddrV4::SCHEMA),
+            },
+            &NamedVariant {
+                name: "V6",
+                ty: &DataModelVariant::NewtypeVariant(core::net::SocketAddrV6::SCHEMA),
+            },
+        ]),
+    };
+}
+
+impl<T: Schema> Schema for core::num::Wrapping<T> {
+    const SCHEMA: &'static NamedType = T::SCHEMA;
+}
+
+#[cfg(feature = "core-num-saturating")]
+#[cfg_attr(docsrs, doc(cfg(feature = "core-num-saturating")))]
+impl<T: Schema> Schema for core::num::Saturating<T> {
+    const SCHEMA: &'static NamedType = T::SCHEMA;
+}
+
+impl Schema for Duration {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Duration",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "secs",
+                ty: u64::SCHEMA,
+            },
+            &NamedValue {
+                name: "nanos",
+                ty: u32::SCHEMA,
+            },
+        ]),
+    };
+}
+
+impl<T: ?Sized> Schema for PhantomData<T> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "PhantomData",
+        ty: &DataModelType::Unit,
     };
 }

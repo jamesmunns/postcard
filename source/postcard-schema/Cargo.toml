@@ -58,6 +58,11 @@ version = "0.33.0"
 optional = true
 default-features = false
 
+[dependencies.fixed_v1_0]
+package = "fixed"
+version = "1.0"
+optional = true
+default-features = false
 [dependencies.postcard-derive]
 path = "../postcard-derive"
 version = "0.2.0"
@@ -66,6 +71,11 @@ optional = true
 [dependencies.defmt_v0_3]
 package = "defmt"
 version = "0.3.5"
+optional = true
+
+[dependencies.serde-big-array_v0_5]
+package = "serde-big-array"
+version = "0.5.1"
 optional = true
 
 [dev-dependencies.postcard]
@@ -85,9 +95,14 @@ use-std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["postcard-derive"]
 
-defmt-v0_3 = ["defmt_v0_3"]
-uuid-v1_0 = ["uuid_v1_0"]
+core-net = []
+core-num-saturating = []
+
 chrono-v0_4 = ["chrono_v0_4"]
+defmt-v0_3 = ["defmt_v0_3"]
+fixed-v1_0 = ["fixed_v1_0"]
 heapless-v0_7 = ["heapless_v0_7"]
 heapless-v0_8 = ["heapless_v0_8"]
 nalgebra-v0_33 = ["nalgebra_v0_33"]
+serde-big-array-v0_5 = ["serde-big-array_v0_5"]
+uuid-v1_0 = ["uuid_v1_0"]

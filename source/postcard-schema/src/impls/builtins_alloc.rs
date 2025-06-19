@@ -7,6 +7,7 @@ use crate::{
 
 extern crate alloc;
 
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<T: Schema> Schema for alloc::vec::Vec<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Vec<T>",
@@ -14,6 +15,7 @@ impl<T: Schema> Schema for alloc::vec::Vec<T> {
     };
 }
 
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl Schema for alloc::string::String {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "String",
@@ -21,6 +23,7 @@ impl Schema for alloc::string::String {
     };
 }
 
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "BTreeMap<K, V>",
@@ -31,9 +34,26 @@ impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
     };
 }
 
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "BTreeSet<K>",
         ty: &DataModelType::Seq(K::SCHEMA),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: Schema> Schema for alloc::boxed::Box<T> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Box<T>",
+        ty: T::SCHEMA.ty,
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<'_, T> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Cow<'_, T>",
+        ty: T::SCHEMA.ty,
     };
 }
