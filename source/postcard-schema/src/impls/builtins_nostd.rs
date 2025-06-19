@@ -7,11 +7,13 @@ use crate::{
     Schema,
 };
 use core::{
+    marker::PhantomData,
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
         NonZeroU32, NonZeroU64, NonZeroU8,
     },
     ops::{Range, RangeFrom, RangeInclusive, RangeTo},
+    time::Duration,
 };
 
 macro_rules! impl_schema {
@@ -238,5 +240,38 @@ impl Schema for core::net::SocketAddr {
                 data: Data::Newtype(core::net::SocketAddrV6::SCHEMA),
             },
         ],
+    };
+}
+
+impl<T: Schema> Schema for core::num::Wrapping<T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
+
+#[cfg(feature = "core-num-saturating")]
+#[cfg_attr(docsrs, doc(cfg(feature = "core-num-saturating")))]
+impl<T: Schema> Schema for core::num::Saturating<T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
+
+impl Schema for Duration {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "Duration",
+        data: Data::Struct(&[
+            &NamedField {
+                name: "secs",
+                ty: u64::SCHEMA,
+            },
+            &NamedField {
+                name: "nanos",
+                ty: u32::SCHEMA,
+            },
+        ]),
+    };
+}
+
+impl<T: ?Sized> Schema for PhantomData<T> {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "PhantomData",
+        data: Data::Unit,
     };
 }

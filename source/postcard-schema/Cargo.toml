@@ -97,6 +97,7 @@ alloc = ["serde/alloc"]
 derive = ["postcard-derive"]
 
 core-net = []
+core-num-saturating = []
 
 chrono-v0_4 = ["chrono_v0_4"]
 defmt-v0_3 = ["defmt_v0_3"]
