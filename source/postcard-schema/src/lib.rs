@@ -70,7 +70,7 @@ pub use postcard_derive::Schema;
 pub trait Schema {
     /// A recursive data structure that describes the schema of the given
     /// type.
-    const SCHEMA: &'static schema::DataModelType;
+    const SCHEMA: &'static schema::NamedType;
 }
 
 #[cfg(test)]
@@ -89,14 +89,14 @@ mod tests {
 
         assert_eq!(
             Point::SCHEMA,
-            &schema::DataModelType::Struct {
+            &schema::NamedType {
                 name: "Point",
-                data: schema::Data::Struct(&[
-                    &schema::NamedField {
+                ty: &schema::DataModelType::Struct(&[
+                    &schema::NamedValue {
                         name: "x",
                         ty: i32::SCHEMA
                     },
-                    &schema::NamedField {
+                    &schema::NamedValue {
                         name: "y",
                         ty: i32::SCHEMA
                     },

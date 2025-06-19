@@ -2,7 +2,10 @@
 //!
 //! Each module requires the matching feature flag to be enabled.
 
-use crate::{schema::DataModelType, Schema};
+use crate::{
+    schema::{DataModelType, NamedType},
+    Schema,
+};
 
 pub mod builtins_nostd;
 
@@ -42,6 +45,9 @@ pub mod serde_big_array_v0_5;
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid-v1_0")))]
 pub mod uuid_v1_0;
 
-impl Schema for DataModelType {
-    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
+impl Schema for NamedType {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "NamedType",
+        ty: &DataModelType::Schema,
+    };
 }

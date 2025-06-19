@@ -1,0 +1,110 @@
+[package]
+name = "postcard-schema-ng"
+# note: not released!
+version = "0.3.0"
+authors = ["James Munns <james@onevariable.com>"]
+edition = "2021"
+readme = "README.md"
+repository = "https://github.com/jamesmunns/postcard"
+description = "Reflection-like schemas for postcard types"
+license = "MIT OR Apache-2.0"
+categories = [
+    "embedded",
+    "no-std",
+]
+keywords = [
+    "serde",
+]
+documentation = "https://docs.rs/postcard-schema/"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+
+[dependencies.serde]
+version = "1.0"
+default-features = false
+# todo: remove this?
+features = ["derive"]
+
+[dependencies.uuid_v1_0]
+package = "uuid"
+version = "1.0"
+default-features = false
+optional = true
+
+[dependencies.chrono_v0_4]
+package = "chrono"
+version = "0.4"
+default-features = false
+optional = true
+
+[dependencies.heapless_v0_7]
+package = "heapless"
+version = "0.7"
+default-features = false
+optional = true
+
+[dependencies.heapless_v0_8]
+package = "heapless"
+version = "0.8"
+default-features = false
+optional = true
+
+[dependencies.nalgebra_v0_33]
+package = "nalgebra"
+version = "0.33.0"
+optional = true
+default-features = false
+
+[dependencies.fixed_v1_0]
+package = "fixed"
+version = "1.0"
+optional = true
+default-features = false
+
+[dependencies.postcard-derive-ng]
+path = "../postcard-derive-ng"
+version = "0.3.0"
+optional = true
+
+[dependencies.defmt_v0_3]
+package = "defmt"
+version = "0.3.5"
+optional = true
+
+[dependencies.serde-big-array_v0_5]
+package = "serde-big-array"
+version = "0.5.1"
+optional = true
+
+[dev-dependencies.postcard]
+path = "../postcard"
+version = "1.0"
+features = ["use-std"]
+
+[dev-dependencies.nalgebra_v0_33]
+package = "nalgebra"
+version = "0.33.0"
+default-features = false
+features = ["serde-serialize-no-std"]
+
+[features]
+default = []
+use-std = ["serde/std"]
+alloc = ["serde/alloc"]
+derive = ["postcard-derive-ng"]
+
+core-net = []
+core-num-saturating = []
+
+chrono-v0_4 = ["chrono_v0_4"]
+defmt-v0_3 = ["defmt_v0_3"]
+fixed-v1_0 = ["fixed_v1_0"]
+heapless-v0_7 = ["heapless_v0_7"]
+heapless-v0_8 = ["heapless_v0_8"]
+nalgebra-v0_33 = ["nalgebra_v0_33"]
+serde-big-array-v0_5 = ["serde-big-array_v0_5"]
+uuid-v1_0 = ["uuid_v1_0"]

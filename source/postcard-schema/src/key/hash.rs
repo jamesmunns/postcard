@@ -8,7 +8,10 @@
 //!
 //! [was noted]: https://doc.rust-lang.org/stable/std/hash/trait.Hash.html#portability
 
-use crate::{schema::DataModelType, Schema};
+use crate::{
+    schema::{DataModelType, NamedType, NamedValue, NamedVariant},
+    Schema,
+};
 
 /// A const compatible Fnv1a64 hasher
 pub struct Fnv1a64Hasher {
@@ -53,8 +56,7 @@ impl Default for Fnv1a64Hasher {
 
 pub mod fnv1a64 {
     //! Const and no-std helper methods and types for perfoming hash calculation
-
-    use crate::schema::{Data, NamedField, Variant};
+    use crate::schema::DataModelVariant;
 
     use super::*;
 
@@ -62,7 +64,7 @@ pub mod fnv1a64 {
     pub const fn hash_ty_path<T: Schema + ?Sized>(path: &str) -> [u8; 8] {
         let schema = T::SCHEMA;
         let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
-        hash_sdm_type(state, schema).to_le_bytes()
+        hash_named_type(state, schema).to_le_bytes()
     }
 
     pub(crate) const fn hash_update(mut state: u64, bytes: &[u8]) -> u64 {
@@ -129,99 +131,97 @@ pub mod fnv1a64 {
             DataModelType::Char => hash_update(state, &[0xC1]),
             DataModelType::String => hash_update(state, &[0x25]),
             DataModelType::ByteArray => hash_update(state, &[0x65]),
-            DataModelType::Option(t) => {
+            DataModelType::Option(nt) => {
                 let state = hash_update(state, &[0x6D]);
-                hash_sdm_type(state, t)
+                hash_named_type(state, nt)
             }
             DataModelType::Unit => hash_update(state, &[0x47]),
-            DataModelType::Seq(t) => {
-                let state = hash_update(state, &[0x03]);
-                hash_sdm_type(state, t)
+            DataModelType::UnitStruct => hash_update(state, &[0xBF]),
+            DataModelType::NewtypeStruct(nt) => {
+                let state = hash_update(state, &[0x9D]);
+                hash_named_type(state, nt)
             }
-            DataModelType::Tuple(ts) => {
+            DataModelType::Seq(nt) => {
+                let state = hash_update(state, &[0x03]);
+                hash_named_type(state, nt)
+            }
+            DataModelType::Tuple(nts) => {
                 let mut state = hash_update(state, &[0xA7]);
                 let mut idx = 0;
-                while idx < ts.len() {
-                    state = hash_sdm_type(state, ts[idx]);
+                while idx < nts.len() {
+                    state = hash_named_type(state, nts[idx]);
+                    idx += 1;
+                }
+                state
+            }
+            DataModelType::TupleStruct(nts) => {
+                let mut state = hash_update(state, &[0x05]);
+                let mut idx = 0;
+                while idx < nts.len() {
+                    state = hash_named_type(state, nts[idx]);
                     idx += 1;
                 }
                 state
             }
             DataModelType::Map { key, val } => {
                 let state = hash_update(state, &[0x4F]);
-                let state = hash_sdm_type(state, key);
-                hash_sdm_type(state, val)
+                let state = hash_named_type(state, key);
+                hash_named_type(state, val)
             }
-            DataModelType::Struct { name, data } => hash_struct(state, name, data),
-            DataModelType::Enum { name: _, variants } => {
-                let mut state = hash_update(state, &[0xE9]);
+            DataModelType::Struct(nvs) => {
+                let mut state = hash_update(state, &[0x7F]);
                 let mut idx = 0;
-                while idx < variants.len() {
-                    state = hash_variant(state, variants[idx]);
+                while idx < nvs.len() {
+                    state = hash_named_value(state, nvs[idx]);
                     idx += 1;
                 }
                 state
             }
-            DataModelType::Schema => hash_update(state, &[0xE5]),
+            DataModelType::Enum(nvs) => {
+                let mut state = hash_update(state, &[0xE9]);
+                let mut idx = 0;
+                while idx < nvs.len() {
+                    state = hash_named_variant(state, nvs[idx]);
+                    idx += 1;
+                }
+                state
+            }
+            DataModelType::Schema => hash_update(state, &[0xB3]),
         }
     }
 
-    const fn hash_struct(state: u64, _name: &str, data: &Data) -> u64 {
+    const fn hash_named_type(state: u64, nt: &NamedType) -> u64 {
         // NOTE: We do *not* hash the name of the type in hashv2. This
         // is to allow "safe" type punning, e.g. treating `Vec<u8>` and
         // `&[u8]` as compatible types, when talking between std and no-std
         // targets
         //
-        // let state = hash_update(state, name.as_bytes());
-        match data {
-            Data::Unit => hash_update(state, &[0xBF]),
-            Data::Newtype(dmt) => {
-                let state = hash_update(state, &[0x9D]);
-                hash_sdm_type(state, dmt)
-            }
-            Data::Tuple(dmts) => {
-                let mut state = hash_update(state, &[0x05]);
-                let mut idx = 0;
-                while idx < dmts.len() {
-                    state = hash_sdm_type(state, dmts[idx]);
-                    idx += 1;
-                }
-                state
-            }
-            Data::Struct(nfs) => {
-                let mut state = hash_update(state, &[0x7F]);
-                let mut idx = 0;
-                while idx < nfs.len() {
-                    state = hash_named_field(state, nfs[idx]);
-                    idx += 1;
-                }
-                state
-            }
-        }
+        // let state = hash_update(state, nt.name.as_bytes());
+        hash_sdm_type(state, nt.ty)
     }
 
-    const fn hash_variant(state: u64, nt: &Variant) -> u64 {
+    const fn hash_named_variant(state: u64, nt: &NamedVariant) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        match nt.data {
-            Data::Unit => hash_update(state, &[0xB5]),
-            Data::Newtype(t) => {
+        match nt.ty {
+            DataModelVariant::UnitVariant => hash_update(state, &[0xB5]),
+            DataModelVariant::NewtypeVariant(nt) => {
                 let state = hash_update(state, &[0xDF]);
-                hash_sdm_type(state, t)
+                hash_named_type(state, nt)
             }
-            Data::Tuple(ts) => {
+            DataModelVariant::TupleVariant(nts) => {
                 let mut state = hash_update(state, &[0xC7]);
                 let mut idx = 0;
-                while idx < ts.len() {
-                    state = hash_sdm_type(state, ts[idx]);
+                while idx < nts.len() {
+                    state = hash_named_type(state, nts[idx]);
                     idx += 1;
                 }
                 state
             }
-            Data::Struct(fields) => {
+            DataModelVariant::StructVariant(nvs) => {
                 let mut state = hash_update(state, &[0x67]);
                 let mut idx = 0;
-                while idx < fields.len() {
-                    state = hash_named_field(state, fields[idx]);
+                while idx < nvs.len() {
+                    state = hash_named_value(state, nvs[idx]);
                     idx += 1;
                 }
                 state
@@ -229,9 +229,9 @@ pub mod fnv1a64 {
         }
     }
 
-    const fn hash_named_field(state: u64, nt: &NamedField) -> u64 {
+    const fn hash_named_value(state: u64, nt: &NamedValue) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        hash_sdm_type(state, nt.ty)
+        hash_named_type(state, nt.ty)
     }
 }
 
@@ -239,18 +239,21 @@ pub mod fnv1a64 {
 pub mod fnv1a64_owned {
     //! Heapful helpers and versions of hashing for use on `std` targets
 
-    use crate::schema::owned::{OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant};
+    use crate::schema::owned::{
+        OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType, OwnedNamedValue,
+        OwnedNamedVariant,
+    };
 
     use super::fnv1a64::*;
     use super::*;
 
-    /// Calculate the Key hash for the given path and [`OwnedDataModelType`]
-    pub fn hash_ty_path_owned(path: &str, ty: &OwnedDataModelType) -> [u8; 8] {
+    /// Calculate the Key hash for the given path and OwnedNamedType
+    pub fn hash_ty_path_owned(path: &str, nt: &OwnedNamedType) -> [u8; 8] {
         let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
-        hash_sdm_type_owned(state, ty).to_le_bytes()
+        hash_named_type_owned(state, nt).to_le_bytes()
     }
 
-    const fn hash_sdm_type_owned(state: u64, sdmty: &OwnedDataModelType) -> u64 {
+    fn hash_sdm_type_owned(state: u64, sdmty: &OwnedDataModelType) -> u64 {
         // The actual values we use here don't matter that much (as far as I know),
         // as long as the values for each variant are unique. I am unsure of the
         // implications of doing a TON of single byte calls to `update`, it may be
@@ -299,99 +302,97 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
             OwnedDataModelType::String => hash_update(state, &[0x25]),
             OwnedDataModelType::ByteArray => hash_update(state, &[0x65]),
-            OwnedDataModelType::Option(t) => {
+            OwnedDataModelType::Option(nt) => {
                 let state = hash_update(state, &[0x6D]);
-                hash_sdm_type_owned(state, t)
+                hash_named_type_owned(state, nt)
             }
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
-            OwnedDataModelType::Seq(t) => {
-                let state = hash_update(state, &[0x03]);
-                hash_sdm_type_owned(state, t)
+            OwnedDataModelType::UnitStruct => hash_update(state, &[0xBF]),
+            OwnedDataModelType::NewtypeStruct(nt) => {
+                let state = hash_update(state, &[0x9D]);
+                hash_named_type_owned(state, nt)
             }
-            OwnedDataModelType::Tuple(ts) => {
+            OwnedDataModelType::Seq(nt) => {
+                let state = hash_update(state, &[0x03]);
+                hash_named_type_owned(state, nt)
+            }
+            OwnedDataModelType::Tuple(nts) => {
                 let mut state = hash_update(state, &[0xA7]);
                 let mut idx = 0;
-                while idx < ts.len() {
-                    state = hash_sdm_type_owned(state, &ts[idx]);
+                while idx < nts.len() {
+                    state = hash_named_type_owned(state, &nts[idx]);
+                    idx += 1;
+                }
+                state
+            }
+            OwnedDataModelType::TupleStruct(nts) => {
+                let mut state = hash_update(state, &[0x05]);
+                let mut idx = 0;
+                while idx < nts.len() {
+                    state = hash_named_type_owned(state, &nts[idx]);
                     idx += 1;
                 }
                 state
             }
             OwnedDataModelType::Map { key, val } => {
                 let state = hash_update(state, &[0x4F]);
-                let state = hash_sdm_type_owned(state, key);
-                hash_sdm_type_owned(state, val)
+                let state = hash_named_type_owned(state, key);
+                hash_named_type_owned(state, val)
             }
-            OwnedDataModelType::Struct { name, data } => hash_struct(state, name, data),
-            OwnedDataModelType::Enum { name: _, variants } => {
-                let mut state = hash_update(state, &[0xE9]);
+            OwnedDataModelType::Struct(nvs) => {
+                let mut state = hash_update(state, &[0x7F]);
                 let mut idx = 0;
-                while idx < variants.len() {
-                    state = hash_variant(state, &variants[idx]);
+                while idx < nvs.len() {
+                    state = hash_named_value_owned(state, &nvs[idx]);
                     idx += 1;
                 }
                 state
             }
-            OwnedDataModelType::Schema => hash_update(state, &[0xE5]),
+            OwnedDataModelType::Enum(nvs) => {
+                let mut state = hash_update(state, &[0xE9]);
+                let mut idx = 0;
+                while idx < nvs.len() {
+                    state = hash_named_variant_owned(state, &nvs[idx]);
+                    idx += 1;
+                }
+                state
+            }
+            OwnedDataModelType::Schema => hash_update(state, &[0xB3]),
         }
     }
 
-    const fn hash_struct(state: u64, _name: &str, data: &OwnedData) -> u64 {
+    fn hash_named_type_owned(state: u64, nt: &OwnedNamedType) -> u64 {
         // NOTE: We do *not* hash the name of the type in hashv2. This
         // is to allow "safe" type punning, e.g. treating `Vec<u8>` and
         // `&[u8]` as compatible types, when talking between std and no-std
         // targets
         //
-        // let state = hash_update(state, name.as_bytes());
-        match data {
-            OwnedData::Unit => hash_update(state, &[0xBF]),
-            OwnedData::Newtype(dmt) => {
-                let state = hash_update(state, &[0x9D]);
-                hash_sdm_type_owned(state, dmt)
-            }
-            OwnedData::Tuple(dmts) => {
-                let mut state = hash_update(state, &[0x05]);
-                let mut idx = 0;
-                while idx < dmts.len() {
-                    state = hash_sdm_type_owned(state, &dmts[idx]);
-                    idx += 1;
-                }
-                state
-            }
-            OwnedData::Struct(nfs) => {
-                let mut state = hash_update(state, &[0x7F]);
-                let mut idx = 0;
-                while idx < nfs.len() {
-                    state = hash_named_field(state, &nfs[idx]);
-                    idx += 1;
-                }
-                state
-            }
-        }
+        // let state = hash_update(state, nt.name.as_bytes());
+        hash_sdm_type_owned(state, &nt.ty)
     }
 
-    const fn hash_variant(state: u64, nt: &OwnedVariant) -> u64 {
+    fn hash_named_variant_owned(state: u64, nt: &OwnedNamedVariant) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        match &nt.data {
-            OwnedData::Unit => hash_update(state, &[0xB5]),
-            OwnedData::Newtype(t) => {
+        match &nt.ty {
+            OwnedDataModelVariant::UnitVariant => hash_update(state, &[0xB5]),
+            OwnedDataModelVariant::NewtypeVariant(nt) => {
                 let state = hash_update(state, &[0xDF]);
-                hash_sdm_type_owned(state, t)
+                hash_named_type_owned(state, nt)
             }
-            OwnedData::Tuple(ts) => {
+            OwnedDataModelVariant::TupleVariant(nts) => {
                 let mut state = hash_update(state, &[0xC7]);
                 let mut idx = 0;
-                while idx < ts.len() {
-                    state = hash_sdm_type_owned(state, &ts[idx]);
+                while idx < nts.len() {
+                    state = hash_named_type_owned(state, &nts[idx]);
                     idx += 1;
                 }
                 state
             }
-            OwnedData::Struct(fields) => {
+            OwnedDataModelVariant::StructVariant(nvs) => {
                 let mut state = hash_update(state, &[0x67]);
                 let mut idx = 0;
-                while idx < fields.len() {
-                    state = hash_named_field(state, &fields[idx]);
+                while idx < nvs.len() {
+                    state = hash_named_value_owned(state, &nvs[idx]);
                     idx += 1;
                 }
                 state
@@ -399,41 +400,15 @@ pub mod fnv1a64_owned {
         }
     }
 
-    const fn hash_named_field(state: u64, nt: &OwnedNamedField) -> u64 {
+    fn hash_named_value_owned(state: u64, nt: &OwnedNamedValue) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        hash_sdm_type_owned(state, &nt.ty)
+        hash_named_type_owned(state, &nt.ty)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use postcard_derive::Schema;
-
     use super::fnv1a64::hash_ty_path;
-
-    #[test]
-    fn hash_stability() {
-        #![allow(dead_code)]
-
-        #[derive(Schema)]
-        #[postcard(crate = crate)]
-        struct Foo {
-            a: u32,
-            b: String,
-        }
-
-        #[derive(Schema)]
-        #[postcard(crate = crate)]
-        enum Bar {
-            A,
-            B(Foo),
-        }
-
-        assert_eq!(
-            hash_ty_path::<Bar>("test_path"),
-            [139, 128, 52, 27, 107, 8, 218, 98]
-        );
-    }
 
     #[test]
     fn type_punning_good() {

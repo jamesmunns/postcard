@@ -3,7 +3,7 @@
 //! These implementations are always available
 
 use crate::{
-    schema::{Data, DataModelType, NamedField, Variant},
+    schema::{DataModelType, DataModelVariant, NamedType, NamedValue, NamedVariant},
     Schema,
 };
 use core::{
@@ -20,14 +20,20 @@ macro_rules! impl_schema {
     ($($t:ty: $sdm:expr),*) => {
         $(
             impl Schema for $t {
-                const SCHEMA: &'static DataModelType = &$sdm;
+                const SCHEMA: &'static NamedType = &NamedType {
+                    name: stringify!($t),
+                    ty: &$sdm,
+                };
             }
         )*
     };
     (tuple => [$(($($generic:ident),*)),*]) => {
         $(
             impl<$($generic: Schema),*> Schema for ($($generic,)*) {
-                const SCHEMA: &'static DataModelType = &DataModelType::Tuple(&[$($generic::SCHEMA),*]);
+                const SCHEMA: &'static NamedType = &NamedType {
+                    name: stringify!(($($generic,)*)),
+                    ty: &DataModelType::Tuple(&[$($generic::SCHEMA),*]),
+                };
             }
         )*
     };
@@ -62,46 +68,53 @@ impl_schema!(tuple => [
 ]);
 
 impl<T: Schema> Schema for Option<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Option(T::SCHEMA);
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Option<T>",
+        ty: &DataModelType::Option(T::SCHEMA),
+    };
 }
-
 impl<T: Schema, E: Schema> Schema for Result<T, E> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "Result<T, E>",
-        variants: &[
-            &Variant {
+        ty: &DataModelType::Enum(&[
+            &NamedVariant {
                 name: "Ok",
-                data: Data::Newtype(T::SCHEMA),
+                ty: &DataModelVariant::TupleVariant(&[T::SCHEMA]),
             },
-            &Variant {
+            &NamedVariant {
                 name: "Err",
-                data: Data::Newtype(E::SCHEMA),
+                ty: &DataModelVariant::TupleVariant(&[E::SCHEMA]),
             },
-        ],
+        ]),
     };
 }
 
 impl<T: Schema + ?Sized> Schema for &'_ T {
-    const SCHEMA: &'static DataModelType = T::SCHEMA;
+    const SCHEMA: &'static NamedType = T::SCHEMA;
 }
 
 impl<T: Schema> Schema for [T] {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq(T::SCHEMA);
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "[T]",
+        ty: &DataModelType::Seq(T::SCHEMA),
+    };
 }
-
 impl<T: Schema, const N: usize> Schema for [T; N] {
-    const SCHEMA: &'static DataModelType = &DataModelType::Tuple(&[T::SCHEMA; N]);
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "[T; N]",
+        ty: &DataModelType::Tuple(&[T::SCHEMA; N]),
+    };
 }
 
 impl<T: Schema> Schema for Range<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
         name: "Range<T>",
-        data: Data::Struct(&[
-            &NamedField {
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
                 name: "start",
                 ty: T::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "end",
                 ty: T::SCHEMA,
             },
@@ -110,14 +123,14 @@ impl<T: Schema> Schema for Range<T> {
 }
 
 impl<T: Schema> Schema for RangeInclusive<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
         name: "RangeInclusive<T>",
-        data: Data::Struct(&[
-            &NamedField {
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
                 name: "start",
                 ty: T::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "end",
                 ty: T::SCHEMA,
             },
@@ -126,9 +139,9 @@ impl<T: Schema> Schema for RangeInclusive<T> {
 }
 
 impl<T: Schema> Schema for RangeFrom<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
         name: "RangeFrom<T>",
-        data: Data::Struct(&[&NamedField {
+        ty: &DataModelType::Struct(&[&NamedValue {
             name: "start",
             ty: T::SCHEMA,
         }]),
@@ -136,9 +149,9 @@ impl<T: Schema> Schema for RangeFrom<T> {
 }
 
 impl<T: Schema> Schema for RangeTo<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
         name: "RangeTo<T>",
-        data: Data::Struct(&[&NamedField {
+        ty: &DataModelType::Struct(&[&NamedValue {
             name: "end",
             ty: T::SCHEMA,
         }]),
@@ -147,9 +160,9 @@ impl<T: Schema> Schema for RangeTo<T> {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::Ipv4Addr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "Ipv4Addr",
-        data: Data::Struct(&[&NamedField {
+        ty: &DataModelType::Struct(&[&NamedValue {
             name: "octets",
             ty: <[u8; 4]>::SCHEMA,
         }]),
@@ -158,9 +171,9 @@ impl Schema for core::net::Ipv4Addr {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::Ipv6Addr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "Ipv6Addr",
-        data: Data::Struct(&[&NamedField {
+        ty: &DataModelType::Struct(&[&NamedValue {
             name: "octets",
             ty: <[u8; 16]>::SCHEMA,
         }]),
@@ -169,31 +182,31 @@ impl Schema for core::net::Ipv6Addr {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::IpAddr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "IpAddr",
-        variants: &[
-            &Variant {
+        ty: &DataModelType::Enum(&[
+            &NamedVariant {
                 name: "V4",
-                data: Data::Newtype(core::net::Ipv4Addr::SCHEMA),
+                ty: &DataModelVariant::NewtypeVariant(core::net::Ipv4Addr::SCHEMA),
             },
-            &Variant {
+            &NamedVariant {
                 name: "V6",
-                data: Data::Newtype(core::net::Ipv6Addr::SCHEMA),
+                ty: &DataModelVariant::NewtypeVariant(core::net::Ipv6Addr::SCHEMA),
             },
-        ],
+        ]),
     };
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::SocketAddrV4 {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "SocketAddrV4",
-        data: Data::Struct(&[
-            &NamedField {
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
                 name: "ip",
                 ty: core::net::Ipv4Addr::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "port",
                 ty: u16::SCHEMA,
             },
@@ -203,22 +216,22 @@ impl Schema for core::net::SocketAddrV4 {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::SocketAddrV6 {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "SocketAddrV6",
-        data: Data::Struct(&[
-            &NamedField {
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
                 name: "ip",
                 ty: core::net::Ipv6Addr::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "port",
                 ty: u16::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "flowinfo",
                 ty: u32::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "scope_id",
                 ty: u32::SCHEMA,
             },
@@ -228,40 +241,40 @@ impl Schema for core::net::SocketAddrV6 {
 
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::SocketAddr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Enum {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "SocketAddr",
-        variants: &[
-            &Variant {
+        ty: &DataModelType::Enum(&[
+            &NamedVariant {
                 name: "V4",
-                data: Data::Newtype(core::net::SocketAddrV4::SCHEMA),
+                ty: &DataModelVariant::NewtypeVariant(core::net::SocketAddrV4::SCHEMA),
             },
-            &Variant {
+            &NamedVariant {
                 name: "V6",
-                data: Data::Newtype(core::net::SocketAddrV6::SCHEMA),
+                ty: &DataModelVariant::NewtypeVariant(core::net::SocketAddrV6::SCHEMA),
             },
-        ],
+        ]),
     };
 }
 
 impl<T: Schema> Schema for core::num::Wrapping<T> {
-    const SCHEMA: &'static DataModelType = T::SCHEMA;
+    const SCHEMA: &'static NamedType = T::SCHEMA;
 }
 
 #[cfg(feature = "core-num-saturating")]
 #[cfg_attr(docsrs, doc(cfg(feature = "core-num-saturating")))]
 impl<T: Schema> Schema for core::num::Saturating<T> {
-    const SCHEMA: &'static DataModelType = T::SCHEMA;
+    const SCHEMA: &'static NamedType = T::SCHEMA;
 }
 
 impl Schema for Duration {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "Duration",
-        data: Data::Struct(&[
-            &NamedField {
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
                 name: "secs",
                 ty: u64::SCHEMA,
             },
-            &NamedField {
+            &NamedValue {
                 name: "nanos",
                 ty: u32::SCHEMA,
             },
@@ -270,8 +283,8 @@ impl Schema for Duration {
 }
 
 impl<T: ?Sized> Schema for PhantomData<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+    const SCHEMA: &'static NamedType = &NamedType {
         name: "PhantomData",
-        data: Data::Unit,
+        ty: &DataModelType::Unit,
     };
 }
