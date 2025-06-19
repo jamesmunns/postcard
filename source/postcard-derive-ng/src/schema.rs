@@ -42,7 +42,7 @@ struct Generator {
 impl Generator {
     fn new(input: &DeriveInput) -> syn::Result<Self> {
         let mut generator = Self {
-            postcard_schema: parse_quote!(::postcard_schema),
+            postcard_schema: parse_quote!(::postcard_schema_ng),
             bound: None,
         };
         for attr in &input.attrs {

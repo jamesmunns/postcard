@@ -2,7 +2,7 @@
 resolver = '2'
 members = [
     "source/postcard",
-    "source/postcard-derive",
+    "source/postcard-derive-ng",
     "source/postcard-dyn",
     "source/postcard-dyn-ng",
     "source/postcard-schema",
