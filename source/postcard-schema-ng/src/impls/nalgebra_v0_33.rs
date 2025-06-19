@@ -16,6 +16,16 @@ where
     const SCHEMA: &'static DataModelType = &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C]));
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: Schema> Schema for nalgebra_v0_33::Unit<T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: Schema + nalgebra_v0_33::Scalar> Schema for nalgebra_v0_33::Quaternion<T> {
+    const SCHEMA: &'static DataModelType = nalgebra_v0_33::Vector4::<T>::SCHEMA;
+}
+
 /// Const version of the const-unstable [`<[[T; N]]>::as_flattened()`]
 const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
     const {

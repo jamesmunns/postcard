@@ -263,6 +263,33 @@ impl<const N: usize> MaxSize for heapless::String<N> {
     const POSTCARD_MAX_SIZE: usize = <[u8; N]>::POSTCARD_MAX_SIZE + varint_size(N);
 }
 
+#[cfg(all(feature = "nalgebra-v0_33", feature = "experimental-derive"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T, const R: usize, const C: usize> MaxSize
+    for nalgebra_v0_33::Matrix<
+        T,
+        nalgebra_v0_33::Const<R>,
+        nalgebra_v0_33::Const<C>,
+        nalgebra_v0_33::ArrayStorage<T, R, C>,
+    >
+where
+    T: MaxSize + nalgebra_v0_33::Scalar,
+{
+    const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE * R * C;
+}
+
+#[cfg(all(feature = "nalgebra-v0_33", feature = "experimental-derive"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: MaxSize> MaxSize for nalgebra_v0_33::Unit<T> {
+    const POSTCARD_MAX_SIZE: usize = T::POSTCARD_MAX_SIZE;
+}
+
+#[cfg(all(feature = "nalgebra-v0_33", feature = "experimental-derive"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: MaxSize + nalgebra_v0_33::Scalar> MaxSize for nalgebra_v0_33::Quaternion<T> {
+    const POSTCARD_MAX_SIZE: usize = nalgebra_v0_33::Vector4::<T>::POSTCARD_MAX_SIZE;
+}
+
 #[cfg(feature = "heapless")]
 const fn varint_size(max_n: usize) -> usize {
     const BITS_PER_BYTE: usize = 8;
