@@ -1,6 +1,5 @@
 [package]
 name = "postcard-schema-ng"
-# note: not released!
 version = "0.3.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"

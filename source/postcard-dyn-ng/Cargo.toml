@@ -15,7 +15,7 @@ keywords = [
     "cobs",
     "framing",
 ]
-documentation = "https://docs.rs/postcard-dyn/"
+documentation = "https://docs.rs/postcard-dyn-ng/"
 
 
 [dependencies]

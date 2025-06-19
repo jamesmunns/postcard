@@ -19,7 +19,7 @@ keywords = [
     "cobs",
     "framing",
 ]
-documentation = "https://docs.rs/postcard-derive/"
+documentation = "https://docs.rs/postcard-derive-ng/"
 
 [lib]
 proc-macro = true
