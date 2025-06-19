@@ -66,6 +66,11 @@ impl Key {
     }
 
     /// Create a key from a given 8-byte value
+    ///
+    /// NOTE: Since [`Key`]s should never be used to replace full type safety,
+    /// creating a "wrong" Key should not be unsafe. However, using a "wrong"
+    /// key (which doesn't match the type being deserialized) may cause confusion,
+    /// so manually creating keys should be avoided whenever possible.
     pub const fn from_bytes(bytes: [u8; 8]) -> Self {
         Self(bytes)
     }
