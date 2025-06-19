@@ -34,7 +34,7 @@ pub(crate) mod max_size;
 /// an associated `usize` constant called `POSTCARD_MAX_SIZE`. It also provides a
 /// `#[derive(MaxSize)]` macro that can be used for calculating user types.
 ///
-/// This is useful for determining the maximum buffer size needed when recieving
+/// This is useful for determining the maximum buffer size needed when receiving
 /// or sending a message that has been serialized.
 ///
 /// NOTE: This only covers the size of "plain" flavored messages, e.g. not with COBS

@@ -6,7 +6,7 @@
 //! This key should NOT be relied on for memory safety purposes, validation
 //! of the data should still be performed, like that done by serde. It should
 //! be treated as misuse **resistant**, not misuse **proof**. It is possible
-//! for there to be hash collisions, and as a non-cryptograpic hash, it is
+//! for there to be hash collisions, and as a non-cryptographic hash, it is
 //! likely trivial to intentionally cause a collision.
 
 use serde::{Deserialize, Serialize};
