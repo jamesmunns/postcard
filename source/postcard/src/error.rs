@@ -32,8 +32,16 @@ pub enum Error {
     DeserializeBadEncoding,
     /// Bad CRC while deserializing
     DeserializeBadCrc,
+    #[cfg(feature = "use-std")]
+    /// Serde Serialization Error
+    SerdeSerCustom(String),
+    #[cfg(not(feature = "use-std"))]
     /// Serde Serialization Error
     SerdeSerCustom,
+    #[cfg(feature = "use-std")]
+    /// Serde Deserialization Error
+    SerdeDeCustom(String),
+    #[cfg(not(feature = "use-std"))]
     /// Serde Deserialization Error
     SerdeDeCustom,
     /// Error while processing `collect_str` during serialization
@@ -64,7 +72,13 @@ impl Display for Error {
                 DeserializeBadEnum => "Found an enum discriminant that was > u32::max_value()",
                 DeserializeBadEncoding => "The original data was not well encoded",
                 DeserializeBadCrc => "Bad CRC while deserializing",
+                #[cfg(feature = "use-std")]
+                SerdeSerCustom(s) => s,
+                #[cfg(feature = "use-std")]
+                SerdeDeCustom(s) => s,
+                #[cfg(not(feature = "use-std"))]
                 SerdeSerCustom => "Serde Serialization Error",
+                #[cfg(not(feature = "use-std"))]
                 SerdeDeCustom => "Serde Deserialization Error",
                 CollectStrError => "Error while processing `collect_str` during serialization",
             }
@@ -75,6 +89,19 @@ impl Display for Error {
 /// This is the Result type used by Postcard.
 pub type Result<T> = ::core::result::Result<T, Error>;
 
+#[cfg(feature = "use-std")]
+impl serde::ser::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        // We must convert the parameter immediately to a string, because we cannot guarantee
+        // that T lives long enough to be used later.
+        Error::SerdeSerCustom(msg.to_string())
+    }
+}
+
+#[cfg(not(feature = "use-std"))]
 impl serde::ser::Error for Error {
     fn custom<T>(_msg: T) -> Self
     where
@@ -84,6 +111,17 @@ impl serde::ser::Error for Error {
     }
 }
 
+#[cfg(feature = "use-std")]
+impl serde::de::Error for Error {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        Error::SerdeDeCustom(msg.to_string())
+    }
+}
+
+#[cfg(not(feature = "use-std"))]
 impl serde::de::Error for Error {
     fn custom<T>(_msg: T) -> Self
     where
