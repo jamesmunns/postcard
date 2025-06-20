@@ -1,0 +1,19 @@
+---
+source: source/postcard-dyn/src/de.rs
+expression: "TupStruct2 :: SCHEMA"
+---
+NamedType {
+    name: "TupStruct2",
+    ty: TupleStruct(
+        [
+            NamedType {
+                name: "u8",
+                ty: U8,
+            },
+            NamedType {
+                name: "u8",
+                ty: U8,
+            },
+        ],
+    ),
+}

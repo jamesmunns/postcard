@@ -1,8 +1,7 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::{
-    parse_quote, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Fields, GenericParam,
-    Generics, Path, Token,
+    parse_quote, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Fields, GenericParam, Generics, Ident, Path, Token
 };
 
 pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -25,10 +24,24 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     let ty = generator.generate_type(&input.data, span, name.to_string())?;
 
     let postcard_schema = &generator.postcard_schema;
+    let insta_test = if cfg!(feature = "insta") && ty_generics.to_token_stream().is_empty() {
+        let test_name = Ident::new(format!("insta_{name}").as_str(), Span::call_site());
+        quote! {
+            #[cfg(test)]
+            #[test]
+            fn #test_name() {
+                #postcard_schema::impls::insta::assert_debug_snapshot!(#name::SCHEMA);
+            }
+        }
+    } else {
+        quote! {
+        }
+    };
     let expanded = quote! {
         impl #impl_generics #postcard_schema::Schema for #name #ty_generics #where_clause {
             const SCHEMA: &'static #postcard_schema::schema::NamedType = #ty;
         }
+        #insta_test
     };
 
     Ok(expanded)

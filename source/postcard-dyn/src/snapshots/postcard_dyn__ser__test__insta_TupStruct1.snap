@@ -1,0 +1,13 @@
+---
+source: source/postcard-dyn/src/ser.rs
+expression: "TupStruct1 :: SCHEMA"
+---
+NamedType {
+    name: "TupStruct1",
+    ty: NewtypeStruct(
+        NamedType {
+            name: "u8",
+            ty: U8,
+        },
+    ),
+}

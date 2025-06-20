@@ -1,0 +1,8 @@
+---
+source: source/postcard-dyn/src/de.rs
+expression: "UnitStruct :: SCHEMA"
+---
+NamedType {
+    name: "UnitStruct",
+    ty: UnitStruct,
+}
