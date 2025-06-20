@@ -1,0 +1,32 @@
+---
+source: source/postcard-dyn/src/ser.rs
+expression: "Struct1 :: SCHEMA"
+---
+NamedType {
+    name: "Struct1",
+    ty: Struct(
+        [
+            NamedValue {
+                name: "x",
+                ty: NamedType {
+                    name: "bool",
+                    ty: Bool,
+                },
+            },
+            NamedValue {
+                name: "y",
+                ty: NamedType {
+                    name: "u16",
+                    ty: U16,
+                },
+            },
+            NamedValue {
+                name: "z",
+                ty: NamedType {
+                    name: "f64",
+                    ty: F64,
+                },
+            },
+        ],
+    ),
+}

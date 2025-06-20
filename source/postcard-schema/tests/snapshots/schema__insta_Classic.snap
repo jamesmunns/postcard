@@ -1,0 +1,32 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "Classic :: SCHEMA"
+---
+NamedType {
+    name: "Classic",
+    ty: Struct(
+        [
+            NamedValue {
+                name: "a",
+                ty: NamedType {
+                    name: "u32",
+                    ty: U32,
+                },
+            },
+            NamedValue {
+                name: "b",
+                ty: NamedType {
+                    name: "u16",
+                    ty: U16,
+                },
+            },
+            NamedValue {
+                name: "c",
+                ty: NamedType {
+                    name: "bool",
+                    ty: Bool,
+                },
+            },
+        ],
+    ),
+}

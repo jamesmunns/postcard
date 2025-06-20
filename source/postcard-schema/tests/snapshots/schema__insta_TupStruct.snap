@@ -1,0 +1,19 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "TupStruct :: SCHEMA"
+---
+NamedType {
+    name: "TupStruct",
+    ty: TupleStruct(
+        [
+            NamedType {
+                name: "u64",
+                ty: U64,
+            },
+            NamedType {
+                name: "String",
+                ty: String,
+            },
+        ],
+    ),
+}

@@ -1,0 +1,13 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "NewTypeStruct :: SCHEMA"
+---
+NamedType {
+    name: "NewTypeStruct",
+    ty: NewtypeStruct(
+        NamedType {
+            name: "String",
+            ty: String,
+        },
+    ),
+}
