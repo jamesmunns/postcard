@@ -1,7 +1,7 @@
 //! # Fixed Size Integers
 //!
 //! In some cases, the use of variably length encoded data may not be
-//! preferrable. These modules, for use with `#[serde(with = ...)]`
+//! preferable. These modules, for use with `#[serde(with = ...)]`
 //! "opt out" of variable length encoding.
 //!
 //! Support explicitly not provided for `usize` or `isize`, as
