@@ -126,7 +126,7 @@ Values of each element of the `tuple` may have differing values.
 
 ### 25 - `tuple_struct`
 
-A type representing a named type specifcally containing exactly one `tuple` Serde Data Type
+A type representing a named type specifically containing exactly one `tuple` Serde Data Type
 
 ### 26 - `tuple_variant`
 
