@@ -84,6 +84,9 @@ alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc"]
 
+# Does nothing, for compat only
+paste = []
+
 # Experimental features!
 #
 # NOT subject to SemVer guarantees!
