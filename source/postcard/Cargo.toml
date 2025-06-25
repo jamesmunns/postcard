@@ -40,7 +40,7 @@ version = "0.2.3"
 default-features = false
 
 [dependencies.defmt]
-version = "0.3"
+version = "1"
 optional = true
 
 [dependencies.embedded-io-04]
