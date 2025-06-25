@@ -49,8 +49,6 @@ optional = true
 [dependencies.insta]
 package = "insta"
 version = "1"
-default-features = false
-optional = true
 
 [dependencies.heapless_v0_8]
 package = "heapless"
@@ -100,7 +98,6 @@ default = []
 use-std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["postcard-derive"]
-insta = ["dep:insta", "postcard-derive/insta"]
 
 core-net = []
 core-num-saturating = []

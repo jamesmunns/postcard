@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{quote, quote_spanned};
 use syn::{
     parse_quote, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Fields, GenericParam, Generics, Ident, Path, Token
 };
@@ -24,19 +24,7 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     let ty = generator.generate_type(&input.data, span, name.to_string())?;
 
     let postcard_schema = &generator.postcard_schema;
-    let insta_test = if cfg!(feature = "insta") && ty_generics.to_token_stream().is_empty() {
-        let test_name = Ident::new(format!("insta_{name}").as_str(), Span::call_site());
-        quote! {
-            #[cfg(test)]
-            #[test]
-            fn #test_name() {
-                #postcard_schema::impls::insta::assert_debug_snapshot!(#name::SCHEMA);
-            }
-        }
-    } else {
-        quote! {
-        }
-    };
+    let insta_test = generator.generate_snapshot_test(name);
     let expanded = quote! {
         impl #impl_generics #postcard_schema::Schema for #name #ty_generics #where_clause {
             const SCHEMA: &'static #postcard_schema::schema::NamedType = #ty;
@@ -50,6 +38,7 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
 struct Generator {
     postcard_schema: Path,
     bound: Option<Punctuated<syn::WherePredicate, Token![,]>>,
+    snapshot: bool
 }
 
 impl Generator {
@@ -57,6 +46,7 @@ impl Generator {
         let mut generator = Self {
             postcard_schema: parse_quote!(::postcard_schema),
             bound: None,
+            snapshot: false
         };
         for attr in &input.attrs {
             if attr.path().is_ident("postcard") {
@@ -78,6 +68,15 @@ impl Generator {
                         }
                         generator.bound = Some(bound);
                         return Ok(());
+                    }
+
+                    // #[postcard(snapshot)]
+                    if meta.path.is_ident("snapshot") {
+                        if input.generics.params.iter().filter(|x|!matches!(x, GenericParam::Lifetime(_))).count() != 0 {
+                            return Err(syn::Error::new(input.span(), "snapshot testing with generic schemas are not yet supported"));
+                        }
+                        generator.snapshot = true;
+                        return Ok(())
                     }
 
                     Err(meta.error("unsupported #[postcard] attribute"))
@@ -123,6 +122,23 @@ impl Generator {
                 ty: #ty,
             }
         })
+    }
+
+    fn generate_snapshot_test(&self, ident: &Ident) -> TokenStream {
+        if self.snapshot {
+            let postcard_schema = &self.postcard_schema;
+            let test_name = Ident::new(format!("postcard_snapshot_{}", ident.to_string()).as_str(), ident.span());
+            quote! {
+                #[cfg(test)]
+                #[test]
+                #[allow(non_snake_case)]
+                fn #test_name() {
+                    #postcard_schema::impls::insta::assert_debug_snapshot!(#ident::SCHEMA);
+                }
+            }
+        } else {
+            TokenStream::default()
+        }
     }
 
     fn generate_struct(&self, fields: &Fields) -> TokenStream {

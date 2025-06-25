@@ -1,8 +1,0 @@
----
-source: source/postcard-schema/tests/schema.rs
-expression: "UnitStruct :: SCHEMA"
----
-NamedType {
-    name: "UnitStruct",
-    ty: UnitStruct,
-}

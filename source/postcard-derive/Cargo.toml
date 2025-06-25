@@ -31,12 +31,3 @@ all-features = true
 syn = "2.0"
 quote = "1.0"
 proc-macro2 = "1.0"
-
-[dependencies.insta]
-package = "insta"
-version = "1"
-default-features = false
-optional = true
-
-[features]
-insta = ["dep:insta"]
