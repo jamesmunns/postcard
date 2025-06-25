@@ -30,6 +30,7 @@ const I32_SCHEMA: NamedType = NamedType {
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 enum Inner {
     Alpha,
     Beta,
@@ -40,6 +41,7 @@ enum Inner {
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 struct Outer<'a> {
     a: u32,
     b: u64,
@@ -51,6 +53,7 @@ struct Outer<'a> {
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 struct Slice<'a> {
     x: &'a [u8],
 }

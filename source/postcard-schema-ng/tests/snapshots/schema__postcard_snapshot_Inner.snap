@@ -1,0 +1,45 @@
+---
+source: source/postcard-schema-ng/tests/schema.rs
+expression: "Inner :: SCHEMA"
+---
+Enum {
+    name: "Inner",
+    variants: [
+        Variant {
+            name: "Alpha",
+            data: Unit,
+        },
+        Variant {
+            name: "Beta",
+            data: Unit,
+        },
+        Variant {
+            name: "Gamma",
+            data: Unit,
+        },
+        Variant {
+            name: "Delta",
+            data: Tuple(
+                [
+                    I32,
+                    I16,
+                ],
+            ),
+        },
+        Variant {
+            name: "Epsilon",
+            data: Struct(
+                [
+                    NamedField {
+                        name: "zeta",
+                        ty: F32,
+                    },
+                    NamedField {
+                        name: "eta",
+                        ty: Bool,
+                    },
+                ],
+            ),
+        },
+    ],
+}
