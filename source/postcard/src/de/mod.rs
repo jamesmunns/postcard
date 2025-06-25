@@ -4,6 +4,9 @@ use serde::Deserialize;
 pub(crate) mod deserializer;
 pub mod flavors;
 
+#[cfg(feature = "serde_spanned")]
+pub(crate) mod spanned;
+
 use crate::error::{Error, Result};
 use deserializer::Deserializer;
 
@@ -137,6 +140,47 @@ mod test_heapless {
     use core::ops::Deref;
     use heapless::{FnvIndexMap, String, Vec};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    #[cfg(feature = "serde_spanned")]
+    use serde_spanned::Spanned;
+
+    #[cfg(not(feature = "serde_spanned"))]
+    type Spanned<T> = T;
+
+    fn spanned<T>(val: T) -> Spanned<T> {
+        #[cfg(feature = "serde_spanned")]
+        return Spanned::new(0..0, val);
+
+        #[cfg(not(feature = "serde_spanned"))]
+        val
+    }
+
+    #[cfg(feature = "serde_spanned")]
+    #[track_caller]
+    fn assert_span_eq(
+        buf: &[u8],
+        expected: std::ops::Range<usize>,
+        actual: std::ops::Range<usize>,
+    ) {
+        fn marker_len(span: &std::ops::Range<usize>) -> usize {
+            if span.start >= span.end {
+                0
+            } else {
+                4 * (span.end - span.start) - 2
+            }
+        }
+
+        assert_eq!(
+            expected,
+            actual,
+            "Expected span:\n{:02x?}\n {}{}\nActual span:\n{:02x?}\n {}{}",
+            buf,
+            "    ".repeat(expected.start),
+            "^".repeat(marker_len(&expected)),
+            buf,
+            "    ".repeat(actual.start),
+            "^".repeat(marker_len(&actual)),
+        );
+    }
 
     #[test]
     fn de_u8() {
@@ -195,21 +239,21 @@ mod test_heapless {
 
     #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
     struct BasicU8S {
-        st: u16,
-        ei: u8,
-        ote: u128,
-        sf: u64,
-        tt: u32,
+        st: Spanned<u16>,
+        ei: Spanned<u8>,
+        ote: Spanned<u128>,
+        sf: Spanned<u64>,
+        tt: Spanned<u32>,
     }
 
     #[test]
     fn de_struct_unsigned() {
         let data = BasicU8S {
-            st: 0xABCD,
-            ei: 0xFE,
-            ote: 0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA,
-            sf: 0x1234_4321_ABCD_DCBA,
-            tt: 0xACAC_ACAC,
+            st: spanned(0xABCD),
+            ei: spanned(0xFE),
+            ote: spanned(0x1234_4321_ABCD_DCBA_1234_4321_ABCD_DCBA),
+            sf: spanned(0x1234_4321_ABCD_DCBA),
+            tt: spanned(0xACAC_ACAC),
         };
 
         const SZ: usize = varint_max::<u16>()
@@ -231,6 +275,15 @@ mod test_heapless {
 
         let out: BasicU8S = from_bytes(output.deref()).unwrap();
         assert_eq!(out, data);
+
+        #[cfg(feature = "serde_spanned")]
+        {
+            assert_span_eq(output.deref(), 0..3, out.st.span());
+            assert_span_eq(output.deref(), 3..4, out.ei.span());
+            assert_span_eq(output.deref(), 4..22, out.ote.span());
+            assert_span_eq(output.deref(), 22..31, out.sf.span());
+            assert_span_eq(output.deref(), 31..36, out.tt.span());
+        }
     }
 
     #[test]
@@ -294,18 +347,18 @@ mod test_heapless {
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     struct EnumStruct {
-        eight: u8,
-        sixt: u16,
+        eight: Spanned<u8>,
+        sixt: Spanned<u16>,
     }
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
     enum DataEnum {
-        Bib(u16),
-        Bim(u64),
-        Bap(u8),
-        Kim(EnumStruct),
-        Chi { a: u8, b: u32 },
-        Sho(u16, u8),
+        Bib(Spanned<u16>),
+        Bim(Spanned<u64>),
+        Bap(Spanned<u8>),
+        Kim(Spanned<EnumStruct>),
+        Chi { a: Spanned<u8>, b: Spanned<u32> },
+        Sho(Spanned<u16>, Spanned<u8>),
     }
 
     #[test]
@@ -316,41 +369,69 @@ mod test_heapless {
         assert_eq!(out, BasicEnum::Bim);
 
         let output: Vec<u8, { 1 + varint_max::<u64>() }> =
-            to_vec(&DataEnum::Bim(u64::MAX)).unwrap();
+            to_vec(&DataEnum::Bim(spanned(u64::MAX))).unwrap();
         assert_eq!(
             &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
             output.deref()
         );
 
         let output: Vec<u8, { 1 + varint_max::<u16>() }> =
-            to_vec(&DataEnum::Bib(u16::MAX)).unwrap();
+            to_vec(&DataEnum::Bib(spanned(u16::MAX))).unwrap();
         assert_eq!(&[0x00, 0xFF, 0xFF, 0x03], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, DataEnum::Bib(u16::MAX));
+        assert_eq!(out, DataEnum::Bib(spanned(u16::MAX)));
 
-        let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(u8::MAX)).unwrap();
+        #[cfg(feature = "serde_spanned")]
+        {
+            match out {
+                DataEnum::Bib(bib) => assert_span_eq(output.deref(), 1..4, bib.span()),
+                _ => panic!("Expected DataEnum::Bib"),
+            }
+        }
+
+        let output: Vec<u8, 2> = to_vec(&DataEnum::Bap(spanned(u8::MAX))).unwrap();
         assert_eq!(&[0x02, 0xFF], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, DataEnum::Bap(u8::MAX));
+        assert_eq!(out, DataEnum::Bap(spanned(u8::MAX)));
 
-        let output: Vec<u8, 8> = to_vec(&DataEnum::Kim(EnumStruct {
-            eight: 0xF0,
-            sixt: 0xACAC,
-        }))
+        #[cfg(feature = "serde_spanned")]
+        {
+            match out {
+                DataEnum::Bap(bap) => assert_span_eq(output.deref(), 1..2, bap.span()),
+                _ => panic!("Expected DataEnum::Bap"),
+            }
+        }
+
+        let output: Vec<u8, 8> = to_vec(&DataEnum::Kim(spanned(EnumStruct {
+            eight: spanned(0xF0),
+            sixt: spanned(0xACAC),
+        })))
         .unwrap();
         assert_eq!(&[0x03, 0xF0, 0xAC, 0xD9, 0x02], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
         assert_eq!(
             out,
-            DataEnum::Kim(EnumStruct {
-                eight: 0xF0,
-                sixt: 0xACAC
-            })
+            DataEnum::Kim(spanned(EnumStruct {
+                eight: spanned(0xF0),
+                sixt: spanned(0xACAC)
+            }))
         );
 
+        #[cfg(feature = "serde_spanned")]
+        {
+            match out {
+                DataEnum::Kim(kim) => {
+                    assert_span_eq(output.deref(), 1..5, kim.span());
+                    assert_span_eq(output.deref(), 1..2, kim.get_ref().eight.span());
+                    assert_span_eq(output.deref(), 2..5, kim.get_ref().sixt.span());
+                }
+                _ => panic!("Expected DataEnum::Kim"),
+            }
+        }
+
         let output: Vec<u8, 8> = to_vec(&DataEnum::Chi {
-            a: 0x0F,
-            b: 0xC7C7C7C7,
+            a: spanned(0x0F),
+            b: spanned(0xC7C7C7C7),
         })
         .unwrap();
         assert_eq!(&[0x04, 0x0F, 0xC7, 0x8F, 0x9F, 0xBE, 0x0C], output.deref());
@@ -358,15 +439,37 @@ mod test_heapless {
         assert_eq!(
             out,
             DataEnum::Chi {
-                a: 0x0F,
-                b: 0xC7C7C7C7
+                a: spanned(0x0F),
+                b: spanned(0xC7C7C7C7)
             }
         );
 
-        let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(0x6969, 0x07)).unwrap();
+        #[cfg(feature = "serde_spanned")]
+        {
+            match out {
+                DataEnum::Chi { a, b } => {
+                    assert_span_eq(output.deref(), 1..2, a.span());
+                    assert_span_eq(output.deref(), 2..7, b.span());
+                }
+                _ => panic!("Expected DataEnum::Chi"),
+            }
+        }
+
+        let output: Vec<u8, 8> = to_vec(&DataEnum::Sho(spanned(0x6969), spanned(0x07))).unwrap();
         assert_eq!(&[0x05, 0xE9, 0xD2, 0x01, 0x07], output.deref());
         let out: DataEnum = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, DataEnum::Sho(0x6969, 0x07));
+        assert_eq!(out, DataEnum::Sho(spanned(0x6969), spanned(0x07)));
+
+        #[cfg(feature = "serde_spanned")]
+        {
+            match out {
+                DataEnum::Sho(a, b) => {
+                    assert_span_eq(output.deref(), 1..4, a.span());
+                    assert_span_eq(output.deref(), 4..5, b.span());
+                }
+                _ => panic!("Expected DataEnum::Sho"),
+            }
+        }
     }
 
     #[test]
@@ -443,30 +546,49 @@ mod test_heapless {
     }
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-    pub struct NewTypeStruct(u32);
+    pub struct NewTypeStruct(Spanned<u32>);
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-    pub struct TupleStruct((u8, u16));
+    pub struct TupleStruct(Spanned<(Spanned<u8>, Spanned<u16>)>);
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-    pub struct DualTupleStruct(u8, u16);
+    pub struct DualTupleStruct(Spanned<u8>, Spanned<u16>);
 
     #[test]
     fn structs() {
-        let output: Vec<u8, 4> = to_vec(&NewTypeStruct(5)).unwrap();
+        let output: Vec<u8, 4> = to_vec(&NewTypeStruct(spanned(5))).unwrap();
         assert_eq!(&[0x05], output.deref());
         let out: NewTypeStruct = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, NewTypeStruct(5));
+        assert_eq!(out, NewTypeStruct(spanned(5)));
 
-        let output: Vec<u8, 3> = to_vec(&TupleStruct((0xA0, 0x1234))).unwrap();
+        #[cfg(feature = "serde_spanned")]
+        {
+            assert_span_eq(output.deref(), 0..1, out.0.span());
+        }
+
+        let output: Vec<u8, 3> =
+            to_vec(&TupleStruct(spanned((spanned(0xA0), spanned(0x1234))))).unwrap();
         assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: TupleStruct = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, TupleStruct((0xA0, 0x1234)));
+        assert_eq!(out, TupleStruct(spanned((spanned(0xA0), spanned(0x1234)))));
 
-        let output: Vec<u8, 3> = to_vec(&DualTupleStruct(0xA0, 0x1234)).unwrap();
+        #[cfg(feature = "serde_spanned")]
+        {
+            assert_span_eq(output.deref(), 0..3, out.0.span());
+            assert_span_eq(output.deref(), 0..1, out.0.get_ref().0.span());
+            assert_span_eq(output.deref(), 1..3, out.0.get_ref().1.span());
+        }
+
+        let output: Vec<u8, 3> = to_vec(&DualTupleStruct(spanned(0xA0), spanned(0x1234))).unwrap();
         assert_eq!(&[0xA0, 0xB4, 0x24], output.deref());
         let out: DualTupleStruct = from_bytes(output.deref()).unwrap();
-        assert_eq!(out, DualTupleStruct(0xA0, 0x1234));
+        assert_eq!(out, DualTupleStruct(spanned(0xA0), spanned(0x1234)));
+
+        #[cfg(feature = "serde_spanned")]
+        {
+            assert_span_eq(output.deref(), 0..1, out.0.span());
+            assert_span_eq(output.deref(), 1..3, out.1.span());
+        }
     }
 
     #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -498,6 +620,43 @@ mod test_heapless {
                 str_s: message,
             }
         );
+    }
+
+    #[cfg(feature = "serde_spanned")]
+    #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+    struct RefStructSpanned<'a> {
+        #[serde(borrow)]
+        bytes: Spanned<&'a [u8]>,
+        str_s: Spanned<&'a str>,
+    }
+
+    #[cfg(feature = "serde_spanned")]
+    #[test]
+    fn ref_struct_spanned() {
+        let message = "hElLo";
+        let bytes = [0x01, 0x10, 0x02, 0x20];
+        let output: Vec<u8, 11> = to_vec(&RefStructSpanned {
+            bytes: spanned(&bytes),
+            str_s: spanned(message),
+        })
+        .unwrap();
+
+        assert_eq!(
+            &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
+            output.deref()
+        );
+
+        let out: RefStructSpanned<'_> = from_bytes(output.deref()).unwrap();
+        assert_eq!(
+            out,
+            RefStructSpanned {
+                bytes: spanned(&bytes),
+                str_s: spanned(message),
+            }
+        );
+
+        assert_span_eq(output.deref(), 0..5, out.bytes.span());
+        assert_span_eq(output.deref(), 5..11, out.str_s.span());
     }
 
     #[test]
