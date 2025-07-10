@@ -1,5 +1,5 @@
 use postcard_schema_ng::{
-    schema::{owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant}, sintern, Schema
+    schema::{intern::ty_intern::count_run_dmts_data, owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant}, sintern, Schema
 };
 use std::{cmp::Ordering, path::PathBuf};
 
@@ -228,7 +228,15 @@ enum TestEnum2 {
 fn hacking() {
     // emit_strings(TestStruct2::SCHEMA);
     const SINTERN: &str = sintern!(TestStruct2);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestStruct2::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestStruct2::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestStruct2::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestStruct2::SCHEMA);
     println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
     panic!("yay");
 }
 
