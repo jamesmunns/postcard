@@ -26,6 +26,8 @@ pub mod owned;
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub mod fmt;
 
+pub mod intern;
+
 use serde::Serialize;
 
 /// This enum lists which of the Data Model Types apply to a given type. This describes how the
