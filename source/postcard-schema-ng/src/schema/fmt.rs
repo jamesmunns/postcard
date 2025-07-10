@@ -39,6 +39,7 @@ pub fn is_prim(osdmty: &OwnedDataModelType) -> bool {
         OwnedDataModelType::Unit => true,
         OwnedDataModelType::Seq(_) => false,
         OwnedDataModelType::Tuple(_) => false,
+        OwnedDataModelType::Array { item, count: _ } => is_prim(item),
         OwnedDataModelType::Map { key, val } => is_prim(key) && is_prim(val),
         OwnedDataModelType::Struct { .. } => false,
         OwnedDataModelType::Enum { .. } => false,
@@ -146,6 +147,13 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
                 *buf += "()";
             }
         }
+        OwnedDataModelType::Array { item, count } => {
+            *buf += "[";
+            fmt_owned_dmt_to_buf(item, buf, false);
+            *buf += "; ";
+            *buf += &format!("{count}");
+            *buf += "]";
+        }
         OwnedDataModelType::Map { key, val } => {
             *buf += "Map<";
             fmt_owned_dmt_to_buf(key, buf, false);
@@ -243,6 +251,9 @@ pub fn discover_tys(
             for v in vec.iter() {
                 discover_tys(v, set);
             }
+        }
+        OwnedDataModelType::Array { item, count: _ } => {
+            discover_tys(item, set);
         }
         OwnedDataModelType::Map { key, val } => {
             discover_tys(key, set);

@@ -117,7 +117,10 @@ fn test_struct_serialize() {
                 },
                 &NamedField {
                     name: "e",
-                    ty: &DataModelType::Tuple(&[u8::SCHEMA; 10]),
+                    ty: &DataModelType::Array {
+                        item: u8::SCHEMA,
+                        count: 10
+                    },
                 },
                 &NamedField {
                     name: "f",
