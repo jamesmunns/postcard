@@ -225,6 +225,33 @@ enum TestEnum2 {
 }
 
 #[test]
+fn hacking3() {
+    // emit_strings(TestStruct2::SCHEMA);
+    const SINTERN: &str = sintern!(TestStruct3);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestStruct3::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestStruct3::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestStruct3::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestStruct3::SCHEMA);
+    println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestStruct3::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestStruct3::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestStruct3::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+
+    panic!("yay");
+}
+
+#[test]
 fn hacking() {
     // emit_strings(TestStruct2::SCHEMA);
     const SINTERN: &str = sintern!(TestStruct2);
@@ -239,6 +266,14 @@ fn hacking() {
     println!("{DMTS}");
 
     const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestStruct2::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestStruct2::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestStruct2::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
 
     panic!("yay");
 }

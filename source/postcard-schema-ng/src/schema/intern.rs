@@ -1,6 +1,6 @@
 #![allow(missing_docs, dead_code)]
 
-use serde::Serialize;
+use serde::{ser::SerializeStruct, Serialize};
 use str_intern::streq;
 use ty_intern::str_subslice;
 
@@ -191,6 +191,7 @@ pub struct InternVariant {
     pub data: InternData,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntermediateSchema<
     'a,
     const DMTS: usize,
@@ -211,6 +212,37 @@ pub struct IntermediateSchema<
 
     vnts: [InternVariant; VNTS],
     vnts_len: usize,
+}
+
+impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: usize> Serialize
+    for IntermediateSchema<'a, DMTS, RUNDMTS, NFS, VNTS>
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut s = serializer.serialize_struct("IntermediateSchema", 5)?;
+        s.serialize_field("strs", self.strs)?;
+        s.serialize_field("run_dmts", self.run_dmts())?;
+        s.serialize_field("dmts", self.dmts())?;
+        s.serialize_field("nfs", self.nfs())?;
+        s.serialize_field("vnts", self.vnts())?;
+        s.end()
+    }
+}
+
+impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: usize>
+    core::fmt::Debug for IntermediateSchema<'a, DMTS, RUNDMTS, NFS, VNTS>
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("IntermediateSchema")
+            .field("run_dmts", &self.run_dmts())
+            .field("dmts", &self.dmts())
+            .field("nfs", &self.nfs())
+            .field("vnts", &self.vnts())
+            .field("strs", &self.strs)
+            .finish()
+    }
 }
 
 impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: usize>
@@ -254,22 +286,19 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         let frag = frag.as_bytes();
 
         let mut bi = 0;
-        'outer: while bi < (strs.len() - frag.len()) {
-            if strs[bi] == frag[0] {
-                let mut off = 1;
-                while (off < frag.len()) && ((off + bi) < strs.len()) {
-                    if frag[off] != strs[off + bi] {
-                        bi += 1;
-                        continue 'outer;
-                    }
-                    off += 1;
+        'outer: while bi <= (strs.len() - frag.len()) {
+            let mut off = 0;
+            while (off < frag.len()) && ((off + bi) < strs.len()) {
+                if frag[off] != strs[off + bi] {
+                    bi += 1;
+                    continue 'outer;
                 }
-                return InternStrRef {
-                    offset: bi,
-                    len: frag.len(),
-                };
+                off += 1;
             }
-            bi += 1;
+            return InternStrRef {
+                offset: bi,
+                len: frag.len(),
+            };
         }
         panic!()
     }
@@ -671,10 +700,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         None
     }
 
-    pub const fn find_variant_group(
-        &self,
-        vnts: &[&Variant],
-    ) -> Option<InternVariantGroupRef> {
+    pub const fn find_variant_group(&self, vnts: &[&Variant]) -> Option<InternVariantGroupRef> {
         if self.vnts.len() < vnts.len() {
             return None;
         }
@@ -1393,10 +1419,10 @@ pub mod ty_intern {
 
     pub const fn count_dmt_data(data: &Data) -> usize {
         match data {
-            Data::Unit => 0,
-            Data::Newtype(data_model_type) => count_dmt(data_model_type),
+            Data::Unit => 1,
+            Data::Newtype(data_model_type) => 1 + count_dmt(data_model_type),
             Data::Tuple(data_model_types) => {
-                let mut count = 0;
+                let mut count = 1 + data_model_types.len();
                 let mut idx = 0;
                 while idx < data_model_types.len() {
                     count += count_dmt(data_model_types[idx]);
@@ -1405,7 +1431,7 @@ pub mod ty_intern {
                 count
             }
             Data::Struct(named_fields) => {
-                let mut count = 0;
+                let mut count = 1;
                 let mut idx = 0;
                 while idx < named_fields.len() {
                     count += count_dmt(named_fields[idx].ty);
@@ -1418,29 +1444,29 @@ pub mod ty_intern {
 
     pub const fn count_dmt(dmt: &DataModelType) -> usize {
         match dmt {
-            DataModelType::Bool => 0,
-            DataModelType::I8 => 0,
-            DataModelType::U8 => 0,
-            DataModelType::I16 => 0,
-            DataModelType::I32 => 0,
-            DataModelType::I64 => 0,
-            DataModelType::I128 => 0,
-            DataModelType::U16 => 0,
-            DataModelType::U32 => 0,
-            DataModelType::U64 => 0,
-            DataModelType::U128 => 0,
-            DataModelType::Usize => 0,
-            DataModelType::Isize => 0,
-            DataModelType::F32 => 0,
-            DataModelType::F64 => 0,
-            DataModelType::Char => 0,
-            DataModelType::String => 0,
-            DataModelType::ByteArray => 0,
+            DataModelType::Bool => 1,
+            DataModelType::I8 => 1,
+            DataModelType::U8 => 1,
+            DataModelType::I16 => 1,
+            DataModelType::I32 => 1,
+            DataModelType::I64 => 1,
+            DataModelType::I128 => 1,
+            DataModelType::U16 => 1,
+            DataModelType::U32 => 1,
+            DataModelType::U64 => 1,
+            DataModelType::U128 => 1,
+            DataModelType::Usize => 1,
+            DataModelType::Isize => 1,
+            DataModelType::F32 => 1,
+            DataModelType::F64 => 1,
+            DataModelType::Char => 1,
+            DataModelType::String => 1,
+            DataModelType::ByteArray => 1,
             DataModelType::Option(data_model_type) => 1 + count_dmt(data_model_type),
-            DataModelType::Unit => 0,
+            DataModelType::Unit => 1,
             DataModelType::Seq(data_model_type) => 1 + count_dmt(data_model_type),
             DataModelType::Tuple(data_model_types) => {
-                let mut count = 1;
+                let mut count = 1 + data_model_types.len();
                 let mut idx = 0;
                 while idx < data_model_types.len() {
                     count += count_dmt(data_model_types[idx]);
