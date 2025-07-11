@@ -183,10 +183,7 @@ struct TestStruct2<'a> {
     w: (u8, u16, u32),
     x: TestEnum<'a>,
     xa: TestEnum<'a>,
-    xb: TestEnum<'a>,
     y: TestStruct1,
-    ya: TestStruct1,
-    yb: TestStruct1,
     z: Result<TestStruct1, u32>,
 }
 
