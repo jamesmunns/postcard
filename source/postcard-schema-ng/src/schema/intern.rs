@@ -13,8 +13,68 @@ pub struct InternStrRef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct InternDataModelTypeRef {
-    idx: usize,
+pub enum InternDataModelTypeRef {
+    /// The `bool` Serde Data Model Type
+    Bool,
+
+    /// The `i8` Serde Data Model Type
+    I8,
+
+    /// The `u8` Serde Data Model Type
+    U8,
+
+    /// A variably encoded i16
+    I16,
+
+    /// A variably encoded i32
+    I32,
+
+    /// A variably encoded i64
+    I64,
+
+    /// A variably encoded i128
+    I128,
+
+    /// A variably encoded u16
+    U16,
+
+    /// A variably encoded u32
+    U32,
+
+    /// A variably encoded u64
+    U64,
+
+    /// A variably encoded u128
+    U128,
+
+    /// A variably encoded usize
+    Usize,
+
+    /// A variably encoded isize
+    Isize,
+
+    /// The `f32` Serde Data Model Type
+    F32,
+
+    /// The `f64` Serde Data Model Type
+    F64,
+
+    /// The `char` Serde Data Model Type
+    Char,
+
+    /// The `String` Serde Data Model Type
+    String,
+
+    /// The `&[u8]` Serde Data Model Type
+    ByteArray,
+
+    /// The `()` Serde Data Model Type
+    Unit,
+
+    Ref(usize),
+
+    /// A [`DataModelType`]/[`OwnedDataModelType`](owned::OwnedDataModelType)
+    Schema,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -264,7 +324,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
             dmts_len: 0,
             nfs: [InternNamedField {
                 name: NULLSTR,
-                ty: InternDataModelTypeRef { idx: 0 },
+                ty: InternDataModelTypeRef::Schema,
             }; NFS],
             nfs_len: 0,
             vnts: [InternVariant {
@@ -359,8 +419,8 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         let mut count = 0;
         let start = self.run_dmts_len;
         while count < dmts.len() {
-            self.run_dmts[self.run_dmts_len] =
-                self.dmts[self.get_or_insert_interned_dmt(dmts[count]).idx];
+            let dr = self.get_or_insert_interned_dmt(dmts[count]);
+            self.run_dmts[self.run_dmts_len] = self.dmt_from_ref(&dr);
             self.run_dmts_len += 1;
             count += 1;
         }
@@ -390,38 +450,62 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         &mut self,
         dmt: &DataModelType,
     ) -> InternDataModelTypeRef {
+        match dmt {
+            DataModelType::Bool => return InternDataModelTypeRef::Bool,
+            DataModelType::I8 => return InternDataModelTypeRef::I8,
+            DataModelType::U8 => return InternDataModelTypeRef::U8,
+            DataModelType::I16 => return InternDataModelTypeRef::I16,
+            DataModelType::I32 => return InternDataModelTypeRef::I32,
+            DataModelType::I64 => return InternDataModelTypeRef::I64,
+            DataModelType::I128 => return InternDataModelTypeRef::I128,
+            DataModelType::U16 => return InternDataModelTypeRef::U16,
+            DataModelType::U32 => return InternDataModelTypeRef::U32,
+            DataModelType::U64 => return InternDataModelTypeRef::U64,
+            DataModelType::U128 => return InternDataModelTypeRef::U128,
+            DataModelType::Usize => return InternDataModelTypeRef::Usize,
+            DataModelType::Isize => return InternDataModelTypeRef::Isize,
+            DataModelType::F32 => return InternDataModelTypeRef::F32,
+            DataModelType::F64 => return InternDataModelTypeRef::F64,
+            DataModelType::Char => return InternDataModelTypeRef::Char,
+            DataModelType::String => return InternDataModelTypeRef::String,
+            DataModelType::ByteArray => return InternDataModelTypeRef::ByteArray,
+            DataModelType::Unit => return InternDataModelTypeRef::Unit,
+            _ => {}
+        }
+
+
         let mut count = 0;
         while count < self.dmts().len() {
             if self.is_dmt_match(dmt, &self.dmts[count]) {
-                return InternDataModelTypeRef { idx: count };
+                return InternDataModelTypeRef::Ref(count);
             }
             count += 1;
         }
         let old_len = self.dmts_len;
         self.dmts[self.dmts_len] = match dmt {
-            DataModelType::Bool => InternDataModelType::Bool,
-            DataModelType::I8 => InternDataModelType::I8,
-            DataModelType::U8 => InternDataModelType::U8,
-            DataModelType::I16 => InternDataModelType::I16,
-            DataModelType::I32 => InternDataModelType::I32,
-            DataModelType::I64 => InternDataModelType::I64,
-            DataModelType::I128 => InternDataModelType::I128,
-            DataModelType::U16 => InternDataModelType::U16,
-            DataModelType::U32 => InternDataModelType::U32,
-            DataModelType::U64 => InternDataModelType::U64,
-            DataModelType::U128 => InternDataModelType::U128,
-            DataModelType::Usize => InternDataModelType::Usize,
-            DataModelType::Isize => InternDataModelType::Isize,
-            DataModelType::F32 => InternDataModelType::F32,
-            DataModelType::F64 => InternDataModelType::F64,
-            DataModelType::Char => InternDataModelType::Char,
-            DataModelType::String => InternDataModelType::String,
-            DataModelType::ByteArray => InternDataModelType::ByteArray,
+            DataModelType::Bool => unreachable!(),
+            DataModelType::I8 => unreachable!(),
+            DataModelType::U8 => unreachable!(),
+            DataModelType::I16 => unreachable!(),
+            DataModelType::I32 => unreachable!(),
+            DataModelType::I64 => unreachable!(),
+            DataModelType::I128 => unreachable!(),
+            DataModelType::U16 => unreachable!(),
+            DataModelType::U32 => unreachable!(),
+            DataModelType::U64 => unreachable!(),
+            DataModelType::U128 => unreachable!(),
+            DataModelType::Usize => unreachable!(),
+            DataModelType::Isize => unreachable!(),
+            DataModelType::F32 => unreachable!(),
+            DataModelType::F64 => unreachable!(),
+            DataModelType::Char => unreachable!(),
+            DataModelType::String => unreachable!(),
+            DataModelType::ByteArray => unreachable!(),
+            DataModelType::Unit => unreachable!(),
             DataModelType::Option(data_model_type) => {
                 let rf = self.get_or_insert_interned_dmt(data_model_type);
                 InternDataModelType::Option(rf)
             }
-            DataModelType::Unit => InternDataModelType::Unit,
             DataModelType::Seq(data_model_type) => {
                 InternDataModelType::Seq(self.get_or_insert_interned_dmt(data_model_type))
             }
@@ -447,7 +531,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
             DataModelType::Schema => todo!(),
         };
         self.dmts_len += 1;
-        InternDataModelTypeRef { idx: old_len }
+        InternDataModelTypeRef::Ref(old_len)
     }
 
     const fn run_dmts(&self) -> &[InternDataModelType] {
@@ -476,9 +560,11 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         match (data, intern) {
             (Data::Unit, InternData::Unit) => true,
             (Data::Newtype(data_model_type), InternData::Newtype(intern_data_model_type_ref)) => {
+                let data = self.dmt_from_ref(intern_data_model_type_ref);
+
                 self.is_dmt_match(
                     data_model_type,
-                    &self.dmts()[intern_data_model_type_ref.idx],
+                    &data,
                 )
             }
             (Data::Tuple(data_model_types), InternData::Tuple(intern_data_model_group_ref)) => {
@@ -512,7 +598,10 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                     ) {
                         return false;
                     }
-                    if !self.is_dmt_match(named_fields[count].ty, &self.dmts()[inf.ty.idx]) {
+
+                    let data = self.dmt_from_ref(&inf.ty);
+
+                    if !self.is_dmt_match(named_fields[count].ty, &data) {
                         return false;
                     }
                     count += 1;
@@ -520,6 +609,32 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                 true
             }
             _ => false,
+        }
+    }
+
+    pub const fn dmt_from_ref(&self, dref: &InternDataModelTypeRef) -> InternDataModelType {
+        match dref {
+            InternDataModelTypeRef::Bool => InternDataModelType::Bool,
+            InternDataModelTypeRef::I8 => InternDataModelType::I8,
+            InternDataModelTypeRef::U8 => InternDataModelType::U8,
+            InternDataModelTypeRef::I16 => InternDataModelType::I16,
+            InternDataModelTypeRef::I32 => InternDataModelType::I32,
+            InternDataModelTypeRef::I64 => InternDataModelType::I64,
+            InternDataModelTypeRef::I128 => InternDataModelType::I128,
+            InternDataModelTypeRef::U16 => InternDataModelType::U16,
+            InternDataModelTypeRef::U32 => InternDataModelType::U32,
+            InternDataModelTypeRef::U64 => InternDataModelType::U64,
+            InternDataModelTypeRef::U128 => InternDataModelType::U128,
+            InternDataModelTypeRef::Usize => InternDataModelType::Usize,
+            InternDataModelTypeRef::Isize => InternDataModelType::Isize,
+            InternDataModelTypeRef::F32 => InternDataModelType::F32,
+            InternDataModelTypeRef::F64 => InternDataModelType::F64,
+            InternDataModelTypeRef::Char => InternDataModelType::Char,
+            InternDataModelTypeRef::String => InternDataModelType::String,
+            InternDataModelTypeRef::ByteArray => InternDataModelType::ByteArray,
+            InternDataModelTypeRef::Unit => InternDataModelType::Unit,
+            InternDataModelTypeRef::Ref(idx) => self.dmts()[*idx],
+            InternDataModelTypeRef::Schema => todo!(),
         }
     }
 
@@ -548,7 +663,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                 DataModelType::Option(data_model_type),
             ) => self.is_dmt_match(
                 data_model_type,
-                &self.dmts()[intern_data_model_type_ref.idx],
+                &self.dmt_from_ref(intern_data_model_type_ref),
             ),
             (InternDataModelType::Unit, DataModelType::Unit) => true,
             (
@@ -556,7 +671,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                 DataModelType::Seq(data_model_type),
             ) => self.is_dmt_match(
                 data_model_type,
-                &self.dmts()[intern_data_model_type_ref.idx],
+                &self.dmt_from_ref(intern_data_model_type_ref),
             ),
             (
                 InternDataModelType::Tuple(intern_data_model_group_ref),
@@ -581,7 +696,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                     item: ditem,
                     count: dcount,
                 },
-            ) => (*count == *dcount) && self.is_dmt_match(ditem, &self.dmts()[item.idx]),
+            ) => (*count == *dcount) && self.is_dmt_match(ditem, &self.dmt_from_ref(item)),
             (
                 InternDataModelType::Map { key, val },
                 DataModelType::Map {
@@ -589,8 +704,8 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                     val: dval,
                 },
             ) => {
-                self.is_dmt_match(dkey, &self.dmts()[key.idx])
-                    && self.is_dmt_match(dval, &self.dmts()[val.idx])
+                self.is_dmt_match(dkey, &self.dmt_from_ref(key))
+                    && self.is_dmt_match(dval, &self.dmt_from_ref(val))
             }
             (
                 InternDataModelType::Struct { name, data },
@@ -685,8 +800,7 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
                     count += 1;
                     continue 'outer;
                 }
-                let nfsidx = self.nfs[count + icount].ty.idx;
-                if !self.is_dmt_match(nfs[icount].ty, &self.dmts()[nfsidx]) {
+                if !self.is_dmt_match(nfs[icount].ty, &self.dmt_from_ref(&self.nfs[count + icount].ty)) {
                     count += 1;
                     continue 'outer;
                 }
@@ -996,244 +1110,244 @@ pub mod ty_intern {
         }
     }
 
-    pub const fn is_data_match(
-        data: &Data,
-        intern: &InternData,
-        idmts: &[InternDataModelType],
-        infs: &[InternNamedField],
-        ivars: &[InternVariant],
-        istrs: &str,
-    ) -> bool {
-        match (data, intern) {
-            (Data::Unit, InternData::Unit) => true,
-            (Data::Newtype(data_model_type), InternData::Newtype(intern_data_model_type_ref)) => {
-                is_dmt_match(
-                    data_model_type,
-                    intern_data_model_type_ref.idx,
-                    idmts,
-                    infs,
-                    ivars,
-                    istrs,
-                )
-            }
-            (Data::Tuple(data_model_types), InternData::Tuple(intern_data_model_group_ref)) => {
-                if data_model_types.len() != intern_data_model_group_ref.len {
-                    return false;
-                }
-                let mut count = 0;
-                while count < data_model_types.len() {
-                    let m = is_dmt_match(
-                        data_model_types[count],
-                        count + intern_data_model_group_ref.offset,
-                        idmts,
-                        infs,
-                        ivars,
-                        istrs,
-                    );
-                    if !m {
-                        return false;
-                    }
-                    count += 1;
-                }
-                true
-            }
-            (Data::Struct(named_fields), InternData::Struct(intern_named_field_group_ref)) => {
-                if named_fields.len() != intern_named_field_group_ref.len {
-                    return false;
-                }
-                let mut count = 0;
-                while count < named_fields.len() {
-                    let offct = intern_named_field_group_ref.offset + count;
-                    let inf = &infs[offct];
-                    if !streq(
-                        named_fields[count].name,
-                        str_subslice(istrs, inf.name.offset, inf.name.len),
-                    ) {
-                        return false;
-                    }
-                    if !is_dmt_match(
-                        named_fields[count].ty,
-                        inf.ty.idx,
-                        idmts,
-                        infs,
-                        ivars,
-                        istrs,
-                    ) {
-                        return false;
-                    }
-                    count += 1;
-                }
-                true
-            }
-            _ => false,
-        }
-    }
+    // pub const fn is_data_match(
+    //     data: &Data,
+    //     intern: &InternData,
+    //     idmts: &[InternDataModelType],
+    //     infs: &[InternNamedField],
+    //     ivars: &[InternVariant],
+    //     istrs: &str,
+    // ) -> bool {
+    //     match (data, intern) {
+    //         (Data::Unit, InternData::Unit) => true,
+    //         (Data::Newtype(data_model_type), InternData::Newtype(intern_data_model_type_ref)) => {
+    //             is_dmt_match(
+    //                 data_model_type,
+    //                 intern_data_model_type_ref.idx,
+    //                 idmts,
+    //                 infs,
+    //                 ivars,
+    //                 istrs,
+    //             )
+    //         }
+    //         (Data::Tuple(data_model_types), InternData::Tuple(intern_data_model_group_ref)) => {
+    //             if data_model_types.len() != intern_data_model_group_ref.len {
+    //                 return false;
+    //             }
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 let m = is_dmt_match(
+    //                     data_model_types[count],
+    //                     count + intern_data_model_group_ref.offset,
+    //                     idmts,
+    //                     infs,
+    //                     ivars,
+    //                     istrs,
+    //                 );
+    //                 if !m {
+    //                     return false;
+    //                 }
+    //                 count += 1;
+    //             }
+    //             true
+    //         }
+    //         (Data::Struct(named_fields), InternData::Struct(intern_named_field_group_ref)) => {
+    //             if named_fields.len() != intern_named_field_group_ref.len {
+    //                 return false;
+    //             }
+    //             let mut count = 0;
+    //             while count < named_fields.len() {
+    //                 let offct = intern_named_field_group_ref.offset + count;
+    //                 let inf = &infs[offct];
+    //                 if !streq(
+    //                     named_fields[count].name,
+    //                     str_subslice(istrs, inf.name.offset, inf.name.len),
+    //                 ) {
+    //                     return false;
+    //                 }
+    //                 if !is_dmt_match(
+    //                     named_fields[count].ty,
+    //                     inf.ty.idx,
+    //                     idmts,
+    //                     infs,
+    //                     ivars,
+    //                     istrs,
+    //                 ) {
+    //                     return false;
+    //                 }
+    //                 count += 1;
+    //             }
+    //             true
+    //         }
+    //         _ => false,
+    //     }
+    // }
 
-    pub const fn is_dmt_match(
-        dmt: &DataModelType,
-        idx: usize,
-        idmts: &[InternDataModelType],
-        infs: &[InternNamedField],
-        ivars: &[InternVariant],
-        istrs: &str,
-    ) -> bool {
-        match (idmts[idx], dmt) {
-            (InternDataModelType::Bool, DataModelType::Bool) => true,
-            (InternDataModelType::I8, DataModelType::I8) => true,
-            (InternDataModelType::U8, DataModelType::U8) => true,
-            (InternDataModelType::I16, DataModelType::I16) => true,
-            (InternDataModelType::I32, DataModelType::I32) => true,
-            (InternDataModelType::I64, DataModelType::I64) => true,
-            (InternDataModelType::I128, DataModelType::I128) => true,
-            (InternDataModelType::U16, DataModelType::U16) => true,
-            (InternDataModelType::U32, DataModelType::U32) => true,
-            (InternDataModelType::U64, DataModelType::U64) => true,
-            (InternDataModelType::U128, DataModelType::U128) => true,
-            (InternDataModelType::Usize, DataModelType::Usize) => true,
-            (InternDataModelType::Isize, DataModelType::Isize) => true,
-            (InternDataModelType::F32, DataModelType::F32) => true,
-            (InternDataModelType::F64, DataModelType::F64) => true,
-            (InternDataModelType::Char, DataModelType::Char) => true,
-            (InternDataModelType::String, DataModelType::String) => true,
-            (InternDataModelType::ByteArray, DataModelType::ByteArray) => true,
-            (
-                InternDataModelType::Option(intern_data_model_type_ref),
-                DataModelType::Option(data_model_type),
-            ) => is_dmt_match(
-                data_model_type,
-                intern_data_model_type_ref.idx,
-                idmts,
-                infs,
-                ivars,
-                istrs,
-            ),
-            (InternDataModelType::Unit, DataModelType::Unit) => true,
-            (
-                InternDataModelType::Seq(intern_data_model_type_ref),
-                DataModelType::Seq(data_model_type),
-            ) => is_dmt_match(
-                data_model_type,
-                intern_data_model_type_ref.idx,
-                idmts,
-                infs,
-                ivars,
-                istrs,
-            ),
-            (
-                InternDataModelType::Tuple(intern_data_model_group_ref),
-                DataModelType::Tuple(data_model_types),
-            ) => {
-                if intern_data_model_group_ref.len != data_model_types.len() {
-                    return false;
-                }
-                let mut count = 0;
-                while count < data_model_types.len() {
-                    let idm = intern_data_model_group_ref.offset + count;
-                    if !is_dmt_match(data_model_types[count], idm, idmts, infs, ivars, istrs) {
-                        return false;
-                    }
-                    count += 1;
-                }
-                true
-            }
-            (
-                InternDataModelType::Array { item, count },
-                DataModelType::Array {
-                    item: ditem,
-                    count: dcount,
-                },
-            ) => (count == *dcount) && is_dmt_match(ditem, item.idx, idmts, infs, ivars, istrs),
-            (
-                InternDataModelType::Map { key, val },
-                DataModelType::Map {
-                    key: dkey,
-                    val: dval,
-                },
-            ) => {
-                is_dmt_match(dkey, key.idx, idmts, infs, ivars, istrs)
-                    && is_dmt_match(dval, val.idx, idmts, infs, ivars, istrs)
-            }
-            (
-                InternDataModelType::Struct { name, data },
-                DataModelType::Struct {
-                    name: dname,
-                    data: ddata,
-                },
-            ) => {
-                let name_match = streq(str_subslice(istrs, name.offset, name.len), dname);
-                let data_match = is_data_match(ddata, &data, idmts, infs, ivars, istrs);
-                name_match && data_match
-            }
-            (
-                InternDataModelType::Enum { name, variants },
-                DataModelType::Enum {
-                    name: dname,
-                    variants: dvariants,
-                },
-            ) => {
-                if !streq(str_subslice(istrs, name.offset, name.len), dname) {
-                    return false;
-                }
-                if variants.len != dvariants.len() {
-                    return false;
-                }
-                let mut count = 0;
-                while count < dvariants.len() {
-                    let ivar = &ivars[variants.offset + count];
-                    if !streq(
-                        dvariants[count].name,
-                        str_subslice(istrs, ivar.name.offset, ivar.name.len),
-                    ) {
-                        return false;
-                    }
-                    if !is_data_match(
-                        &dvariants[count].data,
-                        &ivar.data,
-                        idmts,
-                        infs,
-                        ivars,
-                        istrs,
-                    ) {
-                        return false;
-                    }
-                    count += 1;
-                }
-                true
-            }
-            (InternDataModelType::Schema, DataModelType::Schema) => todo!(),
-            _ => false,
-        }
-    }
+    // pub const fn is_dmt_match(
+    //     dmt: &DataModelType,
+    //     idx: usize,
+    //     idmts: &[InternDataModelType],
+    //     infs: &[InternNamedField],
+    //     ivars: &[InternVariant],
+    //     istrs: &str,
+    // ) -> bool {
+    //     match (idmts[idx], dmt) {
+    //         (InternDataModelType::Bool, DataModelType::Bool) => true,
+    //         (InternDataModelType::I8, DataModelType::I8) => true,
+    //         (InternDataModelType::U8, DataModelType::U8) => true,
+    //         (InternDataModelType::I16, DataModelType::I16) => true,
+    //         (InternDataModelType::I32, DataModelType::I32) => true,
+    //         (InternDataModelType::I64, DataModelType::I64) => true,
+    //         (InternDataModelType::I128, DataModelType::I128) => true,
+    //         (InternDataModelType::U16, DataModelType::U16) => true,
+    //         (InternDataModelType::U32, DataModelType::U32) => true,
+    //         (InternDataModelType::U64, DataModelType::U64) => true,
+    //         (InternDataModelType::U128, DataModelType::U128) => true,
+    //         (InternDataModelType::Usize, DataModelType::Usize) => true,
+    //         (InternDataModelType::Isize, DataModelType::Isize) => true,
+    //         (InternDataModelType::F32, DataModelType::F32) => true,
+    //         (InternDataModelType::F64, DataModelType::F64) => true,
+    //         (InternDataModelType::Char, DataModelType::Char) => true,
+    //         (InternDataModelType::String, DataModelType::String) => true,
+    //         (InternDataModelType::ByteArray, DataModelType::ByteArray) => true,
+    //         (
+    //             InternDataModelType::Option(intern_data_model_type_ref),
+    //             DataModelType::Option(data_model_type),
+    //         ) => is_dmt_match(
+    //             data_model_type,
+    //             intern_data_model_type_ref.idx,
+    //             idmts,
+    //             infs,
+    //             ivars,
+    //             istrs,
+    //         ),
+    //         (InternDataModelType::Unit, DataModelType::Unit) => true,
+    //         (
+    //             InternDataModelType::Seq(intern_data_model_type_ref),
+    //             DataModelType::Seq(data_model_type),
+    //         ) => is_dmt_match(
+    //             data_model_type,
+    //             intern_data_model_type_ref.idx,
+    //             idmts,
+    //             infs,
+    //             ivars,
+    //             istrs,
+    //         ),
+    //         (
+    //             InternDataModelType::Tuple(intern_data_model_group_ref),
+    //             DataModelType::Tuple(data_model_types),
+    //         ) => {
+    //             if intern_data_model_group_ref.len != data_model_types.len() {
+    //                 return false;
+    //             }
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 let idm = intern_data_model_group_ref.offset + count;
+    //                 if !is_dmt_match(data_model_types[count], idm, idmts, infs, ivars, istrs) {
+    //                     return false;
+    //                 }
+    //                 count += 1;
+    //             }
+    //             true
+    //         }
+    //         (
+    //             InternDataModelType::Array { item, count },
+    //             DataModelType::Array {
+    //                 item: ditem,
+    //                 count: dcount,
+    //             },
+    //         ) => (count == *dcount) && is_dmt_match(ditem, item.idx, idmts, infs, ivars, istrs),
+    //         (
+    //             InternDataModelType::Map { key, val },
+    //             DataModelType::Map {
+    //                 key: dkey,
+    //                 val: dval,
+    //             },
+    //         ) => {
+    //             is_dmt_match(dkey, key.idx, idmts, infs, ivars, istrs)
+    //                 && is_dmt_match(dval, val.idx, idmts, infs, ivars, istrs)
+    //         }
+    //         (
+    //             InternDataModelType::Struct { name, data },
+    //             DataModelType::Struct {
+    //                 name: dname,
+    //                 data: ddata,
+    //             },
+    //         ) => {
+    //             let name_match = streq(str_subslice(istrs, name.offset, name.len), dname);
+    //             let data_match = is_data_match(ddata, &data, idmts, infs, ivars, istrs);
+    //             name_match && data_match
+    //         }
+    //         (
+    //             InternDataModelType::Enum { name, variants },
+    //             DataModelType::Enum {
+    //                 name: dname,
+    //                 variants: dvariants,
+    //             },
+    //         ) => {
+    //             if !streq(str_subslice(istrs, name.offset, name.len), dname) {
+    //                 return false;
+    //             }
+    //             if variants.len != dvariants.len() {
+    //                 return false;
+    //             }
+    //             let mut count = 0;
+    //             while count < dvariants.len() {
+    //                 let ivar = &ivars[variants.offset + count];
+    //                 if !streq(
+    //                     dvariants[count].name,
+    //                     str_subslice(istrs, ivar.name.offset, ivar.name.len),
+    //                 ) {
+    //                     return false;
+    //                 }
+    //                 if !is_data_match(
+    //                     &dvariants[count].data,
+    //                     &ivar.data,
+    //                     idmts,
+    //                     infs,
+    //                     ivars,
+    //                     istrs,
+    //                 ) {
+    //                     return false;
+    //                 }
+    //                 count += 1;
+    //             }
+    //             true
+    //         }
+    //         (InternDataModelType::Schema, DataModelType::Schema) => todo!(),
+    //         _ => false,
+    //     }
+    // }
 
-    pub const fn find_run_dmt(
-        dmts: &[&DataModelType],
-        idmts: &[InternDataModelType],
-        infs: &[InternNamedField],
-        ivars: &[InternVariant],
-        istrs: &str,
-    ) -> Option<InternDataModelGroupRef> {
-        if idmts.len() < dmts.len() {
-            return None;
-        }
-        assert!(!dmts.is_empty());
+    // pub const fn find_run_dmt(
+    //     dmts: &[&DataModelType],
+    //     idmts: &[InternDataModelType],
+    //     infs: &[InternNamedField],
+    //     ivars: &[InternVariant],
+    //     istrs: &str,
+    // ) -> Option<InternDataModelGroupRef> {
+    //     if idmts.len() < dmts.len() {
+    //         return None;
+    //     }
+    //     assert!(!dmts.is_empty());
 
-        let mut count = 0;
-        'outer: while count < (idmts.len() - dmts.len()) {
-            let mut icount = 0;
-            while icount < dmts.len() {
-                if !is_dmt_match(dmts[icount], count + icount, idmts, infs, ivars, istrs) {
-                    count += 1;
-                    continue 'outer;
-                }
-                icount += 1;
-            }
-            return Some(InternDataModelGroupRef {
-                offset: count,
-                len: dmts.len(),
-            });
-        }
-        None
-    }
+    //     let mut count = 0;
+    //     'outer: while count < (idmts.len() - dmts.len()) {
+    //         let mut icount = 0;
+    //         while icount < dmts.len() {
+    //             if !is_dmt_match(dmts[icount], count + icount, idmts, infs, ivars, istrs) {
+    //                 count += 1;
+    //                 continue 'outer;
+    //             }
+    //             icount += 1;
+    //         }
+    //         return Some(InternDataModelGroupRef {
+    //             offset: count,
+    //             len: dmts.len(),
+    //         });
+    //     }
+    //     None
+    // }
 
     // pub const fn collect_all_run_dmts_data<const N: usize>(
     //     data: &Data,

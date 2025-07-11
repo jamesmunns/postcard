@@ -182,7 +182,11 @@ struct TestStruct1 {
 struct TestStruct2<'a> {
     w: (u8, u16, u32),
     x: TestEnum<'a>,
+    xa: TestEnum<'a>,
+    xb: TestEnum<'a>,
     y: TestStruct1,
+    ya: TestStruct1,
+    yb: TestStruct1,
     z: Result<TestStruct1, u32>,
 }
 
@@ -222,6 +226,33 @@ struct TestStruct4(u64, bool);
 enum TestEnum2 {
     Nt(u64),
     Tup(u64, bool),
+}
+
+#[test]
+fn hacking4() {
+    // emit_strings(TestStruct2::SCHEMA);
+    const SINTERN: &str = sintern!(TestEnum);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestEnum::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestEnum::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestEnum::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestEnum::SCHEMA);
+    println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestEnum::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestEnum::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestEnum::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+
+    panic!("yay");
 }
 
 #[test]
