@@ -4,7 +4,7 @@ use serde::Serialize;
 use str_intern::streq;
 use ty_intern::str_subslice;
 
-use super::{Data, DataModelType};
+use super::{Data, DataModelType, NamedField, Variant};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct InternStrRef {
@@ -216,6 +216,12 @@ pub struct IntermediateSchema<
 impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: usize>
     IntermediateSchema<'a, DMTS, RUNDMTS, NFS, VNTS>
 {
+    pub const fn blammo(s: &'a str, dmt: &DataModelType) -> Self {
+        let mut me = Self::new(s);
+        _ = me.get_or_insert_interned_dmt(dmt);
+        me
+    }
+
     const fn new(s: &'a str) -> Self {
         const NULLSTR: InternStrRef = InternStrRef { offset: 0, len: 0 };
         Self {
@@ -235,6 +241,184 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
             }; VNTS],
             vnts_len: 0,
         }
+    }
+
+    pub const fn get_interned_str(&self, frag: &str) -> InternStrRef {
+        if frag.len() > self.strs.len() {
+            panic!()
+        }
+        if frag.is_empty() {
+            panic!();
+        }
+        let strs = self.strs.as_bytes();
+        let frag = frag.as_bytes();
+
+        let mut bi = 0;
+        'outer: while bi < (strs.len() - frag.len()) {
+            if strs[bi] == frag[0] {
+                let mut off = 1;
+                while (off < frag.len()) && ((off + bi) < strs.len()) {
+                    if frag[off] != strs[off + bi] {
+                        bi += 1;
+                        continue 'outer;
+                    }
+                    off += 1;
+                }
+                return InternStrRef {
+                    offset: bi,
+                    len: frag.len(),
+                };
+            }
+            bi += 1;
+        }
+        panic!()
+    }
+
+    pub const fn get_or_insert_nf_group(
+        &mut self,
+        nfs: &[&NamedField],
+    ) -> InternNamedFieldGroupRef {
+        if let Some(nfg) = self.find_named_field_group(nfs) {
+            return nfg;
+        }
+        let mut count = 0;
+        let start = self.nfs_len;
+        while count < nfs.len() {
+            self.nfs[self.nfs_len] = InternNamedField {
+                name: self.get_interned_str(nfs[count].name),
+                ty: self.get_or_insert_interned_dmt(nfs[count].ty),
+            };
+            self.nfs_len += 1;
+            count += 1;
+        }
+        InternNamedFieldGroupRef {
+            offset: start,
+            len: nfs.len(),
+        }
+    }
+
+    pub const fn get_or_insert_variant_group(
+        &mut self,
+        vnts: &[&Variant],
+    ) -> InternVariantGroupRef {
+        if let Some(vnt) = self.find_variant_group(vnts) {
+            return vnt;
+        }
+        let mut count = 0;
+        let start = self.vnts_len;
+        while count < vnts.len() {
+            self.vnts[self.vnts_len] = InternVariant {
+                name: self.get_interned_str(vnts[count].name),
+                data: self.get_or_insert_interned_data(&vnts[count].data),
+            };
+            self.vnts_len += 1;
+            count += 1;
+        }
+        InternVariantGroupRef {
+            offset: start,
+            len: vnts.len(),
+        }
+    }
+
+    pub const fn get_or_insert_run_dmt(
+        &mut self,
+        dmts: &[&DataModelType],
+    ) -> InternDataModelGroupRef {
+        if let Some(rdmts) = self.find_run_dmt(dmts) {
+            return rdmts;
+        }
+        let mut count = 0;
+        let start = self.run_dmts_len;
+        while count < dmts.len() {
+            self.run_dmts[self.run_dmts_len] =
+                self.dmts[self.get_or_insert_interned_dmt(dmts[count]).idx];
+            self.run_dmts_len += 1;
+            count += 1;
+        }
+        InternDataModelGroupRef {
+            offset: start,
+            len: dmts.len(),
+        }
+    }
+
+    pub const fn get_or_insert_interned_data(&mut self, data: &Data) -> InternData {
+        match data {
+            Data::Unit => InternData::Unit,
+            Data::Newtype(data_model_type) => {
+                let rf = self.get_or_insert_interned_dmt(data_model_type);
+                InternData::Newtype(rf)
+            }
+            Data::Tuple(data_model_types) => {
+                InternData::Tuple(self.get_or_insert_run_dmt(data_model_types))
+            }
+            Data::Struct(named_fields) => {
+                InternData::Struct(self.get_or_insert_nf_group(named_fields))
+            }
+        }
+    }
+
+    pub const fn get_or_insert_interned_dmt(
+        &mut self,
+        dmt: &DataModelType,
+    ) -> InternDataModelTypeRef {
+        let mut count = 0;
+        while count < self.dmts().len() {
+            if self.is_dmt_match(dmt, &self.dmts[count]) {
+                return InternDataModelTypeRef { idx: count };
+            }
+            count += 1;
+        }
+        let old_len = self.dmts_len;
+        self.dmts[self.dmts_len] = match dmt {
+            DataModelType::Bool => InternDataModelType::Bool,
+            DataModelType::I8 => InternDataModelType::I8,
+            DataModelType::U8 => InternDataModelType::U8,
+            DataModelType::I16 => InternDataModelType::I16,
+            DataModelType::I32 => InternDataModelType::I32,
+            DataModelType::I64 => InternDataModelType::I64,
+            DataModelType::I128 => InternDataModelType::I128,
+            DataModelType::U16 => InternDataModelType::U16,
+            DataModelType::U32 => InternDataModelType::U32,
+            DataModelType::U64 => InternDataModelType::U64,
+            DataModelType::U128 => InternDataModelType::U128,
+            DataModelType::Usize => InternDataModelType::Usize,
+            DataModelType::Isize => InternDataModelType::Isize,
+            DataModelType::F32 => InternDataModelType::F32,
+            DataModelType::F64 => InternDataModelType::F64,
+            DataModelType::Char => InternDataModelType::Char,
+            DataModelType::String => InternDataModelType::String,
+            DataModelType::ByteArray => InternDataModelType::ByteArray,
+            DataModelType::Option(data_model_type) => {
+                let rf = self.get_or_insert_interned_dmt(data_model_type);
+                InternDataModelType::Option(rf)
+            }
+            DataModelType::Unit => InternDataModelType::Unit,
+            DataModelType::Seq(data_model_type) => {
+                InternDataModelType::Seq(self.get_or_insert_interned_dmt(data_model_type))
+            }
+            DataModelType::Tuple(data_model_types) => {
+                InternDataModelType::Tuple(self.get_or_insert_run_dmt(data_model_types))
+            }
+            DataModelType::Array { item, count } => InternDataModelType::Array {
+                item: self.get_or_insert_interned_dmt(item),
+                count: *count,
+            },
+            DataModelType::Map { key, val } => InternDataModelType::Map {
+                key: self.get_or_insert_interned_dmt(key),
+                val: self.get_or_insert_interned_dmt(val),
+            },
+            DataModelType::Struct { name, data } => InternDataModelType::Struct {
+                name: self.get_interned_str(name),
+                data: self.get_or_insert_interned_data(data),
+            },
+            DataModelType::Enum { name, variants } => InternDataModelType::Enum {
+                name: self.get_interned_str(name),
+                variants: self.get_or_insert_variant_group(variants),
+            },
+            DataModelType::Schema => todo!(),
+        };
+        self.dmts_len += 1;
+        InternDataModelTypeRef { idx: old_len }
     }
 
     const fn run_dmts(&self) -> &[InternDataModelType] {
@@ -448,81 +632,225 @@ impl<'a, const DMTS: usize, const RUNDMTS: usize, const NFS: usize, const VNTS: 
         None
     }
 
+    pub const fn find_named_field_group(
+        &self,
+        nfs: &[&NamedField],
+    ) -> Option<InternNamedFieldGroupRef> {
+        if self.nfs.len() < nfs.len() {
+            return None;
+        }
+        assert!(!nfs.is_empty());
+
+        let mut count = 0;
+        'outer: while count < (self.nfs.len() - nfs.len()) {
+            let mut icount = 0;
+            while icount < nfs.len() {
+                if !streq(
+                    nfs[icount].name,
+                    str_subslice(
+                        self.strs,
+                        self.nfs[count + icount].name.offset,
+                        self.nfs[count + icount].name.len,
+                    ),
+                ) {
+                    count += 1;
+                    continue 'outer;
+                }
+                let nfsidx = self.nfs[count + icount].ty.idx;
+                if !self.is_dmt_match(nfs[icount].ty, &self.dmts()[nfsidx]) {
+                    count += 1;
+                    continue 'outer;
+                }
+                icount += 1;
+            }
+            return Some(InternNamedFieldGroupRef {
+                offset: count,
+                len: nfs.len(),
+            });
+        }
+        None
+    }
+
+    pub const fn find_variant_group(
+        &self,
+        vnts: &[&Variant],
+    ) -> Option<InternVariantGroupRef> {
+        if self.vnts.len() < vnts.len() {
+            return None;
+        }
+        assert!(!vnts.is_empty());
+
+        let mut count = 0;
+        'outer: while count < (self.vnts.len() - vnts.len()) {
+            let mut icount = 0;
+            while icount < vnts.len() {
+                if !streq(
+                    vnts[icount].name,
+                    str_subslice(
+                        self.strs,
+                        self.vnts[count + icount].name.offset,
+                        self.vnts[count + icount].name.len,
+                    ),
+                ) {
+                    count += 1;
+                    continue 'outer;
+                }
+                if !self.is_data_match(&vnts[icount].data, &self.vnts[count + icount].data) {
+                    count += 1;
+                    continue 'outer;
+                }
+                icount += 1;
+            }
+            return Some(InternVariantGroupRef {
+                offset: count,
+                len: vnts.len(),
+            });
+        }
+        None
+    }
+
     //////
 
-    const fn slurp_run_dmts_data(&mut self, data: &Data) {
-        match data {
-            Data::Unit => (),
-            Data::Newtype(data_model_type) => self.slurp_run_dmts(data_model_type),
-            Data::Tuple(data_model_types) => {
-                let mut count = 0;
-                while count < data_model_types.len() {
-                    self.slurp_run_dmts(data_model_types[count]);
-                    count += 1;
-                }
-                todo!()
-            },
-            Data::Struct(named_fields) => {
-                let mut count = 0;
-                while count < named_fields.len() {
-                    self.slurp_run_dmts(named_fields[count].ty);
-                    count += 1;
-                }
-            },
-        }
-    }
+    // const fn slurp_run_dmts_data(&mut self, data: &Data) {
+    //     match data {
+    //         Data::Unit => (),
+    //         Data::Newtype(data_model_type) => self.slurp_run_dmts(data_model_type),
+    //         Data::Tuple(data_model_types) => {
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 self.slurp_run_dmts(data_model_types[count]);
+    //                 count += 1;
+    //             }
+    //             todo!()
+    //         }
+    //         Data::Struct(named_fields) => {
+    //             let mut count = 0;
+    //             while count < named_fields.len() {
+    //                 self.slurp_run_dmts(named_fields[count].ty);
+    //                 count += 1;
+    //             }
+    //         }
+    //     }
+    // }
 
-    const fn slurp_run_dmts(&mut self, dmt: &DataModelType) {
-        match dmt {
-            DataModelType::Bool => {},
-            DataModelType::I8 => {},
-            DataModelType::U8 => {},
-            DataModelType::I16 => {},
-            DataModelType::I32 => {},
-            DataModelType::I64 => {},
-            DataModelType::I128 => {},
-            DataModelType::U16 => {},
-            DataModelType::U32 => {},
-            DataModelType::U64 => {},
-            DataModelType::U128 => {},
-            DataModelType::Usize => {},
-            DataModelType::Isize => {},
-            DataModelType::F32 => {},
-            DataModelType::F64 => {},
-            DataModelType::Char => {},
-            DataModelType::String => {},
-            DataModelType::ByteArray => {},
-            DataModelType::Option(data_model_type) => self.slurp_run_dmts(data_model_type),
-            DataModelType::Unit => {},
-            DataModelType::Seq(data_model_type) => self.slurp_run_dmts(data_model_type),
-            DataModelType::Tuple(data_model_types) => {
-                let mut count = 0;
-                while count < data_model_types.len() {
-                    self.slurp_run_dmts(data_model_types[count]);
-                    count += 1;
-                }
-                if self.find_run_dmt(data_model_types).is_none() {
-                    // one pass over the types to push any subdeps to dmts, then
-                    // a second pass to fill in the run dmts?
-                    todo!()
-                }
-            },
-            DataModelType::Array { item, count: _ } => self.slurp_run_dmts(item),
-            DataModelType::Map { key, val } => {
-                self.slurp_run_dmts(key);
-                self.slurp_run_dmts(val);
-            },
-            DataModelType::Struct { name: _, data } => self.slurp_run_dmts_data(data),
-            DataModelType::Enum { name: _, variants } => {
-                let mut count = 0;
-                while count < variants.len() {
-                    self.slurp_run_dmts_data(&variants[count].data);
-                    count += 1;
-                }
-            },
-            DataModelType::Schema => todo!(),
-        }
-    }
+    // const fn slurp_non_run_dmts_data(&mut self, data: &Data) {
+    //     match data {
+    //         Data::Unit => {}
+    //         Data::Newtype(data_model_type) => self.slurp_non_run_dmts(data_model_type),
+    //         Data::Tuple(data_model_types) => {
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 self.slurp_non_run_dmts(data_model_types[count]);
+    //                 count += 1;
+    //             }
+    //         }
+    //         Data::Struct(named_fields) => {
+    //             let mut count = 0;
+    //             while count < named_fields.len() {
+    //                 self.slurp_non_run_dmts(named_fields[count].ty);
+    //                 count += 1;
+    //             }
+    //             if self.find_named_field_group(named_fields).is_some() {
+    //                 return;
+    //             }
+    //             let mut count = 0;
+    //             while count < named_fields.len() {}
+    //         }
+    //     }
+    // }
+
+    // const fn slurp_non_run_dmts(&mut self, dmt: &DataModelType) {
+    //     match dmt {
+    //         DataModelType::Bool => {}
+    //         DataModelType::I8 => {}
+    //         DataModelType::U8 => {}
+    //         DataModelType::I16 => {}
+    //         DataModelType::I32 => {}
+    //         DataModelType::I64 => {}
+    //         DataModelType::I128 => {}
+    //         DataModelType::U16 => {}
+    //         DataModelType::U32 => {}
+    //         DataModelType::U64 => {}
+    //         DataModelType::U128 => {}
+    //         DataModelType::Usize => {}
+    //         DataModelType::Isize => {}
+    //         DataModelType::F32 => {}
+    //         DataModelType::F64 => {}
+    //         DataModelType::Char => {}
+    //         DataModelType::String => {}
+    //         DataModelType::ByteArray => {}
+    //         DataModelType::Option(data_model_type) => self.slurp_non_run_dmts(data_model_type),
+    //         DataModelType::Unit => {}
+    //         DataModelType::Seq(data_model_type) => self.slurp_non_run_dmts(data_model_type),
+    //         DataModelType::Tuple(data_model_types) => {
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 self.slurp_non_run_dmts(data_model_types[count]);
+    //                 count += 1;
+    //             }
+    //         }
+    //         DataModelType::Array { item, count } => self.slurp_non_run_dmts(item),
+    //         DataModelType::Map { key, val } => {
+    //             self.slurp_non_run_dmts(key);
+    //             self.slurp_non_run_dmts(val);
+    //         }
+    //         DataModelType::Struct { name, data } => todo!(),
+    //         DataModelType::Enum { name, variants } => todo!(),
+    //         DataModelType::Schema => todo!(),
+    //     }
+    // }
+
+    // const fn slurp_run_dmts(&mut self, dmt: &DataModelType) {
+    //     match dmt {
+    //         DataModelType::Bool => {}
+    //         DataModelType::I8 => {}
+    //         DataModelType::U8 => {}
+    //         DataModelType::I16 => {}
+    //         DataModelType::I32 => {}
+    //         DataModelType::I64 => {}
+    //         DataModelType::I128 => {}
+    //         DataModelType::U16 => {}
+    //         DataModelType::U32 => {}
+    //         DataModelType::U64 => {}
+    //         DataModelType::U128 => {}
+    //         DataModelType::Usize => {}
+    //         DataModelType::Isize => {}
+    //         DataModelType::F32 => {}
+    //         DataModelType::F64 => {}
+    //         DataModelType::Char => {}
+    //         DataModelType::String => {}
+    //         DataModelType::ByteArray => {}
+    //         DataModelType::Option(data_model_type) => self.slurp_run_dmts(data_model_type),
+    //         DataModelType::Unit => {}
+    //         DataModelType::Seq(data_model_type) => self.slurp_run_dmts(data_model_type),
+    //         DataModelType::Tuple(data_model_types) => {
+    //             let mut count = 0;
+    //             while count < data_model_types.len() {
+    //                 self.slurp_run_dmts(data_model_types[count]);
+    //                 count += 1;
+    //             }
+    //             if self.find_run_dmt(data_model_types).is_none() {
+    //                 // one pass over the types to push any subdeps to dmts, then
+    //                 // a second pass to fill in the run dmts?
+    //                 todo!()
+    //             }
+    //         }
+    //         DataModelType::Array { item, count: _ } => self.slurp_run_dmts(item),
+    //         DataModelType::Map { key, val } => {
+    //             self.slurp_run_dmts(key);
+    //             self.slurp_run_dmts(val);
+    //         }
+    //         DataModelType::Struct { name: _, data } => self.slurp_run_dmts_data(data),
+    //         DataModelType::Enum { name: _, variants } => {
+    //             let mut count = 0;
+    //             while count < variants.len() {
+    //                 self.slurp_run_dmts_data(&variants[count].data);
+    //                 count += 1;
+    //             }
+    //         }
+    //         DataModelType::Schema => todo!(),
+    //     }
+    // }
 
     const fn push_run_dmt(self, dmts: &[&DataModelType]) -> Self {
         if self.find_run_dmt(dmts).is_some() {

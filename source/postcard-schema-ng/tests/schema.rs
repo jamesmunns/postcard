@@ -1,5 +1,5 @@
 use postcard_schema_ng::{
-    schema::{intern::ty_intern::count_run_dmts_data, owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant}, sintern, Schema
+    schema::{intern::{ty_intern::count_run_dmts_data, IntermediateSchema}, owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant}, sintern, Schema
 };
 use std::{cmp::Ordering, path::PathBuf};
 
@@ -237,6 +237,9 @@ fn hacking() {
     println!("{NFS}");
     println!("{VARS}");
     println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestStruct2::SCHEMA);
+
     panic!("yay");
 }
 
