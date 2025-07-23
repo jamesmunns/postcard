@@ -22,7 +22,24 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     };
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let ty = generator.generate_type(&input.data, span, name.to_string())?;
+    let mut rename = None;
+    for attr in &input.attrs {
+        if attr.path().is_ident("serde") {
+            // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
+            let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
+                // #[serde(rename = "name")]
+                if meta.path.is_ident("rename") {
+                    rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                }
+                Ok(())
+            });
+        }
+    }
+    let ty = generator.generate_type(
+        &input.data,
+        span,
+        rename.unwrap_or_else(|| name.to_string()),
+    )?;
 
     let postcard_schema = &generator.postcard_schema;
     let expanded = quote! {
@@ -84,7 +101,22 @@ impl Generator {
         let ty = match data {
             Data::Struct(data) => self.generate_struct(&data.fields),
             Data::Enum(data) => {
-                let name = data.variants.iter().map(|v| v.ident.to_string());
+                let name = data.variants.iter().map(|v| {
+                    let mut rename = None;
+                    for attr in &v.attrs {
+                        if attr.path().is_ident("serde") {
+                            // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
+                            let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
+                                // #[serde(rename = "name")]
+                                if meta.path.is_ident("rename") {
+                                    rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                                }
+                                Ok(())
+                            });
+                        }
+                    }
+                    rename.unwrap_or_else(|| v.ident.to_string())
+                });
                 let ty = data
                     .variants
                     .iter()
@@ -116,27 +148,19 @@ impl Generator {
         let postcard_schema = &self.postcard_schema;
         match fields {
             syn::Fields::Named(fields) => {
-                let fields = fields.named.iter().map(|f| {
-                let ty = &f.ty;
-                let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => &#postcard_schema::schema::NamedValue { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
-            });
+                let fields = fields.named.iter().map(|f| self.generate_field(f));
                 quote! { &#postcard_schema::schema::DataModelType::Struct(&[
                     #( #fields ),*
                 ]) }
             }
             syn::Fields::Unnamed(fields) => {
                 if fields.unnamed.len() == 1 {
-                    let f = fields.unnamed[0].clone();
-                    let ty = &f.ty;
-                    let qs = quote_spanned!(f.span() => <#ty as #postcard_schema::Schema>::SCHEMA);
+                    let f = &fields.unnamed[0];
+                    let inner = self.generate_field(f);
 
-                    quote! { &#postcard_schema::schema::DataModelType::NewtypeStruct(#qs) }
+                    quote! { &#postcard_schema::schema::DataModelType::NewtypeStruct(#inner) }
                 } else {
-                    let fields = fields.unnamed.iter().map(|f| {
-                        let ty = &f.ty;
-                        quote_spanned!(f.span() => <#ty as #postcard_schema::Schema>::SCHEMA)
-                    });
+                    let fields = fields.unnamed.iter().map(|f| self.generate_field(f));
                     quote! { &#postcard_schema::schema::DataModelType::TupleStruct(&[
                         #( #fields ),*
                     ]) }
@@ -152,27 +176,19 @@ impl Generator {
         let postcard_schema = &self.postcard_schema;
         match fields {
             syn::Fields::Named(fields) => {
-                let fields = fields.named.iter().map(|f| {
-                let ty = &f.ty;
-                let name = f.ident.as_ref().unwrap().to_string();
-                quote_spanned!(f.span() => &#postcard_schema::schema::NamedValue { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
-            });
+                let fields = fields.named.iter().map(|f| self.generate_field(f));
                 quote! { &#postcard_schema::schema::DataModelVariant::StructVariant(&[
                     #( #fields ),*
                 ]) }
             }
             syn::Fields::Unnamed(fields) => {
                 if fields.unnamed.len() == 1 {
-                    let f = fields.unnamed[0].clone();
-                    let ty = &f.ty;
-                    let qs = quote_spanned!(f.span() => <#ty as #postcard_schema::Schema>::SCHEMA);
+                    let f = &fields.unnamed[0];
+                    let inner = self.generate_field(f);
 
-                    quote! { &#postcard_schema::schema::DataModelVariant::NewtypeVariant(#qs) }
+                    quote! { &#postcard_schema::schema::DataModelVariant::NewtypeVariant(#inner) }
                 } else {
-                    let fields = fields.unnamed.iter().map(|f| {
-                        let ty = &f.ty;
-                        quote_spanned!(f.span() => <#ty as #postcard_schema::Schema>::SCHEMA)
-                    });
+                    let fields = fields.unnamed.iter().map(|f| self.generate_field(f));
                     quote! { &#postcard_schema::schema::DataModelVariant::TupleVariant(&[
                         #( #fields ),*
                     ]) }
@@ -180,6 +196,31 @@ impl Generator {
             }
             syn::Fields::Unit => {
                 quote! { &#postcard_schema::schema::DataModelVariant::UnitVariant }
+            }
+        }
+    }
+
+    fn generate_field(&self, field: &syn::Field) -> TokenStream {
+        let postcard_schema = &self.postcard_schema;
+        let ty = &field.ty;
+        match &field.ident {
+            None => quote_spanned!(field.span()=> <#ty as #postcard_schema::Schema>::SCHEMA),
+            Some(name) => {
+                let mut rename = None;
+                for attr in &field.attrs {
+                    if attr.path().is_ident("serde") {
+                        // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
+                        let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
+                            // #[serde(rename = "name")]
+                            if meta.path.is_ident("rename") {
+                                rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                            }
+                            Ok(())
+                        });
+                    }
+                }
+                let name = rename.unwrap_or_else(|| name.to_string());
+                quote_spanned!(field.span()=> &#postcard_schema::schema::NamedValue { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
             }
         }
     }

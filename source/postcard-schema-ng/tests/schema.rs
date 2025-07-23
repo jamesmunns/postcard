@@ -6,18 +6,25 @@ use std::path::PathBuf;
 
 #[allow(unused)]
 #[derive(Schema)]
+#[serde(rename = "Inner'")]
 enum Inner {
+    #[serde(rename = "⍺")]
     Alpha,
     Beta,
     Gamma,
     Delta(i32, i16),
-    Epsilon { zeta: f32, eta: bool },
+    Epsilon {
+        zeta: f32,
+        eta: bool,
+    },
 }
 
 #[allow(unused)]
 #[derive(Schema)]
+#[serde(rename = "Outer'")]
 struct Outer<'a> {
     a: u32,
+    #[serde(rename = "b'")]
     b: u64,
     c: u8,
     d: Inner,
@@ -55,10 +62,10 @@ mod bound {
 fn test_enum_serialize() {
     assert_eq!(
         &DataModelType::Enum {
-            name: "Inner",
+            name: "Inner'",
             variants: &[
                 &Variant {
-                    name: "Alpha",
+                    name: "⍺",
                     data: Data::Unit
                 },
                 &Variant {
@@ -97,14 +104,14 @@ fn test_struct_serialize() {
     assert_eq!(
         Outer::SCHEMA,
         &DataModelType::Struct {
-            name: "Outer",
+            name: "Outer'",
             data: Data::Struct(&[
                 &NamedField {
                     name: "a",
                     ty: u32::SCHEMA
                 },
                 &NamedField {
-                    name: "b",
+                    name: "b'",
                     ty: u64::SCHEMA
                 },
                 &NamedField {
