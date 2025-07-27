@@ -18,7 +18,7 @@ pub fn do_derive_max_size(item: proc_macro::TokenStream) -> proc_macro::TokenStr
     let sum = max_size_sum(&input.data, span).unwrap_or_else(syn::Error::into_compile_error);
 
     let expanded = quote! {
-        impl #impl_generics ::postcard::experimental::max_size::MaxSize for #name #ty_generics #where_clause {
+        impl #impl_generics ::postcard2::experimental::max_size::MaxSize for #name #ty_generics #where_clause {
             const POSTCARD_MAX_SIZE: usize = #sum;
         }
     };
@@ -32,7 +32,7 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         if let GenericParam::Type(ref mut type_param) = *param {
             type_param
                 .bounds
-                .push(parse_quote!(::postcard::experimental::max_size::MaxSize));
+                .push(parse_quote!(::postcard2::experimental::max_size::MaxSize));
         }
     }
     generics
@@ -70,7 +70,7 @@ fn max_size_sum(data: &Data, span: Span) -> Result<TokenStream, syn::Error> {
         }
         Data::Union(_) => Err(syn::Error::new(
             span,
-            "unions are not supported by `postcard::MaxSize`",
+            "unions are not supported by `postcard2::MaxSize`",
         )),
     }
 }
@@ -86,7 +86,7 @@ fn sum_fields(fields: &Fields) -> TokenStream {
 
             let recurse = fields.named.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
+                quote_spanned! { f.span() => <#ty as ::postcard2::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
             quote! {
@@ -96,7 +96,7 @@ fn sum_fields(fields: &Fields) -> TokenStream {
         syn::Fields::Unnamed(fields) => {
             let recurse = fields.unnamed.iter().map(|f| {
                 let ty = &f.ty;
-                quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
+                quote_spanned! { f.span() => <#ty as ::postcard2::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
             quote! {

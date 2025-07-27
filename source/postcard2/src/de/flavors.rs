@@ -21,7 +21,7 @@
 //! Flavors may not always be convenient to use directly, as they may expose some implementation details of how the
 //! inner workings of the flavor behaves. It is typical to provide a convenience method for using a flavor, to prevent
 //! the user from having to specify generic parameters, setting correct initialization values, or handling the output of
-//! the flavor correctly. See `postcard::from_bytes()` for an example of this.
+//! the flavor correctly. See `postcard2::from_bytes()` for an example of this.
 //!
 //! ## When to use (multiple) flavors
 //!
@@ -50,7 +50,7 @@
 //! No other modification is made to the serialization process.
 //!
 //! ```rust
-//! use postcard::{
+//! use postcard2::{
 //!     de_flavors::Slice,
 //!     Deserializer,
 //! };

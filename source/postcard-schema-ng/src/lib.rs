@@ -23,6 +23,12 @@ pub mod schema;
 ///
 /// # Attributes
 ///
+/// ## `#[serde(rename = "name")]`
+///
+/// The names of fields, containers, and variants in derived schemas respect `#[serde(rename = "name")]`
+/// attributes. Note that this does not include variants like `#[serde(rename(serialize = "ser_name"))]`
+/// or `#[serde(rename_all = "...")]`.
+///
 /// ## `#[postcard(crate = ...)]`
 ///
 /// The `#[postcard(crate = ...)]` attribute can be used to specify a path to the `postcard_schema`

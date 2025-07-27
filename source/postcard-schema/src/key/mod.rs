@@ -53,7 +53,7 @@ impl core::fmt::Debug for Key {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("Key(")?;
         for b in self.0.iter() {
-            f.write_fmt(format_args!("{} ", b))?;
+            f.write_fmt(format_args!("{b} "))?;
         }
         f.write_str(")")
     }

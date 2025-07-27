@@ -15,7 +15,7 @@
 
 use serde::{Deserialize, Serialize, Serializer};
 
-/// Use with the `#[serde(with = "postcard::fixint::le")]` field attribute.
+/// Use with the `#[serde(with = "postcard2::fixint::le")]` field attribute.
 ///
 /// Disables varint serialization/deserialization for the specified integer
 /// field. The integer will always be serialized in the same way as a fixed
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize, Serializer};
 /// # use serde::Serialize;
 /// #[derive(Serialize)]
 /// pub struct DefinitelyLittleEndian {
-///     #[serde(with = "postcard::fixint::le")]
+///     #[serde(with = "postcard2::fixint::le")]
 ///     x: u16,
 /// }
 /// ```
@@ -56,7 +56,7 @@ pub mod le {
 
 /// Disables varint serialization/deserialization for the specified integer field.
 ///
-/// Use with the `#[serde(with = "postcard::fixint::be")]` field attribute.
+/// Use with the `#[serde(with = "postcard2::fixint::be")]` field attribute.
 /// The integer will always be serialized in the same way as a fixed
 /// size array, in **Big Endian** order on the wire.
 ///
@@ -64,7 +64,7 @@ pub mod le {
 /// # use serde::Serialize;
 /// #[derive(Serialize)]
 /// pub struct DefinitelyBigEndian {
-///     #[serde(with = "postcard::fixint::be")]
+///     #[serde(with = "postcard2::fixint::be")]
 ///     x: u16,
 /// }
 /// ```

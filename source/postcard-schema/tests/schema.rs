@@ -31,19 +31,26 @@ const I32_SCHEMA: NamedType = NamedType {
 #[allow(unused)]
 #[derive(Schema)]
 #[postcard(snapshot)]
+#[serde(rename = "Inner'")]
 enum Inner {
+    #[serde(rename = "⍺")]
     Alpha,
     Beta,
     Gamma,
     Delta(i32, i16),
-    Epsilon { zeta: f32, eta: bool },
+    Epsilon {
+        zeta: f32,
+        eta: bool,
+    },
 }
 
 #[allow(unused)]
 #[derive(Schema)]
 #[postcard(snapshot)]
+#[serde(rename = "Outer'")]
 struct Outer<'a> {
     a: u32,
+    #[serde(rename = "b'")]
     b: u64,
     c: u8,
     d: Inner,
@@ -82,10 +89,10 @@ mod bound {
 fn test_enum_serialize() {
     assert_eq!(
         &NamedType {
-            name: "Inner",
+            name: "Inner'",
             ty: &DataModelType::Enum(&[
                 &NamedVariant {
-                    name: "Alpha",
+                    name: "⍺",
                     ty: &DataModelVariant::UnitVariant
                 },
                 &NamedVariant {
@@ -132,14 +139,14 @@ fn test_struct_serialize() {
     assert_eq!(
         Outer::SCHEMA,
         &NamedType {
-            name: "Outer",
+            name: "Outer'",
             ty: &DataModelType::Struct(&[
                 &NamedValue {
                     name: "a",
                     ty: &U32_SCHEMA
                 },
                 &NamedValue {
-                    name: "b",
+                    name: "b'",
                     ty: &U64_SCHEMA
                 },
                 &NamedValue {

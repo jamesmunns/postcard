@@ -1,6 +1,6 @@
 [package]
 name = "postcard-schema"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
 readme = "README.md"
