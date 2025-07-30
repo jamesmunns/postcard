@@ -1,6 +1,8 @@
 use core::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 
+use crate::{max_size::MaxSize, varint::varint_max};
+
 /// This is the error type used by Postcard
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
@@ -94,3 +96,7 @@ impl serde::de::Error for Error {
 }
 
 impl serde::ser::StdError for Error {}
+
+impl MaxSize for Error {
+    const POSTCARD_MAX_SIZE: usize = varint_max::<Self>();
+}
