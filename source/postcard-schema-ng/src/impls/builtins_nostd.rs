@@ -7,6 +7,7 @@ use crate::{
     Schema,
 };
 use core::{
+    fmt::Arguments,
     marker::PhantomData,
     num::{
         NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
@@ -274,4 +275,8 @@ impl<T: ?Sized> Schema for PhantomData<T> {
         name: "PhantomData",
         data: Data::Unit,
     };
+}
+
+impl Schema for Arguments<'_> {
+    const SCHEMA: &'static crate::schema::DataModelType = &DataModelType::String;
 }
