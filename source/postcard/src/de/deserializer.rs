@@ -12,6 +12,9 @@ use core::marker::PhantomData;
 pub struct Deserializer<'de, F: Flavor<'de>> {
     flavor: F,
     _plt: PhantomData<&'de ()>,
+
+    #[cfg(feature = "serde_spanned")]
+    pub(crate) pos: usize,
 }
 
 impl<'de, F> Deserializer<'de, F>
@@ -23,6 +26,8 @@ where
         Deserializer {
             flavor,
             _plt: PhantomData,
+            #[cfg(feature = "serde_spanned")]
+            pos: 0,
         }
     }
 
@@ -39,11 +44,43 @@ impl<'de> Deserializer<'de, Slice<'de>> {
         Deserializer {
             flavor: Slice::new(input),
             _plt: PhantomData,
+            #[cfg(feature = "serde_spanned")]
+            pos: 0,
         }
     }
 }
 
 impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
+    #[inline]
+    fn next_byte(&mut self) -> Result<u8> {
+        let byte = self.flavor.pop()?;
+        #[cfg(feature = "serde_spanned")]
+        {
+            self.pos += 1;
+        }
+        Ok(byte)
+    }
+
+    #[inline]
+    fn next_n_bytes(&mut self, ct: usize) -> Result<&'de [u8]> {
+        let slice = self.flavor.try_take_n(ct)?;
+        #[cfg(feature = "serde_spanned")]
+        {
+            self.pos += ct;
+        }
+        Ok(slice)
+    }
+
+    #[inline]
+    fn next_n_bytes_temp(&mut self, ct: usize) -> Result<&[u8]> {
+        let slice = self.flavor.try_take_n_temp(ct)?;
+        #[cfg(feature = "serde_spanned")]
+        {
+            self.pos += ct;
+        }
+        Ok(slice)
+    }
+
     #[cfg(target_pointer_width = "16")]
     #[inline(always)]
     fn try_take_varint_usize(&mut self) -> Result<usize> {
@@ -66,7 +103,7 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     fn try_take_varint_u16(&mut self) -> Result<u16> {
         let mut out = 0;
         for i in 0..varint_max::<u16>() {
-            let val = self.flavor.pop()?;
+            let val = self.next_byte()?;
             let carry = (val & 0x7F) as u16;
             out |= carry << (7 * i);
 
@@ -85,7 +122,7 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     fn try_take_varint_u32(&mut self) -> Result<u32> {
         let mut out = 0;
         for i in 0..varint_max::<u32>() {
-            let val = self.flavor.pop()?;
+            let val = self.next_byte()?;
             let carry = (val & 0x7F) as u32;
             out |= carry << (7 * i);
 
@@ -104,7 +141,7 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     fn try_take_varint_u64(&mut self) -> Result<u64> {
         let mut out = 0;
         for i in 0..varint_max::<u64>() {
-            let val = self.flavor.pop()?;
+            let val = self.next_byte()?;
             let carry = (val & 0x7F) as u64;
             out |= carry << (7 * i);
 
@@ -123,7 +160,7 @@ impl<'de, F: Flavor<'de>> Deserializer<'de, F> {
     fn try_take_varint_u128(&mut self) -> Result<u128> {
         let mut out = 0;
         for i in 0..varint_max::<u128>() {
-            let val = self.flavor.pop()?;
+            let val = self.next_byte()?;
             let carry = (val & 0x7F) as u128;
             out |= carry << (7 * i);
 
@@ -201,6 +238,14 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::MapAccess<'b> for MapAccess<'a, 'b, F
     }
 }
 
+impl<'de, F: Flavor<'de>> de::IntoDeserializer<'de, Error> for &mut Deserializer<'de, F> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
 
@@ -225,7 +270,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let val = match self.flavor.pop()? {
+        let val = match self.next_byte()? {
             0 => false,
             1 => true,
             _ => return Err(Error::DeserializeBadBool),
@@ -238,7 +283,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i8(self.flavor.pop()? as i8)
+        visitor.visit_i8(self.next_byte()? as i8)
     }
 
     #[inline]
@@ -282,7 +327,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_u8(self.flavor.pop()?)
+        visitor.visit_u8(self.next_byte()?)
     }
 
     #[inline]
@@ -326,7 +371,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.flavor.try_take_n_temp(4)?;
+        let bytes = self.next_n_bytes_temp(4)?;
         let mut buf = [0u8; 4];
         buf.copy_from_slice(bytes);
         visitor.visit_f32(f32::from_bits(u32::from_le_bytes(buf)))
@@ -337,7 +382,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = self.flavor.try_take_n_temp(8)?;
+        let bytes = self.next_n_bytes_temp(8)?;
         let mut buf = [0u8; 8];
         buf.copy_from_slice(bytes);
         visitor.visit_f64(f64::from_bits(u64::from_le_bytes(buf)))
@@ -352,7 +397,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         if sz > 4 {
             return Err(Error::DeserializeBadChar);
         }
-        let bytes: &[u8] = self.flavor.try_take_n_temp(sz)?;
+        let bytes: &[u8] = self.next_n_bytes_temp(sz)?;
         // we pass the character through string conversion because
         // this handles transforming the array of code units to a
         // codepoint. we can't use char::from_u32() because it expects
@@ -371,7 +416,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.next_n_bytes(sz)?;
         let str_sl = core::str::from_utf8(bytes).map_err(|_| Error::DeserializeBadUtf8)?;
 
         visitor.visit_borrowed_str(str_sl)
@@ -395,7 +440,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         let sz = self.try_take_varint_usize()?;
-        let bytes: &'de [u8] = self.flavor.try_take_n(sz)?;
+        let bytes: &'de [u8] = self.next_n_bytes(sz)?;
         visitor.visit_borrowed_bytes(bytes)
     }
 
@@ -414,7 +459,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        match self.flavor.pop()? {
+        match self.next_byte()? {
             0 => visitor.visit_none(),
             1 => visitor.visit_some(self),
             _ => Err(Error::DeserializeBadOption),
@@ -502,13 +547,19 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     #[inline]
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value>
     where
         V: Visitor<'de>,
     {
+        let _ = name;
+
+        #[cfg(feature = "serde_spanned")]
+        if serde_spanned::__unstable::is_spanned(name, fields) {
+            return visitor.visit_map(crate::de::spanned::SpannedDeserializer::new(self));
+        }
         self.deserialize_tuple(fields.len(), visitor)
     }
 
