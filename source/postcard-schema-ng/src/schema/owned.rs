@@ -113,6 +113,18 @@ pub enum OwnedDataModelType {
     /// The "Tuple" Serde Data Model Type
     Tuple(Box<[Self]>),
 
+    /// The Array type: Not part of the Serde Data Model
+    ///
+    /// This is for fixed length arrays like [T; N], in earlier
+    /// versions of the schema, we mapped this to a Tuple, which
+    /// worked but makes schemas unfortunately long.
+    Array {
+        /// The array element's type
+        item: Box<Self>,
+        /// The number of items in the fixed size array
+        count: usize,
+    },
+
     /// The "Map" Serde Data Model Type
     Map {
         /// The map "Key" type
@@ -166,6 +178,10 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::Unit => Self::Unit,
             DataModelType::Seq(s) => Self::Seq(Box::new((*s).into())),
             DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
+            DataModelType::Array { item, count } => Self::Array {
+                item: Box::new((*item).into()),
+                count: *count,
+            },
             DataModelType::Map { key, val } => Self::Map {
                 key: Box::new((*key).into()),
                 val: Box::new((*val).into()),
