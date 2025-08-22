@@ -33,6 +33,10 @@ pub mod heapless_v0_7;
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_8")))]
 pub mod heapless_v0_8;
 
+#[cfg(feature = "heapless-v0_9")]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
+pub mod heapless_v0_9;
+
 #[cfg(feature = "nalgebra-v0_33")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;
