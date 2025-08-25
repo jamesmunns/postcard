@@ -1,8 +1,7 @@
 use postcard_schema_ng::{
-    schema::{owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant},
-    Schema,
+    schema::{intern::{ty_intern::count_run_dmts_data, IntermediateSchema}, owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant}, sintern, Schema
 };
-use std::path::PathBuf;
+use std::{cmp::Ordering, path::PathBuf};
 
 #[allow(unused)]
 #[derive(Schema)]
@@ -124,7 +123,10 @@ fn test_struct_serialize() {
                 },
                 &NamedField {
                     name: "e",
-                    ty: &DataModelType::Tuple(&[u8::SCHEMA; 10]),
+                    ty: &DataModelType::Array {
+                        item: u8::SCHEMA,
+                        count: 10
+                    },
                 },
                 &NamedField {
                     name: "f",
@@ -185,7 +187,9 @@ struct TestStruct1 {
 #[allow(unused)]
 #[derive(Debug, Schema)]
 struct TestStruct2<'a> {
+    w: (u8, u16, u32),
     x: TestEnum<'a>,
+    xa: TestEnum<'a>,
     y: TestStruct1,
     z: Result<TestStruct1, u32>,
 }
@@ -202,7 +206,7 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 187);
+    assert_eq!(ser_borrowed_schema.len(), 194);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
@@ -226,6 +230,87 @@ struct TestStruct4(u64, bool);
 enum TestEnum2 {
     Nt(u64),
     Tup(u64, bool),
+}
+
+#[test]
+fn hacking4() {
+    // emit_strings(TestStruct2::SCHEMA);
+    const SINTERN: &str = sintern!(TestEnum);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestEnum::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestEnum::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestEnum::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestEnum::SCHEMA);
+    println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestEnum::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestEnum::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestEnum::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+
+    panic!("yay");
+}
+
+#[test]
+fn hacking3() {
+    // emit_strings(TestStruct2::SCHEMA);
+    const SINTERN: &str = sintern!(TestStruct3);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestStruct3::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestStruct3::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestStruct3::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestStruct3::SCHEMA);
+    println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestStruct3::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestStruct3::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestStruct3::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+
+    panic!("yay");
+}
+
+#[test]
+fn hacking() {
+    // emit_strings(TestStruct2::SCHEMA);
+    const SINTERN: &str = sintern!(TestStruct2);
+    const RUN_DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_run_dmts(TestStruct2::SCHEMA);
+    const NFS: usize = postcard_schema_ng::schema::intern::ty_intern::count_named_fields(TestStruct2::SCHEMA);
+    const VARS: usize = postcard_schema_ng::schema::intern::ty_intern::count_variants(TestStruct2::SCHEMA);
+    const DMTS: usize = postcard_schema_ng::schema::intern::ty_intern::count_dmt(TestStruct2::SCHEMA);
+    println!("{SINTERN}");
+    println!("{RUN_DMTS}");
+    println!("{NFS}");
+    println!("{VARS}");
+    println!("{DMTS}");
+
+    const DENSE: IntermediateSchema<DMTS, RUN_DMTS, NFS, VARS> = IntermediateSchema::blammo(SINTERN, TestStruct2::SCHEMA);
+    // const DENSE: IntermediateSchema<100, 100, 100, 100> = IntermediateSchema::blammo(SINTERN, TestStruct2::SCHEMA);
+    println!("{DENSE:#?}");
+    let ser = postcard::to_stdvec(&DENSE).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+    let ser = postcard::to_stdvec(TestStruct2::SCHEMA).unwrap();
+    println!("{ser:02X?}");
+    println!("{}", ser.len());
+
+    panic!("yay");
 }
 
 #[test]
