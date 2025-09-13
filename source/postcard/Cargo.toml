@@ -30,6 +30,20 @@ default-features = false
 features = ["serde"]
 optional = true
 
+[dependencies.heapless-v0_8]
+package = "heapless"
+version = "0.8.0"
+default-features = false
+features = ["serde"]
+optional = true
+
+[dependencies.heapless-v0_9]
+package = "heapless"
+version = "0.9.1"
+default-features = false
+features = ["serde"]
+optional = true
+
 [dependencies.serde]
 version = "1.0.100"
 default-features = false
@@ -101,3 +115,5 @@ crc = ["dep:crc"]
 defmt = ["dep:defmt"]
 heapless = ["dep:heapless"]
 postcard-derive = ["dep:postcard-derive"]
+heapless-v0_8 = ["dep:heapless-v0_8"]
+heapless-v0_9 = ["dep:heapless-v0_9"]
