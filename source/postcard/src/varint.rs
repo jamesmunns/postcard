@@ -24,6 +24,10 @@ pub const fn max_of_last_byte<T: Sized>() -> u8 {
 
 #[inline]
 pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
+    if n < 128 {
+        out[0] = n as u8;
+        return &mut out[..1];
+    }
     let mut value = n;
     let mut i = 0;
     while value >= 128 {
@@ -37,6 +41,10 @@ pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8
 
 #[inline]
 pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
+    if n < 128 {
+        out[0] = n as u8;
+        return &mut out[..1];
+    }
     let mut value = n;
     let mut i = 0;
     while value >= 128 {
@@ -50,6 +58,10 @@ pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
 
 #[inline]
 pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
+    if n < 128 {
+        out[0] = n as u8;
+        return &mut out[..1];
+    }
     let mut value = n;
     let mut i = 0;
     while value >= 128 {
@@ -63,6 +75,10 @@ pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
 
 #[inline]
 pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
+    if n < 128 {
+        out[0] = n as u8;
+        return &mut out[..1];
+    }
     let mut value = n;
     let mut i = 0;
     while value >= 128 {
@@ -76,6 +92,10 @@ pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
 
 #[inline]
 pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
+    if n < 128 {
+        out[0] = n as u8;
+        return &mut out[..1];
+    }
     let mut value = n;
     let mut i = 0;
     while value >= 128 {
