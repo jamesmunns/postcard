@@ -11,6 +11,10 @@ mod eio;
 mod error;
 pub mod fixint;
 mod ser;
+#[cfg(feature = "bench_private")]
+#[doc(hidden)]
+pub mod varint;
+#[cfg(not(feature = "bench_private"))]
 mod varint;
 
 // Still experimental! Don't make pub pub.

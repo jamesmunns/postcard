@@ -71,6 +71,14 @@ version = "1.0.100"
 default-features = false
 features = ["derive"]
 
+[dev-dependencies.criterion]
+version = "0.7"
+features = ["html_reports"]
+
+[[bench]]
+name = "varint_bench"
+harness = false
+
 [features]
 default = ["heapless-cas"]
 
@@ -87,6 +95,7 @@ heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
 alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc"]
+bench_private = []
 
 # Does nothing, for compat only
 paste = []
