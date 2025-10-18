@@ -171,8 +171,8 @@ where
 /// let ser: Vec<u8> = to_stdvec("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x03, b'H', b'i', b'!']);
 /// ```
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[inline]
 pub fn to_stdvec<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
@@ -196,8 +196,8 @@ where
 /// let ser: Vec<u8> = to_stdvec_cobs("Hi!").unwrap();
 /// assert_eq!(ser.as_slice(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
 /// ```
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 #[inline]
 pub fn to_stdvec_cobs<T>(value: &T) -> Result<std::vec::Vec<u8>>
 where
@@ -286,7 +286,7 @@ where
 /// to_io("Hi!", ser).unwrap();
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub fn to_io<T, W>(value: &T, writer: W) -> Result<W>
 where
     T: Serialize + ?Sized,
@@ -385,8 +385,8 @@ where
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
-#[cfg(all(feature = "use-crc", feature = "use-std"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = "use-std"))))]
+#[cfg(all(feature = "use-crc", feature = "std"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = "std"))))]
 #[inline]
 pub fn to_stdvec_crc32<T>(value: &T, digest: crc::Digest<'_, u32>) -> Result<std::vec::Vec<u8>>
 where

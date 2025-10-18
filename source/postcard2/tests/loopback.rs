@@ -147,7 +147,7 @@ fn loopback() {
     );
 
     // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     test_one(
         std::ffi::CString::new("heLlo").unwrap(),
         &[0x05, b'h', b'e', b'L', b'l', b'o'],
@@ -173,7 +173,7 @@ where
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 #[test]
 fn std_io_loopback() {
     use postcard2::from_io;

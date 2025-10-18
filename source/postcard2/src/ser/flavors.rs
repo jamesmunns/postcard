@@ -95,7 +95,7 @@ use core::ops::IndexMut;
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub use std_vec::*;
 
 #[cfg(feature = "alloc")]
@@ -258,7 +258,7 @@ where
 }
 
 /// Support for the [`std::io`] traits
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub mod io {
 
     use super::Flavor;
@@ -373,11 +373,11 @@ mod heapless_vec {
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 mod std_vec {
     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
     ///
-    /// This type is only available when the (non-default) `use-std` feature is active
+    /// This type is only available when the (non-default) `std` feature is active
     pub type StdVec = super::alloc_vec::AllocVec;
 }
 

@@ -319,7 +319,7 @@ const fn max(lhs: usize, rhs: usize) -> usize {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "use-std"))]
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[cfg(test)]
 mod tests {
     extern crate alloc;

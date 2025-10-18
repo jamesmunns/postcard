@@ -218,7 +218,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
 }
 
 /// Support for [`std::io`]
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub mod io {
     use core::marker::PhantomData;
     use postcard2::{Error, Result};
@@ -278,7 +278,7 @@ pub mod io {
 
     /// Support for [`std::io`] traits
     #[allow(clippy::module_inception)]
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     pub mod io {
         use super::super::Flavor;
         use super::SlidingBuffer;

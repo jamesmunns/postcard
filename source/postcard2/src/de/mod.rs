@@ -70,7 +70,7 @@ where
 }
 
 /// Deserialize a message of type `T` from a [`std::io::Read`].
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
 where
     T: Deserialize<'a>,
@@ -559,7 +559,7 @@ mod test_heapless {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "use-std"))]
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[cfg(test)]
 mod test_alloc {
     extern crate alloc;

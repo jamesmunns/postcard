@@ -61,7 +61,7 @@ default-features = false
 [features]
 default = ["heapless-cas"]
 
-use-std = ["serde/std", "alloc"]
+std = ["serde/std", "alloc"]
 heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
