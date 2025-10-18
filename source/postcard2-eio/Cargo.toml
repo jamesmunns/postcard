@@ -1,0 +1,9 @@
+[package]
+name = "postcard2-eio"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embedded-io = "0.7.1"
+postcard2 = { version = "0.1.0", path = "../postcard2", default-features = false }
+serde_core = { version = "1.0.228", default-features = false }

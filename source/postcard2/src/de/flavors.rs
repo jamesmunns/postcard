@@ -217,15 +217,11 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 }
 
-/// Support for [`std::io`] or `embedded-io` traits
-#[cfg(any(
-    feature = "embedded-io-04",
-    feature = "embedded-io-06",
-    feature = "use-std"
-))]
+/// Support for [`std::io`]
+#[cfg(feature = "use-std")]
 pub mod io {
-    use crate::{Error, Result};
     use core::marker::PhantomData;
+    use postcard2::{Error, Result};
 
     struct SlidingBuffer<'de> {
         cursor: *mut u8,
@@ -267,10 +263,7 @@ pub mod io {
             let buff = if remain < ct {
                 return Err(Error::DeserializeUnexpectedEnd);
             } else {
-                unsafe {
-                    let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
-                    sli
-                }
+                unsafe { core::slice::from_raw_parts_mut(self.cursor, ct) }
             };
 
             Ok(buff)
@@ -280,112 +273,6 @@ pub mod io {
             let remain = (self.end as usize) - (self.cursor as usize);
             // SAFETY: `self.cursor` is valid for `remain` elements
             unsafe { Ok(core::slice::from_raw_parts_mut(self.cursor, remain)) }
-        }
-    }
-
-    /// Support for [`embedded_io`](crate::eio::embedded_io) traits
-    #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-    pub mod eio {
-        use super::super::Flavor;
-        use super::SlidingBuffer;
-        use crate::{Error, Result};
-
-        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [`Flavor`] trait
-        pub struct EIOReader<'de, T>
-        where
-            T: crate::eio::Read,
-        {
-            reader: T,
-            buff: SlidingBuffer<'de>,
-        }
-
-        impl<'de, T> EIOReader<'de, T>
-        where
-            T: crate::eio::Read,
-        {
-            /// Create a new [`EIOReader`] from a reader and a buffer.
-            ///
-            /// `buff` must have enough space to hold all data read during the deserialisation.
-            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
-                Self {
-                    reader,
-                    buff: SlidingBuffer::new(buff),
-                }
-            }
-        }
-
-        impl<'de, T> Flavor<'de> for EIOReader<'de, T>
-        where
-            T: crate::eio::Read + 'de,
-        {
-            type Remainder = (T, &'de mut [u8]);
-            type Source = &'de [u8];
-
-            #[inline]
-            fn pop(&mut self) -> Result<u8> {
-                let mut val = [0; 1];
-                self.reader
-                    .read_exact(&mut val)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(val[0])
-            }
-
-            #[inline]
-            fn size_hint(&self) -> Option<usize> {
-                None
-            }
-
-            #[inline]
-            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-                let buff = self.buff.take_n(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            #[inline]
-            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
-            where
-                'de: 'a,
-            {
-                let buff = self.buff.take_n_temp(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            /// Return the remaining (unused) bytes in the Deserializer
-            fn finalize(self) -> Result<(T, &'de mut [u8])> {
-                let buf = self.buff.complete()?;
-                Ok((self.reader, buf))
-            }
-        }
-
-        #[cfg(test)]
-        mod tests {
-            use super::*;
-
-            #[test]
-            fn test_pop() {
-                let mut reader = EIOReader::new(&[0xAA, 0xBB, 0xCC][..], &mut []);
-
-                assert_eq!(reader.pop(), Ok(0xAA));
-                assert_eq!(reader.pop(), Ok(0xBB));
-                assert_eq!(reader.pop(), Ok(0xCC));
-                assert_eq!(reader.pop(), Err(Error::DeserializeUnexpectedEnd));
-            }
-
-            #[test]
-            fn test_try_take_n() {
-                let mut buf = [0; 8];
-                let mut reader = EIOReader::new(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE][..], &mut buf);
-
-                assert_eq!(reader.try_take_n(2), Ok(&[0xAA, 0xBB][..]));
-                assert_eq!(reader.try_take_n(2), Ok(&[0xCC, 0xDD][..]));
-                assert_eq!(reader.try_take_n(2), Err(Error::DeserializeUnexpectedEnd));
-            }
         }
     }
 

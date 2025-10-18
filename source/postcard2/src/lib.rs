@@ -6,8 +6,6 @@
 pub mod accumulator;
 mod de;
 
-mod eio;
-
 mod error;
 pub mod fixint;
 mod ser;
@@ -69,12 +67,6 @@ pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice
 
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
-
-#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub use ser::to_eio;
-
-#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub use de::from_eio;
 
 #[cfg(feature = "use-std")]
 pub use ser::{to_io, to_stdvec, to_stdvec_cobs};
