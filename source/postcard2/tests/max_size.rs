@@ -51,35 +51,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "heapless")]
-    #[test]
-    fn test_vec_edge_cases() {
-        #[track_caller]
-        fn test_equals<const N: usize>(buf: &mut [u8]) {
-            let mut v = heapless::Vec::<u8, N>::new();
-            for _ in 0..N {
-                v.push(0).unwrap();
-            }
-
-            let serialized = postcard2::to_slice(&v, buf).unwrap();
-
-            assert_eq!(heapless::Vec::<u8, N>::POSTCARD_MAX_SIZE, serialized.len());
-        }
-
-        let mut buf = [0; 16400];
-
-        test_equals::<1>(&mut buf);
-        test_equals::<2>(&mut buf);
-
-        test_equals::<127>(&mut buf);
-        test_equals::<128>(&mut buf);
-        test_equals::<129>(&mut buf);
-
-        test_equals::<16383>(&mut buf);
-        test_equals::<16384>(&mut buf);
-        test_equals::<16385>(&mut buf);
-    }
-
     // #[cfg(feature = "experimental-derive")]
     // #[test]
     // fn test_union_max_size() {

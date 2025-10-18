@@ -9,7 +9,8 @@ mod de;
 mod error;
 pub mod fixint;
 mod ser;
-mod varint;
+/// todo: keep public?
+pub mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
@@ -65,9 +66,6 @@ pub use error::{Error, Result};
 pub use ser::flavors as ser_flavors;
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice, to_slice_cobs};
 
-#[cfg(feature = "heapless")]
-pub use ser::{to_vec, to_vec_cobs};
-
 #[cfg(feature = "std")]
 pub use ser::{to_io, to_stdvec, to_stdvec_cobs};
 
@@ -82,9 +80,6 @@ pub use {
     de::{from_bytes_crc32, take_from_bytes_crc32},
     ser::to_slice_crc32,
 };
-
-#[cfg(all(feature = "use-crc", feature = "heapless"))]
-pub use ser::to_vec_crc32;
 
 #[cfg(all(feature = "use-crc", feature = "std"))]
 pub use ser::to_stdvec_crc32;

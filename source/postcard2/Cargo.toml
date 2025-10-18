@@ -24,12 +24,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
-[dependencies.heapless]
-version = "0.7.0"
-default-features = false
-features = ["serde"]
-optional = true
-
 [dependencies.serde]
 version = "1.0.100"
 default-features = false
@@ -59,10 +53,9 @@ optional = true
 default-features = false
 
 [features]
-default = ["heapless-cas"]
+default = []
 
 std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
 alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc"]
@@ -78,5 +71,4 @@ core-num-saturating = []
 nalgebra-v0_33 = ["nalgebra_v0_33"]
 crc = ["dep:crc"]
 defmt = ["dep:defmt"]
-heapless = ["dep:heapless"]
 postcard-derive-ng = ["dep:postcard-derive-ng"]

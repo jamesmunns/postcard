@@ -92,9 +92,6 @@ use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
 
-#[cfg(feature = "heapless")]
-pub use heapless_vec::*;
-
 #[cfg(feature = "std")]
 pub use std_vec::*;
 
@@ -306,69 +303,6 @@ pub mod io {
                 .flush()
                 .map_err(|_| Error::SerializeBufferFull)?;
             Ok(self.writer)
-        }
-    }
-}
-
-#[cfg(feature = "heapless")]
-mod heapless_vec {
-    use super::Flavor;
-    use super::Index;
-    use super::IndexMut;
-    use crate::{Error, Result};
-    use heapless::Vec;
-
-    ////////////////////////////////////////
-    // HVec
-    ////////////////////////////////////////
-
-    /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
-    /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    #[derive(Default)]
-    pub struct HVec<const B: usize> {
-        /// the contained data buffer
-        vec: Vec<u8, B>,
-    }
-
-    impl<const B: usize> HVec<B> {
-        /// Create a new, currently empty, [`heapless::Vec`] to be used for storing serialized
-        /// output data.
-        pub fn new() -> Self {
-            Self::default()
-        }
-    }
-
-    impl<const B: usize> Flavor for HVec<B> {
-        type Output = Vec<u8, B>;
-
-        #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
-            self.vec
-                .extend_from_slice(data)
-                .map_err(|_| Error::SerializeBufferFull)
-        }
-
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.vec.push(data).map_err(|_| Error::SerializeBufferFull)
-        }
-
-        fn finalize(self) -> Result<Vec<u8, B>> {
-            Ok(self.vec)
-        }
-    }
-
-    impl<const B: usize> Index<usize> for HVec<B> {
-        type Output = u8;
-
-        fn index(&self, idx: usize) -> &u8 {
-            &self.vec[idx]
-        }
-    }
-
-    impl<const B: usize> IndexMut<usize> for HVec<B> {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.vec[idx]
         }
     }
 }
@@ -600,22 +534,22 @@ pub mod crc {
                 serialize_with_flavor(value, CrcModifier::new(Slice::new(buf), digest))
             }
 
-            /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
-            /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
-            #[cfg(feature = "heapless")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
-            pub fn $to_vec<T, const B: usize>(
-                value: &T,
-                digest: Digest<'_, $int>,
-            ) -> Result<heapless::Vec<u8, B>>
-            where
-                T: Serialize + ?Sized,
-            {
-                use super::HVec;
-                serialize_with_flavor(value, CrcModifier::new(HVec::default(), digest))
-            }
+            // /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+            // /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
+            // #[cfg(feature = "heapless")]
+            // #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
+            // pub fn $to_vec<T, const B: usize>(
+            //     value: &T,
+            //     digest: Digest<'_, $int>,
+            // ) -> Result<heapless::Vec<u8, B>>
+            // where
+            //     T: Serialize + ?Sized,
+            // {
+            //     use super::HVec;
+            //     serialize_with_flavor(value, CrcModifier::new(HVec::default(), digest))
+            // }
 
-            /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+            /// Serialize a `T` to a `alloc::Vec<u8>`, with the `Vec` containing
             /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
