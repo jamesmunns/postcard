@@ -24,12 +24,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
-[dependencies.heapless]
-version = "0.7.0"
-default-features = false
-features = ["serde"]
-optional = true
-
 [dependencies.serde]
 version = "1.0.100"
 default-features = false
@@ -41,16 +35,6 @@ default-features = false
 
 [dependencies.defmt]
 version = "1"
-optional = true
-
-[dependencies.embedded-io-04]
-package = "embedded-io"
-version = "0.4"
-optional = true
-
-[dependencies.embedded-io-06]
-package = "embedded-io"
-version = "0.6"
 optional = true
 
 [dependencies.postcard-derive-ng]
@@ -69,19 +53,10 @@ optional = true
 default-features = false
 
 [features]
-default = ["heapless-cas"]
+default = []
 
-# Enables support for `embedded-io` traits
-# This feature will track the latest `embedded-io` when major releases are made
-embedded-io = ["dep:embedded-io-04"]
-
-# Specific versions of `embedded-io` can be selected through the features below
-embedded-io-04 = ["dep:embedded-io-04"]
-embedded-io-06 = ["dep:embedded-io-06"]
-
-use-std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
-alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
+std = ["serde/std", "alloc"]
+alloc = ["serde/alloc"]
 use-defmt = ["defmt"]
 use-crc = ["crc"]
 
@@ -96,5 +71,4 @@ core-num-saturating = []
 nalgebra-v0_33 = ["nalgebra_v0_33"]
 crc = ["dep:crc"]
 defmt = ["dep:defmt"]
-heapless = ["dep:heapless"]
 postcard-derive-ng = ["dep:postcard-derive-ng"]

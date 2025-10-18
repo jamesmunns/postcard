@@ -207,7 +207,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "heapless")]
+    #[cfg(feature = "std")]
     fn double_loop_test() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo {
@@ -217,8 +217,8 @@ mod test {
 
         let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
 
-        let mut ser = crate::to_vec_cobs::<_, 128>(&Demo { a: 10, b: 20 }).unwrap();
-        let ser2 = crate::to_vec_cobs::<_, 128>(&Demo {
+        let mut ser = crate::to_stdvec_cobs::<_>(&Demo { a: 10, b: 20 }).unwrap();
+        let ser2 = crate::to_stdvec_cobs::<_>(&Demo {
             a: 256854231,
             b: 115,
         })
@@ -252,7 +252,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "heapless")]
+    #[cfg(feature = "std")]
     fn loop_test_ref() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
@@ -263,7 +263,7 @@ mod test {
 
         let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
 
-        let ser = crate::to_vec_cobs::<_, 128>(&Demo {
+        let ser = crate::to_stdvec_cobs::<_>(&Demo {
             a: 10,
             b: 20,
             c: "test",
@@ -286,7 +286,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "heapless")]
+    #[cfg(feature = "std")]
     fn double_loop_test_ref() {
         #[derive(serde::Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct Demo<'a> {
@@ -297,13 +297,13 @@ mod test {
 
         let mut cobs_buf: CobsAccumulator<64> = CobsAccumulator::new();
 
-        let mut ser = crate::to_vec_cobs::<_, 128>(&Demo {
+        let mut ser = crate::to_stdvec_cobs::<_>(&Demo {
             a: 10,
             b: 20,
             c: "test",
         })
         .unwrap();
-        let ser2 = crate::to_vec_cobs::<_, 128>(&Demo {
+        let ser2 = crate::to_stdvec_cobs::<_>(&Demo {
             a: 256854231,
             b: 115,
             c: "different test",
@@ -346,7 +346,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "heapless")]
+    #[cfg(feature = "std")]
     fn extend_unchecked_in_bounds_test() {
         // Test bug present in revision abcb407:
         // extend_unchecked may be passed slice with size 1 greater than accumulator buffer causing panic
@@ -356,7 +356,7 @@ mod test {
             data: [u8; 10],
         }
 
-        let data = crate::to_vec_cobs::<_, 128>(&Demo { data: [0xcc; 10] }).unwrap();
+        let data = crate::to_stdvec_cobs::<_>(&Demo { data: [0xcc; 10] }).unwrap();
         assert_eq!(data.len(), 12); // 1 byte for offset + 1 sentinel byte appended
 
         // Accumulator has 1 byte less space than encoded message
