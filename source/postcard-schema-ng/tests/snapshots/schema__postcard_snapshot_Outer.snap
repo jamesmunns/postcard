@@ -1,0 +1,90 @@
+---
+source: source/postcard-schema-ng/tests/schema.rs
+expression: "Outer :: SCHEMA"
+---
+Struct {
+    name: "Outer",
+    data: Struct(
+        [
+            NamedField {
+                name: "a",
+                ty: U32,
+            },
+            NamedField {
+                name: "b",
+                ty: U64,
+            },
+            NamedField {
+                name: "c",
+                ty: U8,
+            },
+            NamedField {
+                name: "d",
+                ty: Enum {
+                    name: "Inner",
+                    variants: [
+                        Variant {
+                            name: "Alpha",
+                            data: Unit,
+                        },
+                        Variant {
+                            name: "Beta",
+                            data: Unit,
+                        },
+                        Variant {
+                            name: "Gamma",
+                            data: Unit,
+                        },
+                        Variant {
+                            name: "Delta",
+                            data: Tuple(
+                                [
+                                    I32,
+                                    I16,
+                                ],
+                            ),
+                        },
+                        Variant {
+                            name: "Epsilon",
+                            data: Struct(
+                                [
+                                    NamedField {
+                                        name: "zeta",
+                                        ty: F32,
+                                    },
+                                    NamedField {
+                                        name: "eta",
+                                        ty: Bool,
+                                    },
+                                ],
+                            ),
+                        },
+                    ],
+                },
+            },
+            NamedField {
+                name: "e",
+                ty: Tuple(
+                    [
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                        U8,
+                    ],
+                ),
+            },
+            NamedField {
+                name: "f",
+                ty: Seq(
+                    U8,
+                ),
+            },
+        ],
+    ),
+}
