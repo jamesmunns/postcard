@@ -90,6 +90,13 @@ path = "../postcard"
 version = "1.0"
 features = ["use-std"]
 
+[dev-dependencies.postcard-dyn-ng]
+path = "../postcard-dyn-ng"
+version = "0.3"
+
+[dev-dependencies.serde_json]
+version = "1.0"
+
 [dev-dependencies.nalgebra_v0_33]
 package = "nalgebra"
 version = "0.33.0"
