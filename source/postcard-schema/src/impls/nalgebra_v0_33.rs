@@ -1,24 +1,37 @@
 //! Implementations of the [`Schema`] trait for the `nalgebra` crate v0.33
 
 use crate::{
-    schema::{DataModelType, NamedType},
+    schema::{DataModelType, NamedType, NamedValue},
     Schema,
 };
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
-impl<T, const R: usize, const C: usize> Schema
-    for nalgebra_v0_33::Matrix<
+impl<T, const R: usize, const C: usize, S> Schema
+    for nalgebra_v0_33::Matrix<T, nalgebra_v0_33::Const<R>, nalgebra_v0_33::Const<C>, S>
+where
+    T: Schema + nalgebra_v0_33::Scalar,
+    S: nalgebra_v0_33::base::storage::Storage<
         T,
         nalgebra_v0_33::Const<R>,
         nalgebra_v0_33::Const<C>,
-        nalgebra_v0_33::ArrayStorage<T, R, C>,
-    >
-where
-    T: Schema + nalgebra_v0_33::Scalar,
+    >,
 {
     const SCHEMA: &'static NamedType = &NamedType {
-        name: "nalgebra::Matrix<T, R, C, ArrayStorage<T, R, C>>",
+        name: "nalgebra::Matrix<T, R, C, S>",
         ty: &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C])),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: Schema + nalgebra_v0_33::Scalar, const D: usize> Schema
+    for nalgebra_v0_33::OPoint<T, nalgebra_v0_33::Const<D>>
+where
+    nalgebra_v0_33::base::default_allocator::DefaultAllocator:
+        nalgebra_v0_33::base::allocator::Allocator<nalgebra_v0_33::Const<D>>,
+{
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "nalgebra::OPoint<T, D>",
+        ty: nalgebra_v0_33::OVector::<T, nalgebra_v0_33::Const<D>>::SCHEMA.ty,
     };
 }
 
@@ -30,6 +43,32 @@ impl<T: Schema> Schema for nalgebra_v0_33::Unit<T> {
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 impl<T: Schema + nalgebra_v0_33::Scalar> Schema for nalgebra_v0_33::Quaternion<T> {
     const SCHEMA: &'static NamedType = nalgebra_v0_33::Vector4::<T>::SCHEMA;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: Schema + nalgebra_v0_33::Scalar, const D: usize> Schema
+    for nalgebra_v0_33::Translation<T, D>
+{
+    const SCHEMA: &'static NamedType = nalgebra_v0_33::SVector::<T, D>::SCHEMA;
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T: Schema + nalgebra_v0_33::Scalar, R: Schema, const D: usize> Schema
+    for nalgebra_v0_33::Isometry<T, R, D>
+{
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "nalgebra::Isometry<T, R, D>",
+        ty: &DataModelType::Struct(&[
+            &NamedValue {
+                name: "rotation",
+                ty: R::SCHEMA,
+            },
+            &NamedValue {
+                name: "translation",
+                ty: nalgebra_v0_33::Translation::<T, D>::SCHEMA,
+            },
+        ]),
+    };
 }
 
 /// Const version of the const-unstable [`<[[T; N]]>::as_flattened()`]
