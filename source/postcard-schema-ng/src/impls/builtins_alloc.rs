@@ -46,8 +46,3 @@ impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<
 impl<T: Schema> Schema for alloc::rc::Rc<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
-
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<T: Schema> Schema for alloc::sync::Arc<T> {
-    const SCHEMA: &'static DataModelType = T::SCHEMA;
-}
