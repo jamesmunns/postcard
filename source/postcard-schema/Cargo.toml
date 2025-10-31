@@ -70,6 +70,12 @@ version = "0.34.1"
 optional = true
 default-features = false
 
+[dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+optional = true
+default-features = false
+
 [dependencies.fixed_v1_0]
 package = "fixed"
 version = "1.0"
@@ -107,6 +113,12 @@ version = "0.34.1"
 default-features = false
 features = ["serde-serialize-no-std"]
 
+[dev-dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+default-features = false
+features = ["serde"]
+
 [features]
 default = []
 use-std = ["serde/std"]
@@ -122,7 +134,8 @@ fixed-v1_0 = ["fixed_v1_0"]
 heapless-v0_7 = ["heapless_v0_7"]
 heapless-v0_8 = ["heapless_v0_8"]
 heapless-v0_9 = ["heapless_v0_9"]
-nalgebra-v0_33 = ["nalgebra_v0_33"]
-nalgebra-v0_34 = ["nalgebra_v0_34"]
+nalgebra-v0_33 = ["nalgebra_v0_33", "num-complex-v0_4"]
+nalgebra-v0_34 = ["nalgebra_v0_34", "num-complex-v0_4"]
+num-complex-v0_4 = ["num_complex_v0_4"]
 serde-big-array-v0_5 = ["serde-big-array_v0_5"]
 uuid-v1_0 = ["uuid_v1_0"]
