@@ -1,4 +1,5 @@
 mod bytes_v1_0;
+mod indexmap_v2_0;
 
 use std::cmp::PartialEq;
 use std::fmt::Debug;
