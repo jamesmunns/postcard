@@ -1,3 +1,5 @@
+mod bytes_v1_0;
+
 use std::cmp::PartialEq;
 use std::fmt::Debug;
 
