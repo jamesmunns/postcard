@@ -73,11 +73,3 @@ impl<T: Schema> Schema for alloc::rc::Rc<T> {
         ty: T::SCHEMA.ty,
     };
 }
-
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
-impl<T: Schema> Schema for alloc::sync::Arc<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Arc<T>",
-        ty: T::SCHEMA.ty,
-    };
-}
