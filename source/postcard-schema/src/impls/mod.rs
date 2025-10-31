@@ -61,6 +61,10 @@ pub mod bytes_v1_0;
 #[cfg_attr(docsrs, doc(cfg(feature = "indexmap-v2_0")))]
 pub mod indexmap_v2_0;
 
+#[cfg(feature = "log-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-v0_4")))]
+pub mod log_v0_4;
+
 impl Schema for NamedType {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "NamedType",

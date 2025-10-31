@@ -97,6 +97,12 @@ version = "2.0"
 optional = true
 default-features = false
 
+[dependencies.log_v0_4]
+package = "log"
+version = "0.4"
+optional = true
+default-features = false
+
 [dev-dependencies.postcard]
 path = "../postcard"
 version = "1.0"
@@ -125,6 +131,11 @@ package = "indexmap"
 version = "2.0"
 features = ["std", "serde"]
 
+[dev-dependencies.log_v0_4]
+package = "log"
+version = "0.4"
+features = ["serde"]
+
 [features]
 default = []
 use-std = ["serde/std"]
@@ -145,3 +156,4 @@ serde-big-array-v0_5 = ["serde-big-array_v0_5"]
 uuid-v1_0 = ["uuid_v1_0"]
 bytes-v1_0 = ["bytes_v1_0"]
 indexmap-v2_0 = ["indexmap_v2_0"]
+log-v0_4 = ["log_v0_4"]
