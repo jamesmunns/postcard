@@ -320,6 +320,8 @@ fn smoke() {
         (dewit::<i32>, "i32"),
         (dewit::<i64>, "i64"),
         (dewit::<i128>, "i128"),
+        (dewit::<usize>, "usize"),
+        (dewit::<isize>, "isize"),
         (dewit::<()>, "()"),
         (dewit::<char>, "char"),
         (dewit::<bool>, "bool"),
