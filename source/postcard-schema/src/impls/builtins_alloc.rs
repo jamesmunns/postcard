@@ -43,6 +43,14 @@ impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: Schema> Schema for alloc::collections::VecDeque<T> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "VecDeque<T>",
+        ty: &DataModelType::Seq(T::SCHEMA),
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<T: Schema> Schema for alloc::boxed::Box<T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Box<T>",
@@ -54,6 +62,14 @@ impl<T: Schema> Schema for alloc::boxed::Box<T> {
 impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<'_, T> {
     const SCHEMA: &'static NamedType = &NamedType {
         name: "Cow<'_, T>",
+        ty: T::SCHEMA.ty,
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+impl<T: Schema> Schema for alloc::rc::Rc<T> {
+    const SCHEMA: &'static NamedType = &NamedType {
+        name: "Rc<T>",
         ty: T::SCHEMA.ty,
     };
 }
