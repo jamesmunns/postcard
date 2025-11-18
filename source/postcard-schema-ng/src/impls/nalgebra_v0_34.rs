@@ -1,7 +1,7 @@
 //! Implementations of the [`Schema`] trait for the `nalgebra` crate v0.34
 
 use crate::{
-    schema::{DataModelType, NamedType, NamedValue},
+    schema::{Data, DataModelType, NamedField},
     Schema,
 };
 
@@ -16,10 +16,7 @@ where
         nalgebra_v0_34::Const<C>,
     >,
 {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "nalgebra::Matrix<T, R, C, ArrayStorage<T, R, C>>",
-        ty: &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C])),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::Tuple(flatten(&[[T::SCHEMA; R]; C]));
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
@@ -29,41 +26,39 @@ where
     nalgebra_v0_34::base::default_allocator::DefaultAllocator:
         nalgebra_v0_34::base::allocator::Allocator<nalgebra_v0_34::Const<D>>,
 {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "nalgebra::OPoint<T, D>",
-        ty: nalgebra_v0_34::OVector::<T, nalgebra_v0_34::Const<D>>::SCHEMA.ty,
-    };
+    const SCHEMA: &'static DataModelType =
+        nalgebra_v0_34::OVector::<T, nalgebra_v0_34::Const<D>>::SCHEMA;
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 impl<T: Schema> Schema for nalgebra_v0_34::Unit<T> {
-    const SCHEMA: &'static NamedType = T::SCHEMA;
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 impl<T: Schema + nalgebra_v0_34::Scalar> Schema for nalgebra_v0_34::Quaternion<T> {
-    const SCHEMA: &'static NamedType = nalgebra_v0_34::Vector4::<T>::SCHEMA;
+    const SCHEMA: &'static DataModelType = nalgebra_v0_34::Vector4::<T>::SCHEMA;
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 impl<T: Schema + nalgebra_v0_34::Scalar, const D: usize> Schema
     for nalgebra_v0_34::Translation<T, D>
 {
-    const SCHEMA: &'static NamedType = nalgebra_v0_34::SVector::<T, D>::SCHEMA;
+    const SCHEMA: &'static DataModelType = nalgebra_v0_34::SVector::<T, D>::SCHEMA;
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 impl<T: Schema + nalgebra_v0_34::Scalar, R: Schema, const D: usize> Schema
     for nalgebra_v0_34::Isometry<T, R, D>
 {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "nalgebra::Isometry<T, R, D>",
-        ty: &DataModelType::Struct(&[
-            &NamedValue {
+    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+        name: "Isometry",
+        data: Data::Struct(&[
+            &NamedField {
                 name: "rotation",
                 ty: R::SCHEMA,
             },
-            &NamedValue {
+            &NamedField {
                 name: "translation",
                 ty: nalgebra_v0_34::Translation::<T, D>::SCHEMA,
             },
@@ -86,7 +81,7 @@ const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
 #[test]
 fn flattened() {
     type T = nalgebra_v0_34::SMatrix<u8, 3, 3>;
-    assert_eq!(T::SCHEMA.ty, <[u8; 9]>::SCHEMA.ty);
+    assert_eq!(T::SCHEMA, <[u8; 9]>::SCHEMA);
 }
 
 #[test]
