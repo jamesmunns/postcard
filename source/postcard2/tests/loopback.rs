@@ -2,12 +2,6 @@ use core::fmt::Debug;
 use core::fmt::Write;
 use core::ops::Deref;
 
-#[cfg(feature = "heapless")]
-use heapless::{FnvIndexMap, String, Vec};
-
-#[cfg(feature = "heapless")]
-use postcard2::to_vec;
-
 use postcard2::from_bytes;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -56,7 +50,7 @@ struct RefStruct<'a> {
     str_s: &'a str,
 }
 
-#[cfg(feature = "heapless")]
+#[cfg(feature = "std")]
 #[test]
 fn loopback() {
     // Basic types
@@ -147,20 +141,19 @@ fn loopback() {
     );
 
     // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     test_one(
         std::ffi::CString::new("heLlo").unwrap(),
         &[0x05, b'h', b'e', b'L', b'l', b'o'],
     );
 }
 
-#[cfg(feature = "heapless")]
 #[track_caller]
 fn test_one<T>(data: T, ser_rep: &[u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
 {
-    let serialized: Vec<u8, 2048> = to_vec(&data).unwrap();
+    let serialized: Vec<u8> = to_stdvec(&data).unwrap();
     assert_eq!(serialized.len(), ser_rep.len());
     let mut x: ::std::vec::Vec<u8> = vec![];
     x.extend(serialized.deref().iter().cloned());
@@ -173,7 +166,7 @@ where
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 #[test]
 fn std_io_loopback() {
     use postcard2::from_io;

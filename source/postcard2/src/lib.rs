@@ -1,4 +1,4 @@
-#![cfg_attr(not(any(test, feature = "use-std")), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![warn(missing_docs)]
 #![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -6,12 +6,11 @@
 pub mod accumulator;
 mod de;
 
-mod eio;
-
 mod error;
 pub mod fixint;
 mod ser;
-mod varint;
+/// todo: keep public?
+pub mod varint;
 
 // Still experimental! Don't make pub pub.
 pub(crate) mod max_size;
@@ -67,19 +66,10 @@ pub use error::{Error, Result};
 pub use ser::flavors as ser_flavors;
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice, to_slice_cobs};
 
-#[cfg(feature = "heapless")]
-pub use ser::{to_vec, to_vec_cobs};
-
-#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub use ser::to_eio;
-
-#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub use de::from_eio;
-
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub use ser::{to_io, to_stdvec, to_stdvec_cobs};
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub use de::from_io;
 
 #[cfg(feature = "alloc")]
@@ -91,10 +81,7 @@ pub use {
     ser::to_slice_crc32,
 };
 
-#[cfg(all(feature = "use-crc", feature = "heapless"))]
-pub use ser::to_vec_crc32;
-
-#[cfg(all(feature = "use-crc", feature = "use-std"))]
+#[cfg(all(feature = "use-crc", feature = "std"))]
 pub use ser::to_stdvec_crc32;
 
 #[cfg(all(feature = "use-crc", feature = "alloc"))]
