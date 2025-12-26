@@ -1,5 +1,4 @@
-
-use postcard2::{serialize_with_flavor, Result};
+use postcard2::{Result, serialize_with_flavor};
 use serde_core::Serialize;
 
 /// Serialize a `T` to a `heapless_v0_9::Vec<u8>`, with the `Vec` containing
@@ -68,11 +67,11 @@ where
 // }
 
 pub mod ser {
-    use postcard2::ser_flavors::Flavor;
     use core::ops::Index;
     use core::ops::IndexMut;
-    use postcard2::{Error, Result};
     use heapless_v0_9::Vec;
+    use postcard2::ser_flavors::Flavor;
+    use postcard2::{Error, Result};
 
     ////////////////////////////////////////
     // HVec
@@ -135,9 +134,9 @@ mod test_heapless {
     // use crate::{ser::to_vec, to_vec_cobs, varint::varint_max};
     use core::fmt::Write;
     use core::ops::Deref;
-    use heapless_v0_9::{index_map::FnvIndexMap, String, Vec};
-    use serde_core::{Deserialize, Deserializer, Serialize, Serializer};
+    use heapless_v0_9::{String, Vec, index_map::FnvIndexMap};
     use postcard2::{from_bytes, varint::varint_max};
+    use serde_core::{Deserialize, Deserializer, Serialize, Serializer};
 
     #[test]
     fn de_u8() {
@@ -319,7 +318,9 @@ mod test_heapless {
         let output: Vec<u8, { 1 + varint_max::<u64>() }> =
             to_vec(&DataEnum::Bim(u64::MAX)).unwrap();
         assert_eq!(
-            &[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01],
+            &[
+                0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01
+            ],
             output.deref()
         );
 
@@ -487,7 +488,9 @@ mod test_heapless {
         .unwrap();
 
         assert_eq!(
-            &[0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',],
+            &[
+                0x04, 0x01, 0x10, 0x02, 0x20, 0x05, b'h', b'E', b'l', b'L', b'o',
+            ],
             output.deref()
         );
 
@@ -967,6 +970,3 @@ mod test_heapless {
 //         test_equals::<16385>(&mut buf);
 //     }
 // }
-
-
-

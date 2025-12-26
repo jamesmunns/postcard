@@ -220,8 +220,8 @@ impl<'de> Flavor<'de> for Slice<'de> {
 /// Support for [`std::io`]
 #[cfg(feature = "std")]
 pub mod io {
+    use crate::{Error, Result};
     use core::marker::PhantomData;
-    use postcard2::{Error, Result};
 
     struct SlidingBuffer<'de> {
         cursor: *mut u8,

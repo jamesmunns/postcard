@@ -397,4 +397,3 @@ where
 {
     serialize_with_flavor::<T, flavors::Size, usize>(value, flavors::Size::default())
 }
-

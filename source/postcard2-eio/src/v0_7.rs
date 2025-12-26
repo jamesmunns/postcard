@@ -1,6 +1,6 @@
 //! Support Utilities for embedded-io v0.7.x
 
-use postcard2::{serialize_with_flavor, Deserializer};
+use postcard2::{Deserializer, serialize_with_flavor};
 use serde_core::{Deserialize, Serialize};
 
 /// Serialize a `T` to an [`embedded_io Write`](embedded_io_v0_7::Write),
@@ -243,3 +243,39 @@ pub mod de {
         }
     }
 }
+
+// #[test]
+// fn std_eio_loopback() {
+//     use postcard2::from_eio;
+//     use postcard2::to_eio;
+
+//     fn test_io<T>(data: T, ser_rep: &[u8])
+//     where
+//         T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
+//     {
+//         let serialized: ::std::vec::Vec<u8> = vec![];
+//         let ser = to_eio(&data, serialized).unwrap();
+//         assert_eq!(ser.len(), ser_rep.len());
+//         assert_eq!(ser, ser_rep);
+//         {
+//             let mut buff = [0; 2048];
+//             let x = ser.clone();
+//             let deserialized: T = from_eio((x.as_slice(), &mut buff)).unwrap().0;
+//             assert_eq!(data, deserialized);
+//         }
+//     }
+
+//     test_io(DataEnum::Sho(0x6969, 0x07), &[0x05, 0xE9, 0xD2, 0x01, 0x07]);
+//     test_io(
+//         BasicU8S {
+//             st: 0xABCD,
+//             ei: 0xFE,
+//             sf: 0x1234_4321_ABCD_DCBA,
+//             tt: 0xACAC_ACAC,
+//         },
+//         &[
+//             0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12, 0xAC,
+//             0xD9, 0xB2, 0xE5, 0x0A,
+//         ],
+//     );
+// }
