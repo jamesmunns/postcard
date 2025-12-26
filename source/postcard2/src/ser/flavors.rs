@@ -63,7 +63,6 @@
 //! assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 //! ```
 
-use crate::error::{Error, Result};
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
@@ -73,6 +72,19 @@ pub use alloc_vec::*;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+/// .
+#[derive(Debug)]
+pub enum SerFlavorError {
+    /// .
+    SerializeBufferFull,
+}
+
+impl core::fmt::Display for SerFlavorError {
+    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        todo!()
+    }
+}
 
 /// The serialization Flavor trait
 ///
@@ -89,15 +101,15 @@ pub trait Flavor {
     /// multiple bytes at once, such as copying a slice to the output,
     /// rather than iterating over one byte at a time.
     #[inline]
-    fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, data: &[u8]) -> Result<(), SerFlavorError> {
         data.iter().try_for_each(|d| self.try_push(*d))
     }
 
     /// Push a single byte to be modified and/or stored.
-    fn try_push(&mut self, data: u8) -> Result<()>;
+    fn try_push(&mut self, data: u8) -> Result<(), SerFlavorError>;
 
     /// Finalize the serialization process.
-    fn finalize(self) -> Result<Self::Output>;
+    fn finalize(self) -> Result<Self::Output, SerFlavorError>;
 }
 
 ////////////////////////////////////////
@@ -130,9 +142,9 @@ impl<'a> Flavor for Slice<'a> {
     type Output = &'a mut [u8];
 
     #[inline(always)]
-    fn try_push(&mut self, b: u8) -> Result<()> {
+    fn try_push(&mut self, b: u8) -> Result<(), SerFlavorError> {
         if self.cursor == self.end {
-            Err(Error::SerializeBufferFull)
+            Err(SerFlavorError::SerializeBufferFull)
         } else {
             // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
             // have checked above.
@@ -145,11 +157,11 @@ impl<'a> Flavor for Slice<'a> {
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), SerFlavorError> {
         let remain = (self.end as usize) - (self.cursor as usize);
         let blen = b.len();
         if blen > remain {
-            Err(Error::SerializeBufferFull)
+            Err(SerFlavorError::SerializeBufferFull)
         } else {
             // SAFETY: `self.cursor` is in-bounds for `blen` elements and won't be incremented past
             // `self.end` as we have checked above.
@@ -161,7 +173,7 @@ impl<'a> Flavor for Slice<'a> {
         }
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, SerFlavorError> {
         let used = (self.cursor as usize) - (self.start as usize);
         // SAFETY: `self.cursor` is in-bounds for `used` elements
         let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
@@ -211,18 +223,18 @@ where
     type Output = T;
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> Result<()> {
+    fn try_push(&mut self, data: u8) -> Result<(), SerFlavorError> {
         self.iter.extend([data]);
         Ok(())
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), SerFlavorError> {
         self.iter.extend(b.iter().copied());
         Ok(())
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, SerFlavorError> {
         Ok(self.iter)
     }
 }
@@ -232,7 +244,7 @@ where
 pub mod io {
 
     use super::Flavor;
-    use crate::{Error, Result};
+    use crate::ser_flavors::SerFlavorError;
 
     /// Wrapper over a [`std::io::Write`] that implements the flavor trait
     pub struct WriteFlavor<T> {
@@ -256,25 +268,25 @@ pub mod io {
         type Output = T;
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
+        fn try_push(&mut self, data: u8) -> Result<(), SerFlavorError> {
             self.writer
                 .write_all(&[data])
-                .map_err(|_| Error::SerializeBufferFull)?;
+                .map_err(|_| SerFlavorError::SerializeBufferFull)?;
             Ok(())
         }
 
         #[inline(always)]
-        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+        fn try_extend(&mut self, b: &[u8]) -> Result<(), SerFlavorError> {
             self.writer
                 .write_all(b)
-                .map_err(|_| Error::SerializeBufferFull)?;
+                .map_err(|_| SerFlavorError::SerializeBufferFull)?;
             Ok(())
         }
 
-        fn finalize(mut self) -> Result<Self::Output> {
+        fn finalize(mut self) -> Result<Self::Output, SerFlavorError> {
             self.writer
                 .flush()
-                .map_err(|_| Error::SerializeBufferFull)?;
+                .map_err(|_| SerFlavorError::SerializeBufferFull)?;
             Ok(self.writer)
         }
     }
@@ -286,8 +298,8 @@ mod alloc_vec {
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
-    use crate::Result;
     use alloc::vec::Vec;
+    use crate::ser_flavors::SerFlavorError;
 
     /// The `AllocVec` flavor is a wrapper type around an [`alloc::vec::Vec`].
     ///
@@ -310,18 +322,18 @@ mod alloc_vec {
         type Output = Vec<u8>;
 
         #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+        fn try_extend(&mut self, data: &[u8]) -> Result<(), SerFlavorError> {
             self.vec.extend_from_slice(data);
             Ok(())
         }
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
+        fn try_push(&mut self, data: u8) -> Result<(), SerFlavorError> {
             self.vec.push(data);
             Ok(())
         }
 
-        fn finalize(self) -> Result<Self::Output> {
+        fn finalize(self) -> Result<Self::Output, SerFlavorError> {
             Ok(self.vec)
         }
     }
@@ -367,18 +379,18 @@ impl Flavor for Size {
     type Output = usize;
 
     #[inline(always)]
-    fn try_push(&mut self, _b: u8) -> Result<()> {
+    fn try_push(&mut self, _b: u8) -> Result<(), SerFlavorError> {
         self.size += 1;
         Ok(())
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), SerFlavorError> {
         self.size += b.len();
         Ok(())
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, SerFlavorError> {
         Ok(self.size)
     }
 }

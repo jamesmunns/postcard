@@ -3,12 +3,11 @@ use serde_core::Deserialize;
 pub(crate) mod deserializer;
 pub mod flavors;
 
-use crate::error::Result;
-use deserializer::Deserializer;
+use deserializer::{Deserializer, DeserializerError};
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
 /// of the byte slice is not returned.
-pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T>
+pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T, DeserializerError>
 where
     T: Deserialize<'a>,
 {
@@ -19,7 +18,7 @@ where
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
 /// of the byte slice is returned for further usage
-pub fn take_from_bytes<'a, T>(s: &'a [u8]) -> Result<(T, &'a [u8])>
+pub fn take_from_bytes<'a, T>(s: &'a [u8]) -> Result<(T, &'a [u8]), DeserializerError>
 where
     T: Deserialize<'a>,
 {
@@ -30,7 +29,7 @@ where
 
 /// Deserialize a message of type `T` from a [`std::io::Read`].
 #[cfg(feature = "std")]
-pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8]))>
+pub fn from_io<'a, T, R>(val: (R, &'a mut [u8])) -> Result<(T, (R, &'a mut [u8])), DeserializerError>
 where
     T: Deserialize<'a>,
     R: std::io::Read + 'a,

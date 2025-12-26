@@ -5,7 +5,6 @@
 
 mod de;
 
-mod error;
 pub mod fixint;
 mod ser;
 /// todo: keep public?
@@ -23,7 +22,6 @@ pub mod experimental {
 pub use de::deserializer::Deserializer;
 pub use de::flavors as de_flavors;
 pub use de::{from_bytes, take_from_bytes};
-pub use error::{Error, Result};
 pub use ser::flavors as ser_flavors;
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice};
 

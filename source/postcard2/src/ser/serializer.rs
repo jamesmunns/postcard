@@ -1,8 +1,9 @@
 use serde_core::{ser, Serialize};
 
-use crate::error::{Error, Result};
 use crate::ser::flavors::Flavor;
 use crate::varint::*;
+
+use super::flavors::SerFlavorError;
 
 /// A `serde` compatible serializer, generic over "Flavors" of serializing plugins.
 ///
@@ -21,45 +22,66 @@ where
     pub output: F,
 }
 
+#[derive(Debug)]
+pub enum SerializerError {
+    Flavor(SerFlavorError),
+    CollectStrError,
+    SerializeBufferFull,
+    SerializeSeqLengthUnknown,
+}
+
+impl core::fmt::Display for SerializerError {
+    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        todo!()
+    }
+}
+
+impl core::error::Error for SerializerError {}
+impl serde_core::ser::Error for SerializerError {
+    fn custom<T>(_msg:T) -> Self where T: core::fmt::Display {
+        todo!()
+    }
+}
+
 impl<F: Flavor> Serializer<F> {
     /// Attempt to push a variably encoded [usize] into the output data stream
     #[inline]
-    pub(crate) fn try_push_varint_usize(&mut self, data: usize) -> Result<()> {
+    pub(crate) fn try_push_varint_usize(&mut self, data: usize) -> Result<(), SerializerError> {
         let mut buf = [0u8; varint_max::<usize>()];
         let used_buf = varint_usize(data, &mut buf);
-        self.output.try_extend(used_buf)
+        self.output.try_extend(used_buf).map_err(SerializerError::Flavor)
     }
 
     /// Attempt to push a variably encoded [u128] into the output data stream
     #[inline]
-    pub(crate) fn try_push_varint_u128(&mut self, data: u128) -> Result<()> {
+    pub(crate) fn try_push_varint_u128(&mut self, data: u128) -> Result<(), SerializerError> {
         let mut buf = [0u8; varint_max::<u128>()];
         let used_buf = varint_u128(data, &mut buf);
-        self.output.try_extend(used_buf)
+        self.output.try_extend(used_buf).map_err(SerializerError::Flavor)
     }
 
     /// Attempt to push a variably encoded [u64] into the output data stream
     #[inline]
-    pub(crate) fn try_push_varint_u64(&mut self, data: u64) -> Result<()> {
+    pub(crate) fn try_push_varint_u64(&mut self, data: u64) -> Result<(), SerializerError> {
         let mut buf = [0u8; varint_max::<u64>()];
         let used_buf = varint_u64(data, &mut buf);
-        self.output.try_extend(used_buf)
+        self.output.try_extend(used_buf).map_err(SerializerError::Flavor)
     }
 
     /// Attempt to push a variably encoded [u32] into the output data stream
     #[inline]
-    pub(crate) fn try_push_varint_u32(&mut self, data: u32) -> Result<()> {
+    pub(crate) fn try_push_varint_u32(&mut self, data: u32) -> Result<(), SerializerError> {
         let mut buf = [0u8; varint_max::<u32>()];
         let used_buf = varint_u32(data, &mut buf);
-        self.output.try_extend(used_buf)
+        self.output.try_extend(used_buf).map_err(SerializerError::Flavor)
     }
 
     /// Attempt to push a variably encoded [u16] into the output data stream
     #[inline]
-    pub(crate) fn try_push_varint_u16(&mut self, data: u16) -> Result<()> {
+    pub(crate) fn try_push_varint_u16(&mut self, data: u16) -> Result<(), SerializerError> {
         let mut buf = [0u8; varint_max::<u16>()];
         let used_buf = varint_u16(data, &mut buf);
-        self.output.try_extend(used_buf)
+        self.output.try_extend(used_buf).map_err(SerializerError::Flavor)
     }
 }
 
@@ -69,7 +91,7 @@ where
 {
     type Ok = ();
 
-    type Error = Error;
+    type Error = SerializerError;
 
     // Associated types for keeping track of additional state while serializing
     // compound data structures like sequences and maps. In this case no
@@ -89,123 +111,113 @@ where
     }
 
     #[inline]
-    fn serialize_bool(self, v: bool) -> Result<()> {
+    fn serialize_bool(self, v: bool) -> Result<(), SerializerError> {
         self.serialize_u8(if v { 1 } else { 0 })
     }
 
     #[inline]
-    fn serialize_i8(self, v: i8) -> Result<()> {
+    fn serialize_i8(self, v: i8) -> Result<(), SerializerError> {
         self.serialize_u8(v.to_le_bytes()[0])
     }
 
     #[inline]
-    fn serialize_i16(self, v: i16) -> Result<()> {
+    fn serialize_i16(self, v: i16) -> Result<(), SerializerError> {
         let zzv = zig_zag_i16(v);
         self.try_push_varint_u16(zzv)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_i32(self, v: i32) -> Result<()> {
+    fn serialize_i32(self, v: i32) -> Result<(), SerializerError> {
         let zzv = zig_zag_i32(v);
         self.try_push_varint_u32(zzv)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_i64(self, v: i64) -> Result<()> {
+    fn serialize_i64(self, v: i64) -> Result<(), SerializerError> {
         let zzv = zig_zag_i64(v);
         self.try_push_varint_u64(zzv)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_i128(self, v: i128) -> Result<()> {
+    fn serialize_i128(self, v: i128) -> Result<(), SerializerError> {
         let zzv = zig_zag_i128(v);
         self.try_push_varint_u128(zzv)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_u8(self, v: u8) -> Result<()> {
+    fn serialize_u8(self, v: u8) -> Result<(), SerializerError> {
         self.output
             .try_push(v)
-            .map_err(|_| Error::SerializeBufferFull)
+            .map_err(SerializerError::Flavor)
     }
 
     #[inline]
-    fn serialize_u16(self, v: u16) -> Result<()> {
+    fn serialize_u16(self, v: u16) -> Result<(), SerializerError> {
         self.try_push_varint_u16(v)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_u32(self, v: u32) -> Result<()> {
+    fn serialize_u32(self, v: u32) -> Result<(), SerializerError> {
         self.try_push_varint_u32(v)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_u64(self, v: u64) -> Result<()> {
+    fn serialize_u64(self, v: u64) -> Result<(), SerializerError> {
         self.try_push_varint_u64(v)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_u128(self, v: u128) -> Result<()> {
+    fn serialize_u128(self, v: u128) -> Result<(), SerializerError> {
         self.try_push_varint_u128(v)
-            .map_err(|_| Error::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_f32(self, v: f32) -> Result<()> {
+    fn serialize_f32(self, v: f32) -> Result<(), SerializerError> {
         let buf = v.to_bits().to_le_bytes();
         self.output
             .try_extend(&buf)
-            .map_err(|_| Error::SerializeBufferFull)
+            .map_err(SerializerError::Flavor)
     }
 
     #[inline]
-    fn serialize_f64(self, v: f64) -> Result<()> {
+    fn serialize_f64(self, v: f64) -> Result<(), SerializerError> {
         let buf = v.to_bits().to_le_bytes();
         self.output
             .try_extend(&buf)
-            .map_err(|_| Error::SerializeBufferFull)
+            .map_err(SerializerError::Flavor)
     }
 
     #[inline]
-    fn serialize_char(self, v: char) -> Result<()> {
+    fn serialize_char(self, v: char) -> Result<(), SerializerError> {
         let mut buf = [0u8; 4];
         let strsl = v.encode_utf8(&mut buf);
         strsl.serialize(self)
     }
 
     #[inline]
-    fn serialize_str(self, v: &str) -> Result<()> {
-        self.try_push_varint_usize(v.len())
-            .map_err(|_| Error::SerializeBufferFull)?;
+    fn serialize_str(self, v: &str) -> Result<(), SerializerError> {
+        self.try_push_varint_usize(v.len())?;
         self.output
             .try_extend(v.as_bytes())
-            .map_err(|_| Error::SerializeBufferFull)?;
-        Ok(())
+            .map_err(SerializerError::Flavor)
     }
 
     #[inline]
-    fn serialize_bytes(self, v: &[u8]) -> Result<()> {
+    fn serialize_bytes(self, v: &[u8]) -> Result<(), SerializerError> {
         self.try_push_varint_usize(v.len())
-            .map_err(|_| Error::SerializeBufferFull)?;
+            .map_err(|_| SerializerError::SerializeBufferFull)?;
         self.output
             .try_extend(v)
-            .map_err(|_| Error::SerializeBufferFull)
+            .map_err(SerializerError::Flavor)
     }
 
     #[inline]
-    fn serialize_none(self) -> Result<()> {
+    fn serialize_none(self) -> Result<(), SerializerError> {
         self.serialize_u8(0)
     }
 
     #[inline]
-    fn serialize_some<T>(self, value: &T) -> Result<()>
+    fn serialize_some<T>(self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -214,12 +226,12 @@ where
     }
 
     #[inline]
-    fn serialize_unit(self) -> Result<()> {
+    fn serialize_unit(self) -> Result<(), SerializerError> {
         Ok(())
     }
 
     #[inline]
-    fn serialize_unit_struct(self, _name: &'static str) -> Result<()> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<(), SerializerError> {
         Ok(())
     }
 
@@ -229,13 +241,13 @@ where
         _name: &'static str,
         variant_index: u32,
         _variant: &'static str,
-    ) -> Result<()> {
+    ) -> Result<(), SerializerError> {
         self.try_push_varint_u32(variant_index)
-            .map_err(|_| Error::SerializeBufferFull)
+            .map_err(|_| SerializerError::SerializeBufferFull)
     }
 
     #[inline]
-    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<()>
+    fn serialize_newtype_struct<T>(self, _name: &'static str, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -249,24 +261,24 @@ where
         variant_index: u32,
         _variant: &'static str,
         value: &T,
-    ) -> Result<()>
+    ) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
         self.try_push_varint_u32(variant_index)
-            .map_err(|_| Error::SerializeBufferFull)?;
+            .map_err(|_| SerializerError::SerializeBufferFull)?;
         value.serialize(self)
     }
 
     #[inline]
-    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        self.try_push_varint_usize(len.ok_or(Error::SerializeSeqLengthUnknown)?)
-            .map_err(|_| Error::SerializeBufferFull)?;
+    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, SerializerError> {
+        self.try_push_varint_usize(len.ok_or(SerializerError::SerializeSeqLengthUnknown)?)
+            .map_err(|_| SerializerError::SerializeBufferFull)?;
         Ok(self)
     }
 
     #[inline]
-    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, SerializerError> {
         Ok(self)
     }
 
@@ -275,7 +287,7 @@ where
         self,
         _name: &'static str,
         _len: usize,
-    ) -> Result<Self::SerializeTupleStruct> {
+    ) -> Result<Self::SerializeTupleStruct, SerializerError> {
         Ok(self)
     }
 
@@ -286,21 +298,20 @@ where
         variant_index: u32,
         _variant: &'static str,
         _len: usize,
-    ) -> Result<Self::SerializeTupleVariant> {
+    ) -> Result<Self::SerializeTupleVariant, SerializerError> {
         self.try_push_varint_u32(variant_index)
-            .map_err(|_| Error::SerializeBufferFull)?;
+            .map_err(|_| SerializerError::SerializeBufferFull)?;
         Ok(self)
     }
 
     #[inline]
-    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap> {
-        self.try_push_varint_usize(len.ok_or(Error::SerializeSeqLengthUnknown)?)
-            .map_err(|_| Error::SerializeBufferFull)?;
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, SerializerError> {
+        self.try_push_varint_usize(len.ok_or(SerializerError::SerializeSeqLengthUnknown)?)?;
         Ok(self)
     }
 
     #[inline]
-    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct, SerializerError> {
         Ok(self)
     }
 
@@ -311,14 +322,13 @@ where
         variant_index: u32,
         _variant: &'static str,
         _len: usize,
-    ) -> Result<Self::SerializeStructVariant> {
-        self.try_push_varint_u32(variant_index)
-            .map_err(|_| Error::SerializeBufferFull)?;
+    ) -> Result<Self::SerializeStructVariant, SerializerError> {
+        self.try_push_varint_u32(variant_index)?;
         Ok(self)
     }
 
     #[inline]
-    fn collect_str<T>(self, value: &T) -> Result<Self::Ok>
+    fn collect_str<T>(self, value: &T) -> Result<Self::Ok, SerializerError>
     where
         T: core::fmt::Display + ?Sized,
     {
@@ -356,10 +366,9 @@ where
 
         // This is the first pass through, where we just count the length of the
         // data that we are given
-        write!(&mut ctr, "{value}").map_err(|_| Error::CollectStrError)?;
+        write!(&mut ctr, "{value}").map_err(|_| SerializerError::CollectStrError)?;
         let len = ctr.ct;
-        self.try_push_varint_usize(len)
-            .map_err(|_| Error::SerializeBufferFull)?;
+        self.try_push_varint_usize(len)?;
 
         struct FmtWriter<'a, IF>
         where
@@ -382,7 +391,7 @@ where
         let mut fw = FmtWriter {
             output: &mut self.output,
         };
-        write!(&mut fw, "{value}").map_err(|_| Error::CollectStrError)?;
+        write!(&mut fw, "{value}").map_err(|_| SerializerError::CollectStrError)?;
 
         Ok(())
     }
@@ -395,11 +404,11 @@ where
     // Must match the `Ok` type of the serializer.
     type Ok = ();
     // Must match the `Error` type of the serializer.
-    type Error = Error;
+    type Error = SerializerError;
 
     // Serialize a single element of the sequence.
     #[inline]
-    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -408,7 +417,7 @@ where
 
     // Close the sequence.
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -418,10 +427,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_element<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -429,7 +438,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -439,10 +448,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -450,7 +459,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -460,10 +469,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_field<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -471,7 +480,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -481,10 +490,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_key<T>(&mut self, key: &T) -> Result<()>
+    fn serialize_key<T>(&mut self, key: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -492,7 +501,7 @@ where
     }
 
     #[inline]
-    fn serialize_value<T>(&mut self, value: &T) -> Result<()>
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -500,7 +509,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -510,10 +519,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -521,7 +530,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }
@@ -531,10 +540,10 @@ where
     F: Flavor,
 {
     type Ok = ();
-    type Error = Error;
+    type Error = SerializerError;
 
     #[inline]
-    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<()>
+    fn serialize_field<T>(&mut self, _key: &'static str, value: &T) -> Result<(), SerializerError>
     where
         T: ?Sized + Serialize,
     {
@@ -542,7 +551,7 @@ where
     }
 
     #[inline]
-    fn end(self) -> Result<()> {
+    fn end(self) -> Result<(), SerializerError> {
         Ok(())
     }
 }

@@ -55,7 +55,6 @@ std = []
 alloc = []
 
 # TODO: version these deps?
-use-defmt = ["defmt"]
 defmt = ["dep:defmt"]
 serde-derive = ["serde_derive", "serde"]
 
