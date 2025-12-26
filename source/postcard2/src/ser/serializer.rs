@@ -1,4 +1,4 @@
-use serde::{ser, Serialize};
+use serde_core::{ser, Serialize};
 
 use crate::error::{Error, Result};
 use crate::ser::flavors::Flavor;

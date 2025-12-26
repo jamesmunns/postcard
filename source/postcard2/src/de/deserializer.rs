@@ -1,4 +1,4 @@
-use serde::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
+use serde_core::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
 
 use crate::de::flavors::{Flavor, Slice};
 use crate::error::{Error, Result};
@@ -144,7 +144,7 @@ struct SeqAccess<'a, 'b, F: Flavor<'b>> {
     len: usize,
 }
 
-impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
     type Error = Error;
 
     #[inline]
@@ -174,7 +174,7 @@ struct MapAccess<'a, 'b, F: Flavor<'b>> {
     len: usize,
 }
 
-impl<'a, 'b: 'a, F: Flavor<'b>> serde::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
     type Error = Error;
 
     #[inline]
@@ -545,7 +545,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     }
 }
 
-impl<'de, F: Flavor<'de>> serde::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
 
     #[inline]
@@ -560,7 +560,7 @@ impl<'de, F: Flavor<'de>> serde::de::VariantAccess<'de> for &mut Deserializer<'d
 
     #[inline]
     fn tuple_variant<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value> {
-        serde::de::Deserializer::deserialize_tuple(self, len, visitor)
+        serde_core::de::Deserializer::deserialize_tuple(self, len, visitor)
     }
 
     #[inline]
@@ -569,11 +569,11 @@ impl<'de, F: Flavor<'de>> serde::de::VariantAccess<'de> for &mut Deserializer<'d
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value> {
-        serde::de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
+        serde_core::de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
     }
 }
 
-impl<'de, F: Flavor<'de>> serde::de::EnumAccess<'de> for &mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<'de, F> {
     type Error = Error;
     type Variant = Self;
 

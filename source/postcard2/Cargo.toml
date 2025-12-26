@@ -13,8 +13,6 @@ categories = [
 ]
 keywords = [
     "serde",
-    "cobs",
-    "framing",
 ]
 documentation = "https://docs.rs/postcard/"
 
@@ -24,13 +22,9 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
-[dependencies.serde]
-version = "1.0.100"
-default-features = false
-features = ["derive"]
-
-[dependencies.cobs]
-version = "0.3.0"
+# todo: make this versioned, optional?
+[dependencies.serde_core]
+version = "1.0.228"
 default-features = false
 
 [dependencies.defmt]
@@ -42,33 +36,32 @@ version = "0.3.0"
 optional = true
 path = "../postcard-derive-ng"
 
-[dependencies.crc]
-version = "3.0.1"
-optional = true
-
-[dependencies.nalgebra_v0_33]
-package = "nalgebra"
-version = "0.33.0"
+[dependencies.serde_derive]
+version = "1.0.228"
 optional = true
 default-features = false
 
+[dependencies.serde]
+version = "1.0.228"
+default-features = false
+optional = true
+
 [features]
 default = []
+std = []
+alloc = []
 
-std = ["serde/std", "alloc"]
-alloc = ["serde/alloc"]
+# TODO: version these deps?
 use-defmt = ["defmt"]
-use-crc = ["crc"]
-
-# Does nothing, for compat only
-paste = []
+defmt = ["dep:defmt"]
+serde-derive = ["serde_derive", "serde"]
 
 # Experimental features!
 #
 # NOT subject to SemVer guarantees!
-experimental-derive = ["postcard-derive-ng"]
-core-num-saturating = []
-nalgebra-v0_33 = ["nalgebra_v0_33"]
-crc = ["dep:crc"]
-defmt = ["dep:defmt"]
-postcard-derive-ng = ["dep:postcard-derive-ng"]
+
+# TODO: do we still need these in the main crate?
+# We almost certainly shouldn't until there is a 1.0 version of these deps.
+
+# experimental-derive = ["postcard-derive-ng"]
+# postcard-derive-ng = ["dep:postcard-derive-ng"]

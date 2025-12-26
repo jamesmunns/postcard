@@ -1,8 +1,11 @@
 use core::fmt::{Display, Formatter};
-use serde::{Deserialize, Serialize};
 
 /// This is the error type used by Postcard
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "serde-derive",
+    derive(serde_derive::Serialize, serde_derive::Deserialize)
+)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
@@ -75,7 +78,7 @@ impl Display for Error {
 /// This is the Result type used by Postcard.
 pub type Result<T> = ::core::result::Result<T, Error>;
 
-impl serde::ser::Error for Error {
+impl serde_core::ser::Error for Error {
     fn custom<T>(_msg: T) -> Self
     where
         T: Display,
@@ -84,7 +87,7 @@ impl serde::ser::Error for Error {
     }
 }
 
-impl serde::de::Error for Error {
+impl serde_core::de::Error for Error {
     fn custom<T>(_msg: T) -> Self
     where
         T: Display,
@@ -93,4 +96,4 @@ impl serde::de::Error for Error {
     }
 }
 
-impl serde::ser::StdError for Error {}
+impl serde_core::ser::StdError for Error {}
