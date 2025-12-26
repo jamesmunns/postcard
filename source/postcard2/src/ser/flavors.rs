@@ -62,39 +62,13 @@
 //!
 //! assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 //! ```
-//!
-//! ### Using combined flavors
-//!
-//! In the second example, we mix `Slice` with `Cobs`, to cobs encode the output while
-//! the data is serialized. Notice how `Slice` (the storage flavor) is the innermost flavor used.
-//!
-//! ```rust
-//! use postcard2::{
-//!     serialize_with_flavor,
-//!     ser_flavors::{Cobs, Slice},
-//! };
-//!
-//! let mut buf = [0u8; 32];
-//!
-//! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
-//! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
-//!     data,
-//!     Cobs::try_new(Slice::new(buffer)).unwrap(),
-//! ).unwrap();
-//!
-//! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
-//! ```
 
 use crate::error::{Error, Result};
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
 
-#[cfg(feature = "std")]
-pub use std_vec::*;
-
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use alloc_vec::*;
 
 #[cfg(feature = "alloc")]
@@ -306,15 +280,7 @@ pub mod io {
     }
 }
 
-#[cfg(feature = "std")]
-mod std_vec {
-    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
-    ///
-    /// This type is only available when the (non-default) `std` feature is active
-    pub type StdVec = super::alloc_vec::AllocVec;
-}
-
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", feature = "std"))]
 mod alloc_vec {
     extern crate alloc;
     use super::Flavor;

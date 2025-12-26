@@ -28,13 +28,13 @@ pub use ser::flavors as ser_flavors;
 pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice};
 
 #[cfg(feature = "std")]
-pub use ser::{to_io, to_stdvec};
+pub use ser::to_io;
 
 #[cfg(feature = "std")]
 pub use de::from_io;
 
-#[cfg(feature = "alloc")]
-pub use ser::to_allocvec;
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use ser::to_vec;
 
 #[cfg(test)]
 mod test {

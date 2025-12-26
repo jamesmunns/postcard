@@ -77,7 +77,7 @@ mod test_alloc {
         // run on devices with larger amounts of memory, but it can't hurt.
         assert_eq!(
             from_bytes::<Vec<u8>>(&[(1 << 7) | 8, 255, 255, 255, 0, 0, 0, 0, 0]),
-            Err(Error::DeserializeUnexpectedEnd)
+            Err(crate::Error::DeserializeUnexpectedEnd)
         );
     }
 }

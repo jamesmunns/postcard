@@ -46,6 +46,9 @@ version = "1.0.228"
 default-features = false
 optional = true
 
+[dev-dependencies]
+serde = "1.0.228"
+
 [features]
 default = []
 std = []
