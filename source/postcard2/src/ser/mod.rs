@@ -44,7 +44,7 @@ pub fn to_slice<'a, 'b, T>(value: &'b T, buf: &'a mut [u8]) -> Result<&'a mut [u
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, Slice<'a>, &'a mut [u8]>(value, Slice::new(buf))
+    serialize_with_flavor::<T, Slice<'a>>(value, Slice::new(buf))
 }
 
 /// Serialize a `T` to an `alloc::vec::Vec<u8>`.
@@ -66,7 +66,7 @@ pub fn to_vec<T>(value: &T) -> Result<alloc::vec::Vec<u8>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec, alloc::vec::Vec<u8>>(value, AllocVec::new())
+    serialize_with_flavor::<T, AllocVec>(value, AllocVec::new())
 }
 
 /// Serialize a `T` to a [`core::iter::Extend`],
@@ -85,7 +85,7 @@ where
     T: Serialize + ?Sized,
     W: core::iter::Extend<u8>,
 {
-    serialize_with_flavor::<T, _, _>(value, flavors::ExtendFlavor::new(writer))
+    serialize_with_flavor::<T, _>(value, flavors::ExtendFlavor::new(writer))
 }
 
 /// Serialize a `T` to a [`std::io::Write`],
@@ -106,21 +106,20 @@ where
     T: Serialize + ?Sized,
     W: std::io::Write,
 {
-    serialize_with_flavor::<T, _, _>(value, flavors::io::WriteFlavor::new(writer))
+    serialize_with_flavor::<T, _>(value, flavors::io::WriteFlavor::new(writer))
 }
 
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
 ///
 /// * `T`: This is the type that is being serialized
 /// * `S`: This is the Storage that is used during serialization
-/// * `O`: This is the resulting storage type that is returned containing the serialized data
 ///
 /// For more information about how Flavors work, please see the
 /// [`flavors` module documentation](./flavors/index.html).
-pub fn serialize_with_flavor<T, S, O>(value: &T, storage: S) -> Result<O>
+pub fn serialize_with_flavor<T, S>(value: &T, storage: S) -> Result<S::Output>
 where
     T: Serialize + ?Sized,
-    S: Flavor<Output = O>,
+    S: Flavor,
 {
     let mut serializer = Serializer { output: storage };
     value.serialize(&mut serializer)?;
@@ -135,5 +134,5 @@ pub fn serialized_size<T>(value: &T) -> Result<usize>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, flavors::Size, usize>(value, flavors::Size::default())
+    serialize_with_flavor::<T, flavors::Size>(value, flavors::Size::default())
 }

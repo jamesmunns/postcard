@@ -6,7 +6,7 @@ use core::fmt::{Display, Formatter};
     derive(serde_derive::Serialize, serde_derive::Deserialize)
 )]
 #[derive(Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "use-defmt", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
     /// This is a feature that postcard will never implement
