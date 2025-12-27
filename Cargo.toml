@@ -1,7 +1,7 @@
 [workspace]
 resolver = '2'
 members = [
-    "source/postcard",
+    "source/postcard", "source/postcard-core",
     "source/postcard-derive",
     "source/postcard-derive-ng",
     "source/postcard-dyn",

@@ -68,64 +68,13 @@ use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
 
+pub use postcard_core::ser::{BufferFull, Flavor};
+
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub use alloc_vec::*;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-
-/// The serialization buffer is full
-#[derive(Debug)]
-pub struct BufferFull;
-
-impl core::fmt::Display for BufferFull {
-    #[inline]
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("BufferFull")
-    }
-}
-
-/// The serialization Flavor trait
-///
-/// This is used as the primary way to encode serialized data into some kind of buffer,
-/// or modify that data in a middleware style pattern.
-///
-/// See the module level docs for an example of how flavors are used.
-pub trait Flavor {
-    /// The `Output` type is what this storage "resolves" to when the serialization is complete,
-    /// such as a slice or a Vec of some sort.
-    type Output;
-
-    /// The error type specific to pushing methods.
-    ///
-    /// This includes [`Self::try_extend`] and [`Self::try_push`].
-    ///
-    /// If this type cannot error when pushing, e.g. with a `Vec`, consider using
-    /// [`Infallible`](core::convert::Infallible). If this type can only fail due
-    /// to exhausting available space, consider using [`BufferFull`].
-    type PushError: core::fmt::Debug + core::fmt::Display;
-
-    /// The error type specific to [`Self::finalize`].
-    ///
-    /// If this type cannot error when pushing, e.g. for storage flavors that don't
-    /// perform any meaningful finalization actions, consider using
-    /// [`Infallible`](core::convert::Infallible).
-    type FinalizeError: core::fmt::Debug + core::fmt::Display;
-
-    /// Override this method when you want to customize processing
-    /// multiple bytes at once, such as copying a slice to the output,
-    /// rather than iterating over one byte at a time.
-    #[inline]
-    fn try_extend(&mut self, data: &[u8]) -> Result<(), Self::PushError> {
-        data.iter().try_for_each(|d| self.try_push(*d))
-    }
-
-    /// Push a single byte to be modified and/or stored.
-    fn try_push(&mut self, data: u8) -> Result<(), Self::PushError>;
-
-    /// Finalize the serialization process.
-    fn finalize(self) -> Result<Self::Output, Self::FinalizeError>;
-}
 
 ////////////////////////////////////////
 // Slice

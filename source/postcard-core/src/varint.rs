@@ -108,3 +108,23 @@ pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     debug_assert_eq!(value, 0);
     &mut out[..]
 }
+
+#[inline]
+pub fn zig_zag_i16(n: i16) -> u16 {
+    ((n << 1) ^ (n >> 15)) as u16
+}
+
+#[inline]
+pub fn zig_zag_i32(n: i32) -> u32 {
+    ((n << 1) ^ (n >> 31)) as u32
+}
+
+#[inline]
+pub fn zig_zag_i64(n: i64) -> u64 {
+    ((n << 1) ^ (n >> 63)) as u64
+}
+
+#[inline]
+pub fn zig_zag_i128(n: i128) -> u128 {
+    ((n << 1) ^ (n >> 127)) as u128
+}

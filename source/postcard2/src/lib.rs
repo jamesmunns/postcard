@@ -8,7 +8,7 @@ mod de;
 pub mod fixint;
 mod ser;
 // todo: keep public?
-pub mod varint;
+pub use postcard_core::varint;
 
 pub use de::deserializer::{Deserializer, DeserializerError};
 pub use de::flavors::{self as de_flavors, UnexpectedEnd};
