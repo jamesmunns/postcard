@@ -1,6 +1,5 @@
 //! Support Utilities for embedded-io v0.7.x
 
-use core::convert::Infallible;
 use postcard2::{Deserializer, DeserializerError, SerializerError, serialize_with_flavor};
 use serde_core::{Deserialize, Serialize};
 
@@ -24,10 +23,13 @@ where
     serialize_with_flavor::<T, _>(value, ser::WriteFlavor::new(writer))
 }
 
+pub type EioDeserRemainder<'a, R> = (R, &'a mut [u8]);
+pub type EioDeserError<R> = DeserializerError<de::IoError<R>, de::IoError<R>>;
+
 /// Deserialize a message of type `T` from a [`embedded_io`](embedded_io_v0_7)::[`Read`](embedded_io_v0_7::Read).
 pub fn from_eio<'a, T, R>(
     val: (R, &'a mut [u8]),
-) -> Result<(T, (R, &'a mut [u8])), DeserializerError<R::Error, Infallible>>
+) -> Result<(T, EioDeserRemainder<'a, R>), EioDeserError<R::Error>>
 where
     T: Deserialize<'a>,
     R: embedded_io_v0_7::Read + 'a,
@@ -84,9 +86,26 @@ pub mod ser {
 }
 
 pub mod de {
-    use core::convert::Infallible;
     use core::marker::PhantomData;
-    use postcard2::UnexpectedEnd;
+    use postcard2::de_flavors::Flavor;
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub enum IoError<ReadErr> {
+        BufferExhausted,
+        ReadError(embedded_io_v0_7::ReadExactError<ReadErr>),
+    }
+
+    impl<ReadErr> core::fmt::Display for IoError<ReadErr>
+    where
+        ReadErr: core::fmt::Display + core::fmt::Debug,
+    {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            match self {
+                Self::BufferExhausted => f.write_str("BufferExhausted"),
+                Self::ReadError(e) => write!(f, "ReadError({e})"),
+            }
+        }
+    }
 
     struct SlidingBuffer<'de> {
         cursor: *mut u8,
@@ -105,10 +124,10 @@ pub mod de {
         }
 
         #[inline]
-        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8], UnexpectedEnd> {
+        fn take_n<ReadErr>(&mut self, ct: usize) -> Result<&'de mut [u8], IoError<ReadErr>> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(UnexpectedEnd);
+                return Err(IoError::BufferExhausted);
             } else {
                 // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented
                 // past `self.end` as we have checked above.
@@ -123,10 +142,10 @@ pub mod de {
         }
 
         #[inline]
-        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8], UnexpectedEnd> {
+        fn take_n_temp<ReadErr>(&mut self, ct: usize) -> Result<&mut [u8], IoError<ReadErr>> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(UnexpectedEnd);
+                return Err(IoError::BufferExhausted);
             } else {
                 unsafe { core::slice::from_raw_parts_mut(self.cursor, ct) }
             };
@@ -141,13 +160,11 @@ pub mod de {
         }
     }
 
-    // Support for [`embedded_io`] traits
-    use postcard2::de_flavors::Flavor;
-
     /// Wrapper over a [`embedded_io`](embedded_io_v0_7)::[`Read`](embedded_io_v0_7::Read) and a sliding buffer to implement the [`Flavor`] trait
     pub struct EIOReader<'de, T>
     where
         T: embedded_io_v0_7::Read,
+        T::Error: core::fmt::Display + core::fmt::Debug,
     {
         reader: T,
         buff: SlidingBuffer<'de>,
@@ -156,6 +173,7 @@ pub mod de {
     impl<'de, T> EIOReader<'de, T>
     where
         T: embedded_io_v0_7::Read,
+        T::Error: core::fmt::Display + core::fmt::Debug,
     {
         /// Create a new [`EIOReader`] from a reader and a buffer.
         ///
@@ -171,16 +189,19 @@ pub mod de {
     impl<'de, T> Flavor<'de> for EIOReader<'de, T>
     where
         T: embedded_io_v0_7::Read + 'de,
+        T::Error: core::fmt::Display + core::fmt::Debug,
     {
         type Remainder = (T, &'de mut [u8]);
         type Source = &'de [u8];
-        type PopError = T::Error;
-        type FinalizeError = Infallible;
+        type PopError = IoError<T::Error>;
+        type FinalizeError = IoError<T::Error>;
 
         #[inline]
         fn pop(&mut self) -> Result<u8, Self::PopError> {
             let mut val = [0; 1];
-            self.reader.read_exact(&mut val)?;
+            self.reader
+                .read_exact(&mut val)
+                .map_err(IoError::ReadError)?;
             Ok(val[0])
         }
 
@@ -191,8 +212,8 @@ pub mod de {
 
         #[inline]
         fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError> {
-            let buff = self.buff.take_n(ct)?;
-            self.reader.read_exact(buff)?;
+            let buff = self.buff.take_n::<T::Error>(ct)?;
+            self.reader.read_exact(buff).map_err(IoError::ReadError)?;
             Ok(buff)
         }
 
@@ -201,8 +222,8 @@ pub mod de {
         where
             'de: 'a,
         {
-            let buff = self.buff.take_n_temp(ct)?;
-            self.reader.read_exact(buff)?;
+            let buff = self.buff.take_n_temp::<T::Error>(ct)?;
+            self.reader.read_exact(buff).map_err(IoError::ReadError)?;
             Ok(buff)
         }
 
@@ -215,6 +236,7 @@ pub mod de {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use embedded_io_v0_7::ReadExactError;
 
         #[test]
         fn test_pop() {
@@ -223,7 +245,10 @@ pub mod de {
             assert_eq!(reader.pop(), Ok(0xAA));
             assert_eq!(reader.pop(), Ok(0xBB));
             assert_eq!(reader.pop(), Ok(0xCC));
-            assert_eq!(reader.pop(), Err(Error::DeserializeUnexpectedEnd));
+            assert_eq!(
+                reader.pop(),
+                Err(IoError::ReadError(ReadExactError::UnexpectedEof))
+            );
         }
 
         #[test]
@@ -233,7 +258,10 @@ pub mod de {
 
             assert_eq!(reader.try_take_n(2), Ok(&[0xAA, 0xBB][..]));
             assert_eq!(reader.try_take_n(2), Ok(&[0xCC, 0xDD][..]));
-            assert_eq!(reader.try_take_n(2), Err(Error::DeserializeUnexpectedEnd));
+            assert_eq!(
+                reader.try_take_n(2),
+                Err(IoError::ReadError(ReadExactError::UnexpectedEof))
+            );
         }
     }
 }
