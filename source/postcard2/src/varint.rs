@@ -1,3 +1,5 @@
+//! Varint tools
+
 /// Returns the maximum number of bytes required to encode T.
 pub const fn varint_max<T: Sized>() -> usize {
     const BITS_PER_BYTE: usize = 8;

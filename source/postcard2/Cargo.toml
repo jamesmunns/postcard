@@ -1,8 +1,8 @@
 [package]
 name = "postcard2"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["James Munns <james@onevariable.com>"]
-edition = "2021"
+edition = "2024"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std + serde compatible message library for Rust"

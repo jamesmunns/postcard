@@ -7,7 +7,7 @@ mod de;
 
 pub mod fixint;
 mod ser;
-/// todo: keep public?
+// todo: keep public?
 pub mod varint;
 
 pub use de::deserializer::{Deserializer, DeserializerError};
