@@ -10,21 +10,12 @@ mod ser;
 /// todo: keep public?
 pub mod varint;
 
-/// # Experimental Postcard Features
-///
-/// Items inside this module require various feature flags, and are not
-/// subject to SemVer stability. Items may be removed or deprecated at
-/// any point.
-pub mod experimental {
-    pub use crate::ser::serialized_size;
-}
-
 pub use de::deserializer::{Deserializer, DeserializerError};
 pub use de::flavors::{self as de_flavors, UnexpectedEnd};
 pub use de::{from_bytes, take_from_bytes};
 pub use ser::flavors::{self as ser_flavors, BufferFull};
 pub use ser::{
-    serialize_with_flavor,
+    serialize_with_flavor, serialized_size,
     serializer::{Serializer, SerializerError},
     to_extend, to_slice,
 };
