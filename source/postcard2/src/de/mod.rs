@@ -1,3 +1,6 @@
+use core::convert::Infallible;
+
+use flavors::UnexpectedEnd;
 use serde_core::Deserialize;
 
 pub(crate) mod deserializer;
@@ -7,7 +10,7 @@ use deserializer::{Deserializer, DeserializerError};
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
 /// of the byte slice is not returned.
-pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T, DeserializerError>
+pub fn from_bytes<'a, T>(s: &'a [u8]) -> Result<T, DeserializerError<UnexpectedEnd, Infallible>>
 where
     T: Deserialize<'a>,
 {
@@ -18,7 +21,9 @@ where
 
 /// Deserialize a message of type `T` from a byte slice. The unused portion (if any)
 /// of the byte slice is returned for further usage
-pub fn take_from_bytes<'a, T>(s: &'a [u8]) -> Result<(T, &'a [u8]), DeserializerError>
+pub fn take_from_bytes<'a, T>(
+    s: &'a [u8],
+) -> Result<(T, &'a [u8]), DeserializerError<UnexpectedEnd, Infallible>>
 where
     T: Deserialize<'a>,
 {
@@ -31,7 +36,7 @@ where
 #[cfg(feature = "std")]
 pub fn from_io<'a, T, R>(
     val: (R, &'a mut [u8]),
-) -> Result<(T, (R, &'a mut [u8])), DeserializerError>
+) -> Result<(T, (R, &'a mut [u8])), DeserializerError<UnexpectedEnd, Infallible>>
 where
     T: Deserialize<'a>,
     R: std::io::Read + 'a,
@@ -78,8 +83,8 @@ mod test_alloc {
         // run on devices with larger amounts of memory, but it can't hurt.
         assert_eq!(
             from_bytes::<Vec<u8>>(&[(1 << 7) | 8, 255, 255, 255, 0, 0, 0, 0, 0]),
-            Err(crate::de::deserializer::DeserializerError::Flavor(
-                crate::de_flavors::DeFlavorError::UnexpectedEnd
+            Err(crate::de::deserializer::DeserializerError::PopError(
+                crate::de_flavors::UnexpectedEnd
             ))
         );
     }
