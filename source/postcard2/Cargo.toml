@@ -14,7 +14,7 @@ categories = [
 keywords = [
     "serde",
 ]
-documentation = "https://docs.rs/postcard/"
+documentation = "https://docs.rs/postcard2/"
 
 [package.metadata.docs.rs]
 all-features = true
