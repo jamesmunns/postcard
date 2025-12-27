@@ -55,54 +55,35 @@
 //!
 //! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
 //! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Slice, &mut [u8]>(
+//! let res = serialize_with_flavor::<[u8], Slice>(
 //!     data,
 //!     Slice::new(buffer)
 //! ).unwrap();
 //!
 //! assert_eq!(res, &[0x04, 0x01, 0x00, 0x20, 0x30]);
 //! ```
-//!
-//! ### Using combined flavors
-//!
-//! In the second example, we mix `Slice` with `Cobs`, to cobs encode the output while
-//! the data is serialized. Notice how `Slice` (the storage flavor) is the innermost flavor used.
-//!
-//! ```rust
-//! use postcard2::{
-//!     serialize_with_flavor,
-//!     ser_flavors::{Cobs, Slice},
-//! };
-//!
-//! let mut buf = [0u8; 32];
-//!
-//! let data: &[u8] = &[0x01, 0x00, 0x20, 0x30];
-//! let buffer = &mut [0u8; 32];
-//! let res = serialize_with_flavor::<[u8], Cobs<Slice>, &mut [u8]>(
-//!     data,
-//!     Cobs::try_new(Slice::new(buffer)).unwrap(),
-//! ).unwrap();
-//!
-//! assert_eq!(res, &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
-//! ```
 
-use crate::error::{Error, Result};
-use cobs::{EncoderState, PushResult};
+use core::convert::Infallible;
 use core::marker::PhantomData;
 use core::ops::Index;
 use core::ops::IndexMut;
 
-#[cfg(feature = "heapless")]
-pub use heapless_vec::*;
-
-#[cfg(feature = "use-std")]
-pub use std_vec::*;
-
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use alloc_vec::*;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
+
+/// The serialization buffer is full
+#[derive(Debug)]
+pub struct BufferFull;
+
+impl core::fmt::Display for BufferFull {
+    #[inline]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("BufferFull")
+    }
+}
 
 /// The serialization Flavor trait
 ///
@@ -115,19 +96,35 @@ pub trait Flavor {
     /// such as a slice or a Vec of some sort.
     type Output;
 
+    /// The error type specific to pushing methods.
+    ///
+    /// This includes [`Self::try_extend`] and [`Self::try_push`].
+    ///
+    /// If this type cannot error when pushing, e.g. with a `Vec`, consider using
+    /// [`Infallible`](core::convert::Infallible). If this type can only fail due
+    /// to exhausting available space, consider using [`BufferFull`].
+    type PushError: core::fmt::Debug + core::fmt::Display;
+
+    /// The error type specific to [`Self::finalize`].
+    ///
+    /// If this type cannot error when pushing, e.g. for storage flavors that don't
+    /// perform any meaningful finalization actions, consider using
+    /// [`Infallible`](core::convert::Infallible).
+    type FinalizeError: core::fmt::Debug + core::fmt::Display;
+
     /// Override this method when you want to customize processing
     /// multiple bytes at once, such as copying a slice to the output,
     /// rather than iterating over one byte at a time.
     #[inline]
-    fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, data: &[u8]) -> Result<(), Self::PushError> {
         data.iter().try_for_each(|d| self.try_push(*d))
     }
 
     /// Push a single byte to be modified and/or stored.
-    fn try_push(&mut self, data: u8) -> Result<()>;
+    fn try_push(&mut self, data: u8) -> Result<(), Self::PushError>;
 
     /// Finalize the serialization process.
-    fn finalize(self) -> Result<Self::Output>;
+    fn finalize(self) -> Result<Self::Output, Self::FinalizeError>;
 }
 
 ////////////////////////////////////////
@@ -158,11 +155,13 @@ impl<'a> Slice<'a> {
 
 impl<'a> Flavor for Slice<'a> {
     type Output = &'a mut [u8];
+    type PushError = BufferFull;
+    type FinalizeError = Infallible;
 
     #[inline(always)]
-    fn try_push(&mut self, b: u8) -> Result<()> {
+    fn try_push(&mut self, b: u8) -> Result<(), BufferFull> {
         if self.cursor == self.end {
-            Err(Error::SerializeBufferFull)
+            Err(BufferFull)
         } else {
             // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
             // have checked above.
@@ -175,11 +174,11 @@ impl<'a> Flavor for Slice<'a> {
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), BufferFull> {
         let remain = (self.end as usize) - (self.cursor as usize);
         let blen = b.len();
         if blen > remain {
-            Err(Error::SerializeBufferFull)
+            Err(BufferFull)
         } else {
             // SAFETY: `self.cursor` is in-bounds for `blen` elements and won't be incremented past
             // `self.end` as we have checked above.
@@ -191,7 +190,7 @@ impl<'a> Flavor for Slice<'a> {
         }
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, Infallible> {
         let used = (self.cursor as usize) - (self.start as usize);
         // SAFETY: `self.cursor` is in-bounds for `used` elements
         let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
@@ -239,83 +238,31 @@ where
     T: core::iter::Extend<u8>,
 {
     type Output = T;
+    type PushError = Infallible;
+    type FinalizeError = Infallible;
 
     #[inline(always)]
-    fn try_push(&mut self, data: u8) -> Result<()> {
+    fn try_push(&mut self, data: u8) -> Result<(), Infallible> {
         self.iter.extend([data]);
         Ok(())
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), Infallible> {
         self.iter.extend(b.iter().copied());
         Ok(())
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, Infallible> {
         Ok(self.iter)
     }
 }
 
-/// Support for the [`embedded-io`](crate::eio::embedded_io) traits
-#[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-pub mod eio {
-
-    use super::Flavor;
-    use crate::{Error, Result};
-
-    /// Wrapper over a [`embedded_io Write`](crate::eio::Write) that implements the flavor trait
-    pub struct WriteFlavor<T> {
-        writer: T,
-    }
-
-    impl<T> WriteFlavor<T>
-    where
-        T: crate::eio::Write,
-    {
-        /// Create a new [`Self`] flavor from a given [`embedded_io Write`](crate::eio::Write)
-        pub fn new(writer: T) -> Self {
-            Self { writer }
-        }
-    }
-
-    impl<T> Flavor for WriteFlavor<T>
-    where
-        T: crate::eio::Write,
-    {
-        type Output = T;
-
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.writer
-                .write_all(&[data])
-                .map_err(|_| Error::SerializeBufferFull)?;
-            Ok(())
-        }
-
-        #[inline(always)]
-        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
-            self.writer
-                .write_all(b)
-                .map_err(|_| Error::SerializeBufferFull)?;
-            Ok(())
-        }
-
-        fn finalize(mut self) -> Result<Self::Output> {
-            self.writer
-                .flush()
-                .map_err(|_| Error::SerializeBufferFull)?;
-            Ok(self.writer)
-        }
-    }
-}
-
 /// Support for the [`std::io`] traits
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub mod io {
 
     use super::Flavor;
-    use crate::{Error, Result};
 
     /// Wrapper over a [`std::io::Write`] that implements the flavor trait
     pub struct WriteFlavor<T> {
@@ -337,111 +284,34 @@ pub mod io {
         T: std::io::Write,
     {
         type Output = T;
+        type PushError = std::io::Error;
+        type FinalizeError = std::io::Error;
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.writer
-                .write_all(&[data])
-                .map_err(|_| Error::SerializeBufferFull)?;
-            Ok(())
+        fn try_push(&mut self, data: u8) -> Result<(), std::io::Error> {
+            self.writer.write_all(&[data])
         }
 
         #[inline(always)]
-        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
-            self.writer
-                .write_all(b)
-                .map_err(|_| Error::SerializeBufferFull)?;
-            Ok(())
+        fn try_extend(&mut self, b: &[u8]) -> Result<(), std::io::Error> {
+            self.writer.write_all(b)
         }
 
-        fn finalize(mut self) -> Result<Self::Output> {
-            self.writer
-                .flush()
-                .map_err(|_| Error::SerializeBufferFull)?;
+        fn finalize(mut self) -> Result<Self::Output, std::io::Error> {
+            self.writer.flush()?;
             Ok(self.writer)
         }
     }
 }
 
-#[cfg(feature = "heapless")]
-mod heapless_vec {
-    use super::Flavor;
-    use super::Index;
-    use super::IndexMut;
-    use crate::{Error, Result};
-    use heapless::Vec;
-
-    ////////////////////////////////////////
-    // HVec
-    ////////////////////////////////////////
-
-    /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
-    /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    #[derive(Default)]
-    pub struct HVec<const B: usize> {
-        /// the contained data buffer
-        vec: Vec<u8, B>,
-    }
-
-    impl<const B: usize> HVec<B> {
-        /// Create a new, currently empty, [`heapless::Vec`] to be used for storing serialized
-        /// output data.
-        pub fn new() -> Self {
-            Self::default()
-        }
-    }
-
-    impl<const B: usize> Flavor for HVec<B> {
-        type Output = Vec<u8, B>;
-
-        #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
-            self.vec
-                .extend_from_slice(data)
-                .map_err(|_| Error::SerializeBufferFull)
-        }
-
-        #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.vec.push(data).map_err(|_| Error::SerializeBufferFull)
-        }
-
-        fn finalize(self) -> Result<Vec<u8, B>> {
-            Ok(self.vec)
-        }
-    }
-
-    impl<const B: usize> Index<usize> for HVec<B> {
-        type Output = u8;
-
-        fn index(&self, idx: usize) -> &u8 {
-            &self.vec[idx]
-        }
-    }
-
-    impl<const B: usize> IndexMut<usize> for HVec<B> {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.vec[idx]
-        }
-    }
-}
-
-#[cfg(feature = "use-std")]
-mod std_vec {
-    /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
-    ///
-    /// This type is only available when the (non-default) `use-std` feature is active
-    pub type StdVec = super::alloc_vec::AllocVec;
-}
-
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", feature = "std"))]
 mod alloc_vec {
     extern crate alloc;
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
-    use crate::Result;
     use alloc::vec::Vec;
+    use core::convert::Infallible;
 
     /// The `AllocVec` flavor is a wrapper type around an [`alloc::vec::Vec`].
     ///
@@ -462,20 +332,22 @@ mod alloc_vec {
 
     impl Flavor for AllocVec {
         type Output = Vec<u8>;
+        type PushError = Infallible;
+        type FinalizeError = Infallible;
 
         #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+        fn try_extend(&mut self, data: &[u8]) -> Result<(), Infallible> {
             self.vec.extend_from_slice(data);
             Ok(())
         }
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
+        fn try_push(&mut self, data: u8) -> Result<(), Infallible> {
             self.vec.push(data);
             Ok(())
         }
 
-        fn finalize(self) -> Result<Self::Output> {
+        fn finalize(self) -> Result<Self::Output, Infallible> {
             Ok(self.vec)
         }
     }
@@ -501,197 +373,6 @@ mod alloc_vec {
 // Modification Flavors
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////
-// COBS
-////////////////////////////////////////
-
-/// The `Cobs` flavor implements [Consistent Overhead Byte Stuffing] on
-/// the serialized data. The output of this flavor includes the termination/sentinel
-/// byte of `0x00`.
-///
-/// This protocol is useful when sending data over a serial interface without framing such as a UART
-///
-/// [Consistent Overhead Byte Stuffing]: https://en.wikipedia.org/wiki/Consistent_Overhead_Byte_Stuffing
-pub struct Cobs<B>
-where
-    B: Flavor + IndexMut<usize, Output = u8>,
-{
-    flav: B,
-    cobs: EncoderState,
-}
-
-impl<B> Cobs<B>
-where
-    B: Flavor + IndexMut<usize, Output = u8>,
-{
-    /// Create a new Cobs modifier Flavor. If there is insufficient space
-    /// to push the leading header byte, the method will return an Error
-    pub fn try_new(mut bee: B) -> Result<Self> {
-        bee.try_push(0).map_err(|_| Error::SerializeBufferFull)?;
-        Ok(Self {
-            flav: bee,
-            cobs: EncoderState::default(),
-        })
-    }
-}
-
-impl<B> Flavor for Cobs<B>
-where
-    B: Flavor + IndexMut<usize, Output = u8>,
-{
-    type Output = <B as Flavor>::Output;
-
-    #[inline(always)]
-    fn try_push(&mut self, data: u8) -> Result<()> {
-        use PushResult::*;
-        match self.cobs.push(data) {
-            AddSingle(n) => self.flav.try_push(n),
-            ModifyFromStartAndSkip((idx, mval)) => {
-                self.flav[idx] = mval;
-                self.flav.try_push(0)
-            }
-            ModifyFromStartAndPushAndSkip((idx, mval, nval)) => {
-                self.flav[idx] = mval;
-                self.flav.try_push(nval)?;
-                self.flav.try_push(0)
-            }
-        }
-    }
-
-    fn finalize(mut self) -> Result<Self::Output> {
-        let (idx, mval) = self.cobs.finalize();
-        self.flav[idx] = mval;
-        self.flav.try_push(0)?;
-        self.flav.finalize()
-    }
-}
-
-////////////////////////////////////////
-// CRC
-////////////////////////////////////////
-
-/// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
-/// the serialized data.
-///
-/// The output of this flavor receives the CRC appended to the bytes.
-/// CRCs are used for error detection when reading data back.
-/// Requires the `crc` feature.
-///
-/// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
-#[cfg(feature = "use-crc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-crc")))]
-pub mod crc {
-    use crc::Digest;
-    use crc::Width;
-    use serde::Serialize;
-
-    #[cfg(feature = "alloc")]
-    use super::alloc;
-    use super::Flavor;
-    use super::Slice;
-
-    use crate::serialize_with_flavor;
-    use crate::Result;
-
-    /// Manages CRC modifications as a flavor.
-    pub struct CrcModifier<'a, B, W>
-    where
-        B: Flavor,
-        W: Width,
-    {
-        flav: B,
-        digest: Digest<'a, W>,
-    }
-
-    impl<'a, B, W> CrcModifier<'a, B, W>
-    where
-        B: Flavor,
-        W: Width,
-    {
-        /// Create a new CRC modifier Flavor.
-        pub fn new(bee: B, digest: Digest<'a, W>) -> Self {
-            Self { flav: bee, digest }
-        }
-    }
-
-    macro_rules! impl_flavor {
-        ($int:ty, $to_slice:ident, $to_vec:ident, $to_allocvec:ident) => {
-            impl<'a, B> Flavor for CrcModifier<'a, B, $int>
-            where
-                B: Flavor,
-            {
-                type Output = <B as Flavor>::Output;
-
-                #[inline(always)]
-                fn try_push(&mut self, data: u8) -> Result<()> {
-                    self.digest.update(&[data]);
-                    self.flav.try_push(data)
-                }
-
-                fn finalize(mut self) -> Result<Self::Output> {
-                    let crc = self.digest.finalize();
-                    for byte in crc.to_le_bytes() {
-                        self.flav.try_push(byte)?;
-                    }
-                    self.flav.finalize()
-                }
-            }
-
-            /// Serialize a `T` to the given slice, with the resulting slice containing
-            /// data followed by a CRC. The CRC bytes are included in the output buffer.
-            ///
-            /// When successful, this function returns the slice containing the
-            /// serialized and encoded message.
-            pub fn $to_slice<'a, T>(
-                value: &T,
-                buf: &'a mut [u8],
-                digest: Digest<'_, $int>,
-            ) -> Result<&'a mut [u8]>
-            where
-                T: Serialize + ?Sized,
-            {
-                serialize_with_flavor(value, CrcModifier::new(Slice::new(buf), digest))
-            }
-
-            /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
-            /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
-            #[cfg(feature = "heapless")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
-            pub fn $to_vec<T, const B: usize>(
-                value: &T,
-                digest: Digest<'_, $int>,
-            ) -> Result<heapless::Vec<u8, B>>
-            where
-                T: Serialize + ?Sized,
-            {
-                use super::HVec;
-                serialize_with_flavor(value, CrcModifier::new(HVec::default(), digest))
-            }
-
-            /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
-            /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
-            #[cfg(feature = "alloc")]
-            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-            pub fn $to_allocvec<T>(
-                value: &T,
-                digest: Digest<'_, $int>,
-            ) -> Result<alloc::vec::Vec<u8>>
-            where
-                T: Serialize + ?Sized,
-            {
-                use super::AllocVec;
-                serialize_with_flavor(value, CrcModifier::new(AllocVec::new(), digest))
-            }
-        };
-    }
-
-    impl_flavor!(u8, to_slice_u8, to_vec_u8, to_allocvec_u8);
-    impl_flavor!(u16, to_slice_u16, to_vec_u16, to_allocvec_u16);
-    impl_flavor!(u32, to_slice_u32, to_vec_u32, to_allocvec_u32);
-    impl_flavor!(u64, to_slice_u64, to_vec_u64, to_allocvec_u64);
-    impl_flavor!(u128, to_slice_u128, to_vec_u128, to_allocvec_u128);
-}
-
 /// The `Size` flavor is a measurement flavor, which accumulates the number of bytes needed to
 /// serialize the data.
 ///
@@ -710,20 +391,22 @@ pub struct Size {
 
 impl Flavor for Size {
     type Output = usize;
+    type PushError = Infallible;
+    type FinalizeError = Infallible;
 
     #[inline(always)]
-    fn try_push(&mut self, _b: u8) -> Result<()> {
+    fn try_push(&mut self, _b: u8) -> Result<(), Infallible> {
         self.size += 1;
         Ok(())
     }
 
     #[inline(always)]
-    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+    fn try_extend(&mut self, b: &[u8]) -> Result<(), Infallible> {
         self.size += b.len();
         Ok(())
     }
 
-    fn finalize(self) -> Result<Self::Output> {
+    fn finalize(self) -> Result<Self::Output, Infallible> {
         Ok(self.size)
     }
 }

@@ -68,8 +68,18 @@
 //! assert_eq!(remainder, &[1, 2, 3]);
 //! ```
 
-use crate::{Error, Result};
-use core::marker::PhantomData;
+use core::{convert::Infallible, marker::PhantomData};
+
+/// .
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct UnexpectedEnd;
+
+impl core::fmt::Display for UnexpectedEnd {
+    #[inline]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("UnexpectedEnd")
+    }
+}
 
 /// The deserialization Flavor trait
 ///
@@ -92,8 +102,22 @@ pub trait Flavor<'de>: 'de {
     /// chained behavior is desired
     type Source: 'de;
 
+    /// The error type specific to pushing methods.
+    ///
+    /// This includes [`Self::pop`], [`Self::try_take_n`], and [`Self::try_take_n_temp`].
+    ///
+    /// If the only error is "no more data", consider using [`UnexpectedEnd`].
+    type PopError: core::fmt::Debug + core::fmt::Display;
+
+    /// The error type specific to [`Self::finalize`].
+    ///
+    /// If this type cannot error when pushing, e.g. for storage flavors that don't
+    /// perform any meaningful finalization actions, consider using
+    /// [`Infallible`](core::convert::Infallible).
+    type FinalizeError: core::fmt::Debug + core::fmt::Display;
+
     /// Obtain the next byte for deserialization
-    fn pop(&mut self) -> Result<u8>;
+    fn pop(&mut self) -> Result<u8, Self::PopError>;
 
     /// Returns the number of bytes remaining in the message, if known.
     ///
@@ -120,7 +144,7 @@ pub trait Flavor<'de>: 'de {
     ///
     /// This variant borrows the data from the input for zero-copy deserialization. If zero-copy
     /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
-    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]>;
+    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError>;
 
     /// Attempt to take the next `ct` bytes from the serialized message.
     ///
@@ -134,7 +158,7 @@ pub trait Flavor<'de>: 'de {
     /// It is only necessary to implement this method if the flavor requires storing data in a
     /// temporary buffer in order to implement the borrow semantics, e.g. the `std::io::Read`
     /// flavor.
-    fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+    fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], Self::PopError>
     where
         'de: 'a,
     {
@@ -145,7 +169,7 @@ pub trait Flavor<'de>: 'de {
     ///
     /// This is typically called separately, after the `serde` deserialization
     /// has completed.
-    fn finalize(self) -> Result<Self::Remainder>;
+    fn finalize(self) -> Result<Self::Remainder, Self::FinalizeError>;
 }
 
 /// A simple [`Flavor`] representing the deserialization from a borrowed slice
@@ -172,11 +196,13 @@ impl<'de> Slice<'de> {
 impl<'de> Flavor<'de> for Slice<'de> {
     type Remainder = &'de [u8];
     type Source = &'de [u8];
+    type PopError = UnexpectedEnd;
+    type FinalizeError = Infallible;
 
     #[inline]
-    fn pop(&mut self) -> Result<u8> {
+    fn pop(&mut self) -> Result<u8, Self::PopError> {
         if self.cursor == self.end {
-            Err(Error::DeserializeUnexpectedEnd)
+            Err(UnexpectedEnd)
         } else {
             // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
             // have checked above.
@@ -194,10 +220,10 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 
     #[inline]
-    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError> {
         let remain = (self.end as usize) - (self.cursor as usize);
         if remain < ct {
-            Err(Error::DeserializeUnexpectedEnd)
+            Err(UnexpectedEnd)
         } else {
             // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented past `self.end` as we
             // have checked above.
@@ -210,21 +236,17 @@ impl<'de> Flavor<'de> for Slice<'de> {
     }
 
     /// Return the remaining (unused) bytes in the Deserializer
-    fn finalize(self) -> Result<&'de [u8]> {
+    fn finalize(self) -> Result<&'de [u8], Infallible> {
         let remain = (self.end as usize) - (self.cursor as usize);
         // SAFETY: `self.cursor` is valid for `remain` elements
         unsafe { Ok(core::slice::from_raw_parts(self.cursor, remain)) }
     }
 }
 
-/// Support for [`std::io`] or `embedded-io` traits
-#[cfg(any(
-    feature = "embedded-io-04",
-    feature = "embedded-io-06",
-    feature = "use-std"
-))]
+/// Support for [`std::io`]
+#[cfg(feature = "std")]
 pub mod io {
-    use crate::{Error, Result};
+    use crate::de_flavors::UnexpectedEnd;
     use core::marker::PhantomData;
 
     struct SlidingBuffer<'de> {
@@ -244,10 +266,10 @@ pub mod io {
         }
 
         #[inline]
-        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8]> {
+        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8], UnexpectedEnd> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(Error::DeserializeUnexpectedEnd);
+                return Err(UnexpectedEnd);
             } else {
                 // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented
                 // past `self.end` as we have checked above.
@@ -262,140 +284,31 @@ pub mod io {
         }
 
         #[inline]
-        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8]> {
+        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8], UnexpectedEnd> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(Error::DeserializeUnexpectedEnd);
+                return Err(UnexpectedEnd);
             } else {
-                unsafe {
-                    let sli = core::slice::from_raw_parts_mut(self.cursor, ct);
-                    sli
-                }
+                unsafe { core::slice::from_raw_parts_mut(self.cursor, ct) }
             };
 
             Ok(buff)
         }
 
-        fn complete(self) -> Result<&'de mut [u8]> {
+        fn complete(self) -> &'de mut [u8] {
             let remain = (self.end as usize) - (self.cursor as usize);
             // SAFETY: `self.cursor` is valid for `remain` elements
-            unsafe { Ok(core::slice::from_raw_parts_mut(self.cursor, remain)) }
-        }
-    }
-
-    /// Support for [`embedded_io`](crate::eio::embedded_io) traits
-    #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
-    pub mod eio {
-        use super::super::Flavor;
-        use super::SlidingBuffer;
-        use crate::{Error, Result};
-
-        /// Wrapper over a [`embedded_io`](crate::eio::embedded_io)::[`Read`](crate::eio::Read) and a sliding buffer to implement the [`Flavor`] trait
-        pub struct EIOReader<'de, T>
-        where
-            T: crate::eio::Read,
-        {
-            reader: T,
-            buff: SlidingBuffer<'de>,
-        }
-
-        impl<'de, T> EIOReader<'de, T>
-        where
-            T: crate::eio::Read,
-        {
-            /// Create a new [`EIOReader`] from a reader and a buffer.
-            ///
-            /// `buff` must have enough space to hold all data read during the deserialisation.
-            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
-                Self {
-                    reader,
-                    buff: SlidingBuffer::new(buff),
-                }
-            }
-        }
-
-        impl<'de, T> Flavor<'de> for EIOReader<'de, T>
-        where
-            T: crate::eio::Read + 'de,
-        {
-            type Remainder = (T, &'de mut [u8]);
-            type Source = &'de [u8];
-
-            #[inline]
-            fn pop(&mut self) -> Result<u8> {
-                let mut val = [0; 1];
-                self.reader
-                    .read_exact(&mut val)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(val[0])
-            }
-
-            #[inline]
-            fn size_hint(&self) -> Option<usize> {
-                None
-            }
-
-            #[inline]
-            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-                let buff = self.buff.take_n(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            #[inline]
-            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
-            where
-                'de: 'a,
-            {
-                let buff = self.buff.take_n_temp(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            /// Return the remaining (unused) bytes in the Deserializer
-            fn finalize(self) -> Result<(T, &'de mut [u8])> {
-                let buf = self.buff.complete()?;
-                Ok((self.reader, buf))
-            }
-        }
-
-        #[cfg(test)]
-        mod tests {
-            use super::*;
-
-            #[test]
-            fn test_pop() {
-                let mut reader = EIOReader::new(&[0xAA, 0xBB, 0xCC][..], &mut []);
-
-                assert_eq!(reader.pop(), Ok(0xAA));
-                assert_eq!(reader.pop(), Ok(0xBB));
-                assert_eq!(reader.pop(), Ok(0xCC));
-                assert_eq!(reader.pop(), Err(Error::DeserializeUnexpectedEnd));
-            }
-
-            #[test]
-            fn test_try_take_n() {
-                let mut buf = [0; 8];
-                let mut reader = EIOReader::new(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE][..], &mut buf);
-
-                assert_eq!(reader.try_take_n(2), Ok(&[0xAA, 0xBB][..]));
-                assert_eq!(reader.try_take_n(2), Ok(&[0xCC, 0xDD][..]));
-                assert_eq!(reader.try_take_n(2), Err(Error::DeserializeUnexpectedEnd));
-            }
+            unsafe { core::slice::from_raw_parts_mut(self.cursor, remain) }
         }
     }
 
     /// Support for [`std::io`] traits
     #[allow(clippy::module_inception)]
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     pub mod io {
         use super::super::Flavor;
         use super::SlidingBuffer;
-        use crate::{Error, Result};
+        use crate::de_flavors::UnexpectedEnd;
 
         /// Wrapper over a [`std::io::Read`] and a sliding buffer to implement the [Flavor] trait
         pub struct IOReader<'de, T>
@@ -427,13 +340,15 @@ pub mod io {
         {
             type Remainder = (T, &'de mut [u8]);
             type Source = &'de [u8];
+            type PopError = UnexpectedEnd;
+            type FinalizeError = core::convert::Infallible;
 
             #[inline]
-            fn pop(&mut self) -> Result<u8> {
+            fn pop(&mut self) -> Result<u8, UnexpectedEnd> {
                 let mut val = [0; 1];
                 self.reader
                     .read_exact(&mut val)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                    .map_err(|_| UnexpectedEnd)?;
                 Ok(val[0])
             }
 
@@ -443,30 +358,25 @@ pub mod io {
             }
 
             #[inline]
-            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], UnexpectedEnd> {
                 let buff = self.buff.take_n(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
                 Ok(buff)
             }
 
             #[inline]
-            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], UnexpectedEnd>
             where
                 'de: 'a,
             {
                 let buff = self.buff.take_n_temp(ct)?;
-                self.reader
-                    .read_exact(buff)
-                    .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+                self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
                 Ok(buff)
             }
 
             /// Return the remaining (unused) bytes in the Deserializer
-            fn finalize(self) -> Result<(T, &'de mut [u8])> {
-                let buf = self.buff.complete()?;
-                Ok((self.reader, buf))
+            fn finalize(self) -> Result<(T, &'de mut [u8]), core::convert::Infallible> {
+                Ok((self.reader, self.buff.complete()))
             }
         }
 
@@ -495,148 +405,4 @@ pub mod io {
             }
         }
     }
-}
-
-////////////////////////////////////////
-// CRC
-////////////////////////////////////////
-
-/// This Cyclic Redundancy Check flavor applies [the CRC crate's `Algorithm`](https://docs.rs/crc/latest/crc/struct.Algorithm.html) struct on
-/// the serialized data.
-///
-/// The flavor will check the CRC assuming that it has been appended to the bytes.
-/// CRCs are used for error detection when reading data back.
-/// Requires the `crc` feature.
-///
-/// More on CRCs: <https://en.wikipedia.org/wiki/Cyclic_redundancy_check>.
-#[cfg(feature = "use-crc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-crc")))]
-pub mod crc {
-    use core::convert::TryInto;
-
-    use crc::Digest;
-    use crc::Width;
-    use serde::Deserialize;
-
-    use super::Flavor;
-    use super::Slice;
-
-    use crate::Deserializer;
-    use crate::Error;
-    use crate::Result;
-
-    /// Manages CRC modifications as a flavor.
-    pub struct CrcModifier<'de, B, W>
-    where
-        B: Flavor<'de>,
-        W: Width,
-    {
-        flav: B,
-        digest: Digest<'de, W>,
-    }
-
-    impl<'de, B, W> CrcModifier<'de, B, W>
-    where
-        B: Flavor<'de>,
-        W: Width,
-    {
-        /// Create a new Crc modifier Flavor.
-        pub fn new(bee: B, digest: Digest<'de, W>) -> Self {
-            Self { flav: bee, digest }
-        }
-    }
-
-    macro_rules! impl_flavor {
-        ($int:ty, $from_bytes:ident, $take_from_bytes:ident) => {
-            impl<'de, B> Flavor<'de> for CrcModifier<'de, B, $int>
-            where
-                B: Flavor<'de>,
-            {
-                type Remainder = B::Remainder;
-                type Source = B::Source;
-
-                #[inline]
-                fn pop(&mut self) -> Result<u8> {
-                    match self.flav.pop() {
-                        Ok(byte) => {
-                            self.digest.update(&[byte]);
-                            Ok(byte)
-                        }
-                        e @ Err(_) => e,
-                    }
-                }
-
-                #[inline]
-                fn size_hint(&self) -> Option<usize> {
-                    self.flav.size_hint()
-                }
-
-                #[inline]
-                fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
-                    match self.flav.try_take_n(ct) {
-                        Ok(bytes) => {
-                            self.digest.update(bytes);
-                            Ok(bytes)
-                        }
-                        e @ Err(_) => e,
-                    }
-                }
-
-                fn finalize(mut self) -> Result<Self::Remainder> {
-                    match self.flav.try_take_n(core::mem::size_of::<$int>()) {
-                        Ok(prev_crc_bytes) => match self.flav.finalize() {
-                            Ok(remainder) => {
-                                let crc = self.digest.finalize();
-                                let le_bytes = prev_crc_bytes
-                                    .try_into()
-                                    .map_err(|_| Error::DeserializeBadEncoding)?;
-                                let prev_crc = <$int>::from_le_bytes(le_bytes);
-                                if crc == prev_crc {
-                                    Ok(remainder)
-                                } else {
-                                    Err(Error::DeserializeBadCrc)
-                                }
-                            }
-                            e @ Err(_) => e,
-                        },
-                        Err(e) => Err(e),
-                    }
-                }
-            }
-
-            /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
-            /// of the byte slice is not returned.
-            pub fn $from_bytes<'a, T>(s: &'a [u8], digest: Digest<'a, $int>) -> Result<T>
-            where
-                T: Deserialize<'a>,
-            {
-                let flav = CrcModifier::new(Slice::new(s), digest);
-                let mut deserializer = Deserializer::from_flavor(flav);
-                let r = T::deserialize(&mut deserializer)?;
-                let _ = deserializer.finalize()?;
-                Ok(r)
-            }
-
-            /// Deserialize a message of type `T` from a byte slice with a Crc. The unused portion (if any)
-            /// of the byte slice is returned for further usage
-            pub fn $take_from_bytes<'a, T>(
-                s: &'a [u8],
-                digest: Digest<'a, $int>,
-            ) -> Result<(T, &'a [u8])>
-            where
-                T: Deserialize<'a>,
-            {
-                let flav = CrcModifier::new(Slice::new(s), digest);
-                let mut deserializer = Deserializer::from_flavor(flav);
-                let t = T::deserialize(&mut deserializer)?;
-                Ok((t, deserializer.finalize()?))
-            }
-        };
-    }
-
-    impl_flavor!(u8, from_bytes_u8, take_from_bytes_u8);
-    impl_flavor!(u16, from_bytes_u16, take_from_bytes_u16);
-    impl_flavor!(u32, from_bytes_u32, take_from_bytes_u32);
-    impl_flavor!(u64, from_bytes_u64, take_from_bytes_u64);
-    impl_flavor!(u128, from_bytes_u128, take_from_bytes_u128);
 }

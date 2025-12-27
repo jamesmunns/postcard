@@ -50,12 +50,6 @@ struct NewTypeStruct(u32);
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct TupleStruct((u8, u16));
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-struct RefStruct<'a> {
-    bytes: &'a [u8],
-    str_s: &'a str,
-}
-
 #[cfg(feature = "heapless")]
 #[test]
 fn loopback() {
