@@ -55,7 +55,7 @@ impl Default for Fnv1a64Hasher {
 }
 
 pub mod fnv1a64 {
-    //! Const and no-std helper methods and types for perfoming hash calculation
+    //! Const and no-std helper methods and types for performing hash calculation
     use crate::schema::DataModelVariant;
 
     use super::*;

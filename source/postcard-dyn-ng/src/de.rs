@@ -459,15 +459,6 @@ mod test {
 
     use crate::{from_slice_dyn, to_stdvec_dyn};
 
-    // #[derive(Serialize, Deserialize, Schema)]
-    // struct UnitStruct;
-
-    // #[derive(Serialize, Deserialize, Schema)]
-    // struct TupStruct1(u8);
-
-    // #[derive(Serialize, Deserialize, Schema)]
-    // struct TupStruct2(u8, u8);
-
     #[derive(Serialize, Deserialize, Schema)]
     struct Struct1 {
         pub x: bool,
