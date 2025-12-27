@@ -70,7 +70,7 @@
 
 use core::{convert::Infallible, marker::PhantomData};
 
-/// .
+/// Unexpectedly reached the end of the deserialization buffer
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct UnexpectedEnd;
 

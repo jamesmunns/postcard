@@ -1,6 +1,6 @@
 [package]
 name = "postcard2"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
 readme = "README.md"
@@ -14,7 +14,7 @@ categories = [
 keywords = [
     "serde",
 ]
-documentation = "https://docs.rs/postcard/"
+documentation = "https://docs.rs/postcard2/"
 
 [package.metadata.docs.rs]
 all-features = true
