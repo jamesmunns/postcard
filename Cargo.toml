@@ -9,6 +9,8 @@ members = [
     "source/postcard-schema",
     "source/postcard-schema-ng",
     "source/postcard2",
-    "source/postcard2-eio",
-    "source/postcard2-heapless",
+
+    # TODO: re-enable
+    # "source/postcard2-eio",
+    # "source/postcard2-heapless",
 ]

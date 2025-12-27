@@ -298,8 +298,8 @@ mod alloc_vec {
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
-    use alloc::vec::Vec;
     use crate::ser_flavors::SerFlavorError;
+    use alloc::vec::Vec;
 
     /// The `AllocVec` flavor is a wrapper type around an [`alloc::vec::Vec`].
     ///

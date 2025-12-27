@@ -44,8 +44,12 @@ mod test {
         let deser: u32 = crate::from_bytes(used).unwrap();
         assert_eq!(deser, u32::MAX);
         assert_eq!(used, &mut [0xFF, 0xFF, 0xFF, 0xFF, 0x0F]);
-        let deser: Result<u32, crate::Error> = crate::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0x1F]);
-        assert_eq!(deser, Err(crate::Error::DeserializeBadVarint));
+        let deser: Result<u32, crate::de::deserializer::DeserializerError> =
+            crate::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0x1F]);
+        assert_eq!(
+            deser,
+            Err(crate::de::deserializer::DeserializerError::BadVarint)
+        );
     }
 
     #[test]

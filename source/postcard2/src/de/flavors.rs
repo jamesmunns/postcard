@@ -74,7 +74,7 @@ use core::marker::PhantomData;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DeFlavorError {
     /// .
-    DeserializeUnexpectedEnd,
+    UnexpectedEnd,
 }
 
 impl core::fmt::Display for DeFlavorError {
@@ -188,7 +188,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     #[inline]
     fn pop(&mut self) -> Result<u8, DeFlavorError> {
         if self.cursor == self.end {
-            Err(DeFlavorError::DeserializeUnexpectedEnd)
+            Err(DeFlavorError::UnexpectedEnd)
         } else {
             // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
             // have checked above.
@@ -209,7 +209,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], DeFlavorError> {
         let remain = (self.end as usize) - (self.cursor as usize);
         if remain < ct {
-            Err(DeFlavorError::DeserializeUnexpectedEnd)
+            Err(DeFlavorError::UnexpectedEnd)
         } else {
             // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented past `self.end` as we
             // have checked above.
@@ -255,7 +255,7 @@ pub mod io {
         fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8], DeFlavorError> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(DeFlavorError::DeserializeUnexpectedEnd);
+                return Err(DeFlavorError::UnexpectedEnd);
             } else {
                 // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented
                 // past `self.end` as we have checked above.
@@ -273,7 +273,7 @@ pub mod io {
         fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8], DeFlavorError> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(DeFlavorError::DeserializeUnexpectedEnd);
+                return Err(DeFlavorError::UnexpectedEnd);
             } else {
                 unsafe { core::slice::from_raw_parts_mut(self.cursor, ct) }
             };
@@ -332,7 +332,7 @@ pub mod io {
                 let mut val = [0; 1];
                 self.reader
                     .read_exact(&mut val)
-                    .map_err(|_| DeFlavorError::DeserializeUnexpectedEnd)?;
+                    .map_err(|_| DeFlavorError::UnexpectedEnd)?;
                 Ok(val[0])
             }
 
@@ -346,7 +346,7 @@ pub mod io {
                 let buff = self.buff.take_n(ct)?;
                 self.reader
                     .read_exact(buff)
-                    .map_err(|_| DeFlavorError::DeserializeUnexpectedEnd)?;
+                    .map_err(|_| DeFlavorError::UnexpectedEnd)?;
                 Ok(buff)
             }
 
@@ -358,7 +358,7 @@ pub mod io {
                 let buff = self.buff.take_n_temp(ct)?;
                 self.reader
                     .read_exact(buff)
-                    .map_err(|_| DeFlavorError::DeserializeUnexpectedEnd)?;
+                    .map_err(|_| DeFlavorError::UnexpectedEnd)?;
                 Ok(buff)
             }
 
