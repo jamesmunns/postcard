@@ -4,37 +4,134 @@ use crate::de::flavors::{Flavor, Slice};
 use crate::varint::{max_of_last_byte, varint_max};
 use core::marker::PhantomData;
 
+/// The deserialization error type
 #[derive(Debug, PartialEq, Eq)]
 pub enum DeserializerError<PopErr, FinErr> {
+    /// A Flavor-specific error occurred while extracting data
     PopError(PopErr),
+    /// A Flavor-specific error occurred while finalizing the deserialization
     FinalizeError(FinErr),
-    WontImplement,
+    /// A bad boolean value, e.g. NOT `0` or `1` was encountered while deserializing
     BadBool,
+    /// A bad varint value was encountered while deserializing
     BadVarint,
+    /// A bad [`char`] value was encounterered while deserializing
     BadChar,
+    /// A bad UTF-8 string was encountered while deserializing
     BadUtf8,
+    /// A bad [`Option`] was encountered while deserializing, e.g. the descriminant
+    /// value was NEITHER `0` (for `None`) nor `1` (for `Some`)
     BadOption,
+    /// The deserializer was requested to perform the `deserialize_any` action
+    /// that postcard does not and will not ever support
+    UnsupportedDeserAny,
+    /// The deserializer was requested to perform the `deserialize_identifier` action
+    /// that postcard does not and will not ever support
+    UnsupportedDeserIdent,
+    /// The deserializer was requested to perform the `deserialize_ignored_any` action
+    /// that postcard does not and will not ever support
+    UnsupportedDeserIgnoredAny,
+    /// Serde returned a Custom error
+    ///
+    /// With the `alloc` or `std` features enabled, this will contain a formatted string.
+    /// Without these features, the error context is not retained
+    Custom(SerdeCustomError),
 }
 
-impl<PopErr, FinErr> core::fmt::Display for DeserializerError<PopErr, FinErr> {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        todo!()
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+mod custom {
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct SerdeCustomError {
+        inner: (),
     }
-}
 
-impl<PopErr: core::fmt::Debug, FinErr: core::fmt::Debug> core::error::Error
-    for DeserializerError<PopErr, FinErr>
-{
-}
-impl<PopErr: core::fmt::Debug, FinErr: core::fmt::Debug> serde_core::de::Error
-    for DeserializerError<PopErr, FinErr>
-{
-    fn custom<T>(_msg: T) -> Self
+    impl core::fmt::Display for SerdeCustomError {
+        #[inline]
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.write_str("SerdeCustomError(...)")
+        }
+    }
+
+    impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
     where
-        T: core::fmt::Display,
+        PopErr: core::fmt::Debug + core::fmt::Display,
+        FinErr: core::fmt::Debug + core::fmt::Display,
     {
-        todo!()
+        #[inline]
+        fn custom<T>(_msg: T) -> Self
+        where
+            T: core::fmt::Display,
+        {
+            super::DeserializerError::Custom(SerdeCustomError { inner: () })
+        }
     }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+mod custom {
+    extern crate alloc;
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct SerdeCustomError {
+        inner: alloc::string::String,
+    }
+
+    impl core::fmt::Display for SerdeCustomError {
+        #[inline]
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "SerdeCustomError({})", self.inner)
+        }
+    }
+
+    impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
+    where
+        PopErr: core::fmt::Debug + core::fmt::Display,
+        FinErr: core::fmt::Debug + core::fmt::Display,
+    {
+        #[inline]
+        fn custom<T>(msg: T) -> Self
+        where
+            T: core::fmt::Display,
+        {
+            use alloc::string::ToString;
+            super::DeserializerError::Custom(SerdeCustomError {
+                inner: msg.to_string(),
+            })
+        }
+    }
+}
+
+pub use custom::SerdeCustomError;
+
+impl<PopErr, FinErr> core::fmt::Display for DeserializerError<PopErr, FinErr>
+where
+    PopErr: core::fmt::Display,
+    FinErr: core::fmt::Display,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            DeserializerError::PopError(e) => write!(f, "PopError({e})"),
+            DeserializerError::FinalizeError(e) => write!(f, "FinalizeError({e})"),
+            DeserializerError::BadBool => f.write_str("BadBool"),
+            DeserializerError::BadVarint => f.write_str("BadVarint"),
+            DeserializerError::BadChar => f.write_str("BadChar"),
+            DeserializerError::BadUtf8 => f.write_str("BadUtf8"),
+            DeserializerError::BadOption => f.write_str("BadOption"),
+            DeserializerError::UnsupportedDeserAny => f.write_str("UnsupportedDeserAny"),
+            DeserializerError::UnsupportedDeserIdent => f.write_str("UnsupportedDeserIdent"),
+            DeserializerError::UnsupportedDeserIgnoredAny => {
+                f.write_str("UnsupportedDeserIgnoredAny")
+            }
+            DeserializerError::Custom(serde_custom_error) => serde_custom_error.fmt(f),
+        }
+    }
+}
+
+impl<PopErr, FinErr> core::error::Error for DeserializerError<PopErr, FinErr>
+where
+    PopErr: core::fmt::Debug + core::fmt::Display,
+    FinErr: core::fmt::Debug + core::fmt::Display,
+{
 }
 
 /// A `serde` compatible deserializer, generic over “Flavors” of deserializing plugins.
@@ -278,7 +375,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         // We wont ever support this.
-        Err(DeserializerError::WontImplement)
+        Err(DeserializerError::UnsupportedDeserAny)
     }
 
     // Take a boolean encoded as a u8
@@ -698,7 +795,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         // Will not support
-        Err(DeserializerError::WontImplement)
+        Err(DeserializerError::UnsupportedDeserIdent)
     }
 
     #[inline]
@@ -710,7 +807,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         V: Visitor<'de>,
     {
         // Will not support
-        Err(DeserializerError::WontImplement)
+        Err(DeserializerError::UnsupportedDeserIgnoredAny)
     }
 }
 

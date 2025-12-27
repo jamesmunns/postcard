@@ -20,35 +20,110 @@ where
     pub output: F,
 }
 
+/// The serialization error type
 #[derive(Debug)]
 pub enum SerializerError<PushErr, FinErr> {
+    /// A Flavor-specific error occurred while inserting data
     PushError(PushErr),
+    /// A Flavor-specific error occurred while finalizing
     FinalizeError(FinErr),
+    /// A `Seq` or `Map` was attempted to be serialized with no length
+    /// hint, e.g. `Serializer::serialize_seq(None)` or
+    /// `Serializer::serialize_map(None)`. This is unsupported in postcard.
     SeqLengthUnknown,
+    /// Serde returned a Custom error
+    ///
+    /// With the `alloc` or `std` features enabled, this will contain a formatted string.
+    /// Without these features, the error context is not retained
+    Custom(SerdeCustomError),
 }
 
-impl<PushErr: core::fmt::Debug, FinErr: core::fmt::Debug> core::fmt::Display
-    for SerializerError<PushErr, FinErr>
+impl<PushErr, FinErr> core::fmt::Display for SerializerError<PushErr, FinErr>
+where
+    PushErr: core::fmt::Display,
+    FinErr: core::fmt::Display,
 {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SerializerError::PushError(e) => write!(f, "PushError({})", e),
+            SerializerError::FinalizeError(e) => write!(f, "FinalizeError({})", e),
+            SerializerError::SeqLengthUnknown => f.write_str("SeqLengthUnknown"),
+            SerializerError::Custom(serde_custom_error) => serde_custom_error.fmt(f),
+        }
     }
 }
 
-impl<PushErr: core::fmt::Debug, FinErr: core::fmt::Debug> core::error::Error
-    for SerializerError<PushErr, FinErr>
+impl<PushErr, FinErr> core::error::Error for SerializerError<PushErr, FinErr>
+where
+    PushErr: core::fmt::Debug + core::fmt::Display,
+    FinErr: core::fmt::Debug + core::fmt::Display,
 {
 }
-impl<PushErr: core::fmt::Debug, FinErr: core::fmt::Debug> serde_core::ser::Error
-    for SerializerError<PushErr, FinErr>
-{
-    fn custom<T>(_msg: T) -> Self
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+mod custom {
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct SerdeCustomError {
+        inner: (),
+    }
+
+    impl core::fmt::Display for SerdeCustomError {
+        #[inline]
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            f.write_str("SerdeCustomError(...)")
+        }
+    }
+
+    impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
     where
-        T: core::fmt::Display,
+        PopErr: core::fmt::Debug + core::fmt::Display,
+        FinErr: core::fmt::Debug + core::fmt::Display,
     {
-        todo!()
+        #[inline]
+        fn custom<T>(_msg: T) -> Self
+        where
+            T: core::fmt::Display,
+        {
+            super::SerializerError::Custom(SerdeCustomError { inner: () })
+        }
     }
 }
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+mod custom {
+    extern crate alloc;
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct SerdeCustomError {
+        inner: alloc::string::String,
+    }
+
+    impl core::fmt::Display for SerdeCustomError {
+        #[inline]
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "SerdeCustomError({})", self.inner)
+        }
+    }
+
+    impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
+    where
+        PopErr: core::fmt::Debug + core::fmt::Display,
+        FinErr: core::fmt::Debug + core::fmt::Display,
+    {
+        #[inline]
+        fn custom<T>(msg: T) -> Self
+        where
+            T: core::fmt::Display,
+        {
+            use alloc::string::ToString;
+            super::SerializerError::Custom(SerdeCustomError {
+                inner: msg.to_string(),
+            })
+        }
+    }
+}
+
+pub use custom::SerdeCustomError;
 
 impl<F: Flavor> Serializer<F> {
     /// Attempt to push a variably encoded [usize] into the output data stream

@@ -1,4 +1,5 @@
-use postcard2::{Result, serialize_with_flavor};
+use core::convert::Infallible;
+use postcard2::{BufferFull, SerializerError, serialize_with_flavor};
 use serde_core::Serialize;
 
 /// Serialize a `T` to a `heapless_v0_9::Vec<u8>`, with the `Vec` containing
@@ -26,52 +27,21 @@ use serde_core::Serialize;
 /// let ser: Vec<u8, 32> = to_vec(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30]);
 /// ```
-pub fn to_vec<T, const B: usize>(value: &T) -> Result<heapless_v0_9::Vec<u8, B>>
+pub fn to_vec<T, const B: usize>(
+    value: &T,
+) -> Result<heapless_v0_9::Vec<u8, B>, SerializerError<BufferFull, Infallible>>
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, ser::HVec<B>, heapless_v0_9::Vec<u8, B>>(value, ser::HVec::default())
+    serialize_with_flavor::<T, ser::HVec<B>>(value, ser::HVec::default())
 }
 
-// /// Serialize a `T` to a `heapless_v0_9::Vec<u8>`, with the `Vec` containing
-// /// data in a serialized then COBS encoded format. The terminating sentinel
-// /// `0x00` byte is included in the output `Vec`.
-// ///
-// /// ## Example
-// ///
-// /// ```rust
-// /// use postcard2::to_vec_cobs;
-// /// use heapless_v0_9::Vec;
-// /// use core::ops::Deref;
-// ///
-// /// let ser: Vec<u8, 32> = to_vec_cobs(&false).unwrap();
-// /// assert_eq!(ser.deref(), &[0x01, 0x01, 0x00]);
-// ///
-// /// let ser: Vec<u8, 32> = to_vec_cobs("Hi!").unwrap();
-// /// assert_eq!(ser.deref(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
-// ///
-// /// // NOTE: postcard handles `&[u8]` and `&[u8; N]` differently.
-// /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
-// /// let ser: Vec<u8, 32> = to_vec_cobs(data).unwrap();
-// /// assert_eq!(ser.deref(), &[0x03, 0x04, 0x01, 0x03, 0x20, 0x30, 0x00]);
-// ///
-// /// let data: &[u8; 4] = &[0x01u8, 0x00, 0x20, 0x30];
-// /// let ser: Vec<u8, 32> = to_vec_cobs(data).unwrap();
-// /// assert_eq!(ser.deref(), &[0x02, 0x01, 0x03, 0x20, 0x30, 0x00]);
-// /// ```
-// pub fn to_vec_cobs<T, const B: usize>(value: &T) -> heapless_v0_9::Result<Vec<u8, B>>
-// where
-//     T: Serialize + ?Sized,
-// {
-//     serialize_with_flavor::<T, Cobs<ser::HVec<B>>, heapless_v0_9::Vec<u8, B>>(value, Cobs::try_new(ser::HVec::default())?)
-// }
-
 pub mod ser {
+    use core::convert::Infallible;
     use core::ops::Index;
     use core::ops::IndexMut;
     use heapless_v0_9::Vec;
-    use postcard2::ser_flavors::Flavor;
-    use postcard2::{Error, Result};
+    use postcard2::{BufferFull, ser_flavors::Flavor};
 
     ////////////////////////////////////////
     // HVec
@@ -95,20 +65,20 @@ pub mod ser {
 
     impl<const B: usize> Flavor for HVec<B> {
         type Output = Vec<u8, B>;
+        type PushError = BufferFull;
+        type FinalizeError = Infallible;
 
         #[inline(always)]
-        fn try_extend(&mut self, data: &[u8]) -> Result<()> {
-            self.vec
-                .extend_from_slice(data)
-                .map_err(|_| Error::SerializeBufferFull)
+        fn try_extend(&mut self, data: &[u8]) -> Result<(), BufferFull> {
+            self.vec.extend_from_slice(data).map_err(|_| BufferFull)
         }
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.vec.push(data).map_err(|_| Error::SerializeBufferFull)
+        fn try_push(&mut self, data: u8) -> Result<(), BufferFull> {
+            self.vec.push(data).map_err(|_| BufferFull)
         }
 
-        fn finalize(self) -> Result<Vec<u8, B>> {
+        fn finalize(self) -> Result<Vec<u8, B>, Infallible> {
             Ok(self.vec)
         }
     }

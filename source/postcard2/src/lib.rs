@@ -19,11 +19,15 @@ pub mod experimental {
     pub use crate::ser::serialized_size;
 }
 
-pub use de::deserializer::Deserializer;
-pub use de::flavors as de_flavors;
+pub use de::deserializer::{Deserializer, DeserializerError};
+pub use de::flavors::{self as de_flavors, UnexpectedEnd};
 pub use de::{from_bytes, take_from_bytes};
-pub use ser::flavors as ser_flavors;
-pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice};
+pub use ser::flavors::{self as ser_flavors, BufferFull};
+pub use ser::{
+    serialize_with_flavor,
+    serializer::{Serializer, SerializerError},
+    to_extend, to_slice,
+};
 
 #[cfg(feature = "std")]
 pub use ser::to_io;

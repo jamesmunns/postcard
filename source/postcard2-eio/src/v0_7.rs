@@ -1,6 +1,7 @@
 //! Support Utilities for embedded-io v0.7.x
 
-use postcard2::{Deserializer, serialize_with_flavor};
+use core::convert::Infallible;
+use postcard2::{Deserializer, DeserializerError, SerializerError, serialize_with_flavor};
 use serde_core::{Deserialize, Serialize};
 
 /// Serialize a `T` to an [`embedded_io Write`](embedded_io_v0_7::Write),
@@ -15,16 +16,18 @@ use serde_core::{Deserialize, Serialize};
 /// to_eio("Hi!", ser).unwrap();
 /// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-pub fn to_eio<T, W>(value: &T, writer: W) -> postcard2::Result<W>
+pub fn to_eio<T, W>(value: &T, writer: W) -> Result<W, SerializerError<W::Error, W::Error>>
 where
     T: Serialize + ?Sized,
     W: embedded_io_v0_7::Write,
 {
-    serialize_with_flavor::<T, _, _>(value, ser::WriteFlavor::new(writer))
+    serialize_with_flavor::<T, _>(value, ser::WriteFlavor::new(writer))
 }
 
 /// Deserialize a message of type `T` from a [`embedded_io`](embedded_io_v0_7)::[`Read`](embedded_io_v0_7::Read).
-pub fn from_eio<'a, T, R>(val: (R, &'a mut [u8])) -> postcard2::Result<(T, (R, &'a mut [u8]))>
+pub fn from_eio<'a, T, R>(
+    val: (R, &'a mut [u8]),
+) -> Result<(T, (R, &'a mut [u8])), DeserializerError<R::Error, Infallible>>
 where
     T: Deserialize<'a>,
     R: embedded_io_v0_7::Read + 'a,
@@ -37,7 +40,6 @@ where
 
 pub mod ser {
     use postcard2::ser_flavors::Flavor;
-    use postcard2::{Error, Result};
 
     /// Wrapper over a [`embedded_io Write`](embedded_io_v0_7::Write) that implements the flavor trait
     pub struct WriteFlavor<T> {
@@ -59,35 +61,32 @@ pub mod ser {
         T: embedded_io_v0_7::Write,
     {
         type Output = T;
+        type PushError = T::Error;
+        type FinalizeError = T::Error;
 
         #[inline(always)]
-        fn try_push(&mut self, data: u8) -> Result<()> {
-            self.writer
-                .write_all(&[data])
-                .map_err(|_| Error::SerializeBufferFull)?;
+        fn try_push(&mut self, data: u8) -> Result<(), Self::PushError> {
+            self.writer.write_all(&[data])?;
             Ok(())
         }
 
         #[inline(always)]
-        fn try_extend(&mut self, b: &[u8]) -> Result<()> {
-            self.writer
-                .write_all(b)
-                .map_err(|_| Error::SerializeBufferFull)?;
+        fn try_extend(&mut self, b: &[u8]) -> Result<(), Self::PushError> {
+            self.writer.write_all(b)?;
             Ok(())
         }
 
-        fn finalize(mut self) -> Result<Self::Output> {
-            self.writer
-                .flush()
-                .map_err(|_| Error::SerializeBufferFull)?;
+        fn finalize(mut self) -> Result<Self::Output, Self::FinalizeError> {
+            self.writer.flush()?;
             Ok(self.writer)
         }
     }
 }
 
 pub mod de {
+    use core::convert::Infallible;
     use core::marker::PhantomData;
-    use postcard2::{Error, Result};
+    use postcard2::UnexpectedEnd;
 
     struct SlidingBuffer<'de> {
         cursor: *mut u8,
@@ -106,10 +105,10 @@ pub mod de {
         }
 
         #[inline]
-        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8]> {
+        fn take_n(&mut self, ct: usize) -> Result<&'de mut [u8], UnexpectedEnd> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(Error::DeserializeUnexpectedEnd);
+                return Err(UnexpectedEnd);
             } else {
                 // SAFETY: `self.cursor` is valid for `ct` elements and won't be incremented
                 // past `self.end` as we have checked above.
@@ -124,10 +123,10 @@ pub mod de {
         }
 
         #[inline]
-        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8]> {
+        fn take_n_temp(&mut self, ct: usize) -> Result<&mut [u8], UnexpectedEnd> {
             let remain = (self.end as usize) - (self.cursor as usize);
             let buff = if remain < ct {
-                return Err(Error::DeserializeUnexpectedEnd);
+                return Err(UnexpectedEnd);
             } else {
                 unsafe { core::slice::from_raw_parts_mut(self.cursor, ct) }
             };
@@ -135,10 +134,10 @@ pub mod de {
             Ok(buff)
         }
 
-        fn complete(self) -> Result<&'de mut [u8]> {
+        fn complete(self) -> &'de mut [u8] {
             let remain = (self.end as usize) - (self.cursor as usize);
             // SAFETY: `self.cursor` is valid for `remain` elements
-            unsafe { Ok(core::slice::from_raw_parts_mut(self.cursor, remain)) }
+            unsafe { core::slice::from_raw_parts_mut(self.cursor, remain) }
         }
     }
 
@@ -175,13 +174,13 @@ pub mod de {
     {
         type Remainder = (T, &'de mut [u8]);
         type Source = &'de [u8];
+        type PopError = T::Error;
+        type FinalizeError = Infallible;
 
         #[inline]
-        fn pop(&mut self) -> Result<u8> {
+        fn pop(&mut self) -> Result<u8, Self::PopError> {
             let mut val = [0; 1];
-            self.reader
-                .read_exact(&mut val)
-                .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+            self.reader.read_exact(&mut val)?;
             Ok(val[0])
         }
 
@@ -191,30 +190,25 @@ pub mod de {
         }
 
         #[inline]
-        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8]> {
+        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError> {
             let buff = self.buff.take_n(ct)?;
-            self.reader
-                .read_exact(buff)
-                .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+            self.reader.read_exact(buff)?;
             Ok(buff)
         }
 
         #[inline]
-        fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8]>
+        fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], Self::PopError>
         where
             'de: 'a,
         {
             let buff = self.buff.take_n_temp(ct)?;
-            self.reader
-                .read_exact(buff)
-                .map_err(|_| Error::DeserializeUnexpectedEnd)?;
+            self.reader.read_exact(buff)?;
             Ok(buff)
         }
 
         /// Return the remaining (unused) bytes in the Deserializer
-        fn finalize(self) -> Result<(T, &'de mut [u8])> {
-            let buf = self.buff.complete()?;
-            Ok((self.reader, buf))
+        fn finalize(self) -> Result<(T, &'de mut [u8]), Self::FinalizeError> {
+            Ok((self.reader, self.buff.complete()))
         }
     }
 

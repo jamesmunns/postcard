@@ -75,8 +75,9 @@ use core::{convert::Infallible, marker::PhantomData};
 pub struct UnexpectedEnd;
 
 impl core::fmt::Display for UnexpectedEnd {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        todo!()
+    #[inline]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("UnexpectedEnd")
     }
 }
 
@@ -101,11 +102,19 @@ pub trait Flavor<'de>: 'de {
     /// chained behavior is desired
     type Source: 'de;
 
-    /// .
-    type PopError: core::fmt::Debug;
+    /// The error type specific to pushing methods.
+    ///
+    /// This includes [`Self::pop`], [`Self::try_take_n`], and [`Self::try_take_n_temp`].
+    ///
+    /// If the only error is "no more data", consider using [`UnexpectedEnd`].
+    type PopError: core::fmt::Debug + core::fmt::Display;
 
-    /// .
-    type FinalizeError: core::fmt::Debug;
+    /// The error type specific to [`Self::finalize`].
+    ///
+    /// If this type cannot error when pushing, e.g. for storage flavors that don't
+    /// perform any meaningful finalization actions, consider using
+    /// [`Infallible`](core::convert::Infallible).
+    type FinalizeError: core::fmt::Debug + core::fmt::Display;
 
     /// Obtain the next byte for deserialization
     fn pop(&mut self) -> Result<u8, Self::PopError>;

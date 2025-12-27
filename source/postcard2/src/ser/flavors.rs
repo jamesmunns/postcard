@@ -74,13 +74,14 @@ pub use alloc_vec::*;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-/// .
+/// The serialization buffer is full
 #[derive(Debug)]
 pub struct BufferFull;
 
 impl core::fmt::Display for BufferFull {
-    fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        todo!()
+    #[inline]
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("BufferFull")
     }
 }
 
@@ -95,11 +96,21 @@ pub trait Flavor {
     /// such as a slice or a Vec of some sort.
     type Output;
 
-    /// .
-    type PushError: core::fmt::Debug;
+    /// The error type specific to pushing methods.
+    ///
+    /// This includes [`Self::try_extend`] and [`Self::try_push`].
+    ///
+    /// If this type cannot error when pushing, e.g. with a `Vec`, consider using
+    /// [`Infallible`](core::convert::Infallible). If this type can only fail due
+    /// to exhausting available space, consider using [`BufferFull`].
+    type PushError: core::fmt::Debug + core::fmt::Display;
 
-    /// .
-    type FinalizeError: core::fmt::Debug;
+    /// The error type specific to [`Self::finalize`].
+    ///
+    /// If this type cannot error when pushing, e.g. for storage flavors that don't
+    /// perform any meaningful finalization actions, consider using
+    /// [`Infallible`](core::convert::Infallible).
+    type FinalizeError: core::fmt::Debug + core::fmt::Display;
 
     /// Override this method when you want to customize processing
     /// multiple bytes at once, such as copying a slice to the output,
@@ -287,7 +298,8 @@ pub mod io {
         }
 
         fn finalize(mut self) -> Result<Self::Output, std::io::Error> {
-            self.writer.flush()
+            self.writer.flush()?;
+            Ok(self.writer)
         }
     }
 }
@@ -298,7 +310,6 @@ mod alloc_vec {
     use super::Flavor;
     use super::Index;
     use super::IndexMut;
-    // use crate::ser_flavors::SerFlavorError;
     use alloc::vec::Vec;
     use core::convert::Infallible;
 
