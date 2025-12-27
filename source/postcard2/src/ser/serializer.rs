@@ -1,4 +1,4 @@
-use serde_core::{ser, Serialize};
+use serde_core::{Serialize, ser};
 
 use crate::ser::flavors::Flavor;
 use crate::varint::*;
@@ -22,6 +22,7 @@ where
 
 /// The serialization error type
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum SerializerError<PushErr, FinErr> {
     /// A Flavor-specific error occurred while inserting data
     PushError(PushErr),

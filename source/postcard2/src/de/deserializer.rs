@@ -6,6 +6,7 @@ use core::marker::PhantomData;
 
 /// The deserialization error type
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DeserializerError<PopErr, FinErr> {
     /// A Flavor-specific error occurred while extracting data
     PopError(PopErr),
