@@ -230,9 +230,7 @@ where
         self,
         v: char,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; 4];
-        let strsl = v.encode_utf8(&mut buf);
-        strsl.serialize(self)
+        pcser::try_push_char(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -311,7 +309,8 @@ where
     where
         T: ?Sized + Serialize,
     {
-        pcser::try_push_u32(&mut self.output, variant_index).map_err(SerializerError::PushError)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         value.serialize(self)
     }
 
@@ -321,7 +320,7 @@ where
         len: Option<usize>,
     ) -> Result<Self::SerializeSeq, SerializerError<F::PushError, F::FinalizeError>> {
         let len = len.ok_or(SerializerError::SeqLengthUnknown)?;
-        pcser::try_push_usize(&mut self.output, len).map_err(SerializerError::PushError)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -350,7 +349,8 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, SerializerError<F::PushError, F::FinalizeError>> {
-        pcser::try_push_u32(&mut self.output, variant_index).map_err(SerializerError::PushError)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -360,7 +360,7 @@ where
         len: Option<usize>,
     ) -> Result<Self::SerializeMap, SerializerError<F::PushError, F::FinalizeError>> {
         let len = len.ok_or(SerializerError::SeqLengthUnknown)?;
-        pcser::try_push_usize(&mut self.output, len).map_err(SerializerError::PushError)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -381,7 +381,8 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, SerializerError<F::PushError, F::FinalizeError>> {
-        pcser::try_push_u32(&mut self.output, variant_index).map_err(SerializerError::PushError)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -430,7 +431,7 @@ where
         // to more than `usize` bytes).
         let _ = write!(&mut ctr, "{value}");
         let len = ctr.ct;
-        pcser::try_push_usize(&mut self.output, len).map_err(SerializerError::PushError)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
 
         struct FmtWriter<'a, IF>
         where

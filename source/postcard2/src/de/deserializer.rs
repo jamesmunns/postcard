@@ -445,25 +445,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let sz = pcde::try_take_usize(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let sz = sz.ok_or(DeserializerError::BadVarint)?;
-        if sz > 4 {
-            return Err(DeserializerError::BadChar);
-        }
-        let bytes: &[u8] = self
-            .flavor
-            .try_take_n_temp(sz)
-            .map_err(DeserializerError::PopError)?;
-        // we pass the character through string conversion because
-        // this handles transforming the array of code units to a
-        // codepoint. we can't use char::from_u32() because it expects
-        // an already-processed codepoint.
-        let character = core::str::from_utf8(bytes)
-            .map_err(|_| DeserializerError::BadChar)?
-            .chars()
-            .next()
-            .ok_or(DeserializerError::BadChar)?;
-        visitor.visit_char(character)
+        let ch = pcde::try_take_char(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let ch = ch.ok_or(DeserializerError::BadUtf8)?;
+        visitor.visit_char(ch)
     }
 
     #[inline]
@@ -487,14 +471,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let sz = pcde::try_take_usize(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let sz = sz.ok_or(DeserializerError::BadVarint)?;
-        let bytes: &[u8] = self
-            .flavor
-            .try_take_n_temp(sz)
-            .map_err(DeserializerError::PopError)?;
-        let str_sl = core::str::from_utf8(bytes).map_err(|_| DeserializerError::BadUtf8)?;
-
+        let str_sl =
+            pcde::try_take_str_temp(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let str_sl = str_sl.ok_or(DeserializerError::BadUtf8)?;
         visitor.visit_str(str_sl)
     }
 
@@ -519,12 +498,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let sz = pcde::try_take_usize(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let sz = sz.ok_or(DeserializerError::BadVarint)?;
-        let bytes: &[u8] = self
-            .flavor
-            .try_take_n_temp(sz)
-            .map_err(DeserializerError::PopError)?;
+        let bytes =
+            pcde::try_take_bytes_temp(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let bytes = bytes.ok_or(DeserializerError::BadVarint)?;
         visitor.visit_bytes(bytes)
     }
 
@@ -536,10 +512,10 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        match self.flavor.pop() {
-            Ok(0) => visitor.visit_none(),
-            Ok(1) => visitor.visit_some(self),
-            Ok(_) => Err(DeserializerError::BadOption),
+        match pcde::try_take_option_discrim(&mut self.flavor) {
+            Ok(Some(false)) => visitor.visit_none(),
+            Ok(Some(true)) => visitor.visit_some(self),
+            Ok(None) => Err(DeserializerError::BadOption),
             Err(e) => Err(DeserializerError::PopError(e)),
         }
     }
@@ -591,7 +567,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let len = pcde::try_take_usize(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let len = pcde::try_take_length(&mut self.flavor).map_err(DeserializerError::PopError)?;
         let len = len.ok_or(DeserializerError::BadVarint)?;
 
         visitor.visit_seq(SeqAccess {
@@ -636,7 +612,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let len = pcde::try_take_usize(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let len = pcde::try_take_length(&mut self.flavor).map_err(DeserializerError::PopError)?;
         let len = len.ok_or(DeserializerError::BadVarint)?;
 
         visitor.visit_map(MapAccess {
@@ -741,7 +717,8 @@ impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<
         self,
         seed: V,
     ) -> Result<(V::Value, Self), DeserializerError<F::PopError, F::FinalizeError>> {
-        let varint = pcde::try_take_u32(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let varint =
+            pcde::try_take_discriminant(&mut self.flavor).map_err(DeserializerError::PopError)?;
         let varint = varint.ok_or(DeserializerError::BadVarint)?;
         let v = DeserializeSeed::deserialize(seed, varint.into_deserializer())?;
         Ok((v, self))
