@@ -18,5 +18,4 @@ documentation = "https://docs.rs/postcard-core/"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-
 [dependencies]

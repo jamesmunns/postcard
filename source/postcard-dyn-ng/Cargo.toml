@@ -17,7 +17,6 @@ keywords = [
 ]
 documentation = "https://docs.rs/postcard-dyn-ng/"
 
-
 [dependencies]
 serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
