@@ -1,0 +1,21 @@
+[package]
+name = "postcard-core"
+version = "0.1.0"
+authors = ["James Munns <james@onevariable.com>"]
+edition = "2024"
+readme = "README.md"
+repository = "https://github.com/jamesmunns/postcard"
+description = "A no_std compatible message library for Rust"
+license = "MIT OR Apache-2.0"
+categories = [
+    "embedded",
+    "no-std",
+]
+keywords = []
+documentation = "https://docs.rs/postcard-core/"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]

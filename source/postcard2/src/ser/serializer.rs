@@ -1,7 +1,7 @@
 use serde_core::{Serialize, ser};
 
 use crate::ser::flavors::Flavor;
-use crate::varint::*;
+use postcard_core::ser as pcser;
 
 /// A `serde` compatible serializer, generic over "Flavors" of serializing plugins.
 ///
@@ -126,73 +126,6 @@ mod custom {
 
 pub use custom::SerdeCustomError;
 
-impl<F: Flavor> Serializer<F> {
-    /// Attempt to push a variably encoded [usize] into the output data stream
-    #[inline]
-    pub(crate) fn try_push_varint_usize(
-        &mut self,
-        data: usize,
-    ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; varint_max::<usize>()];
-        let used_buf = varint_usize(data, &mut buf);
-        self.output
-            .try_extend(used_buf)
-            .map_err(SerializerError::PushError)
-    }
-
-    /// Attempt to push a variably encoded [u128] into the output data stream
-    #[inline]
-    pub(crate) fn try_push_varint_u128(
-        &mut self,
-        data: u128,
-    ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; varint_max::<u128>()];
-        let used_buf = varint_u128(data, &mut buf);
-        self.output
-            .try_extend(used_buf)
-            .map_err(SerializerError::PushError)
-    }
-
-    /// Attempt to push a variably encoded [u64] into the output data stream
-    #[inline]
-    pub(crate) fn try_push_varint_u64(
-        &mut self,
-        data: u64,
-    ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; varint_max::<u64>()];
-        let used_buf = varint_u64(data, &mut buf);
-        self.output
-            .try_extend(used_buf)
-            .map_err(SerializerError::PushError)
-    }
-
-    /// Attempt to push a variably encoded [u32] into the output data stream
-    #[inline]
-    pub(crate) fn try_push_varint_u32(
-        &mut self,
-        data: u32,
-    ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; varint_max::<u32>()];
-        let used_buf = varint_u32(data, &mut buf);
-        self.output
-            .try_extend(used_buf)
-            .map_err(SerializerError::PushError)
-    }
-
-    /// Attempt to push a variably encoded [u16] into the output data stream
-    #[inline]
-    pub(crate) fn try_push_varint_u16(
-        &mut self,
-        data: u16,
-    ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; varint_max::<u16>()];
-        let used_buf = varint_u16(data, &mut buf);
-        self.output
-            .try_extend(used_buf)
-            .map_err(SerializerError::PushError)
-    }
-}
-
 impl<F> ser::Serializer for &mut Serializer<F>
 where
     F: Flavor,
@@ -223,30 +156,27 @@ where
         self,
         v: bool,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.serialize_u8(if v { 1 } else { 0 })
+        pcser::try_push_bool(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_i8(self, v: i8) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.serialize_u8(v.to_le_bytes()[0])
+        pcser::try_push_i8(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_i16(self, v: i16) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let zzv = zig_zag_i16(v);
-        self.try_push_varint_u16(zzv)
+        pcser::try_push_i16(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_i32(self, v: i32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let zzv = zig_zag_i32(v);
-        self.try_push_varint_u32(zzv)
+        pcser::try_push_i32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_i64(self, v: i64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let zzv = zig_zag_i64(v);
-        self.try_push_varint_u64(zzv)
+        pcser::try_push_i64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -254,28 +184,27 @@ where
         self,
         v: i128,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let zzv = zig_zag_i128(v);
-        self.try_push_varint_u128(zzv)
+        pcser::try_push_i128(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_u8(self, v: u8) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.output.try_push(v).map_err(SerializerError::PushError)
+        pcser::try_push_u8(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_u16(self, v: u16) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u16(v)
+        pcser::try_push_u16(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_u32(self, v: u32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u32(v)
+        pcser::try_push_u32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_u64(self, v: u64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u64(v)
+        pcser::try_push_u64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -283,23 +212,17 @@ where
         self,
         v: u128,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u128(v)
+        pcser::try_push_u128(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_f32(self, v: f32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let buf = v.to_bits().to_le_bytes();
-        self.output
-            .try_extend(&buf)
-            .map_err(SerializerError::PushError)
+        pcser::try_push_f32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_f64(self, v: f64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let buf = v.to_bits().to_le_bytes();
-        self.output
-            .try_extend(&buf)
-            .map_err(SerializerError::PushError)
+        pcser::try_push_f64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -307,17 +230,12 @@ where
         self,
         v: char,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        let mut buf = [0u8; 4];
-        let strsl = v.encode_utf8(&mut buf);
-        strsl.serialize(self)
+        pcser::try_push_char(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_str(self, v: &str) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_usize(v.len())?;
-        self.output
-            .try_extend(v.as_bytes())
-            .map_err(SerializerError::PushError)
+        pcser::try_push_str(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -325,15 +243,12 @@ where
         self,
         v: &[u8],
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_usize(v.len())?;
-        self.output
-            .try_extend(v)
-            .map_err(SerializerError::PushError)
+        pcser::try_push_bytes(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
     #[inline]
     fn serialize_none(self) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.serialize_u8(0)
+        pcser::try_push_option_none(&mut self.output).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -344,7 +259,7 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.serialize_u8(1)?;
+        pcser::try_push_option_some(&mut self.output).map_err(SerializerError::PushError)?;
         value.serialize(self)
     }
 
@@ -368,7 +283,7 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u32(variant_index)
+        pcser::try_push_u32(&mut self.output, variant_index).map_err(SerializerError::PushError)
     }
 
     #[inline]
@@ -394,7 +309,8 @@ where
     where
         T: ?Sized + Serialize,
     {
-        self.try_push_varint_u32(variant_index)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         value.serialize(self)
     }
 
@@ -403,7 +319,8 @@ where
         self,
         len: Option<usize>,
     ) -> Result<Self::SerializeSeq, SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_usize(len.ok_or(SerializerError::SeqLengthUnknown)?)?;
+        let len = len.ok_or(SerializerError::SeqLengthUnknown)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -432,7 +349,8 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u32(variant_index)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -441,7 +359,8 @@ where
         self,
         len: Option<usize>,
     ) -> Result<Self::SerializeMap, SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_usize(len.ok_or(SerializerError::SeqLengthUnknown)?)?;
+        let len = len.ok_or(SerializerError::SeqLengthUnknown)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -462,7 +381,8 @@ where
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, SerializerError<F::PushError, F::FinalizeError>> {
-        self.try_push_varint_u32(variant_index)?;
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)?;
         Ok(self)
     }
 
@@ -511,7 +431,7 @@ where
         // to more than `usize` bytes).
         let _ = write!(&mut ctr, "{value}");
         let len = ctr.ct;
-        self.try_push_varint_usize(len)?;
+        pcser::try_push_length(&mut self.output, len).map_err(SerializerError::PushError)?;
 
         struct FmtWriter<'a, IF>
         where
@@ -733,20 +653,4 @@ where
     fn end(self) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         Ok(())
     }
-}
-
-fn zig_zag_i16(n: i16) -> u16 {
-    ((n << 1) ^ (n >> 15)) as u16
-}
-
-fn zig_zag_i32(n: i32) -> u32 {
-    ((n << 1) ^ (n >> 31)) as u32
-}
-
-fn zig_zag_i64(n: i64) -> u64 {
-    ((n << 1) ^ (n >> 63)) as u64
-}
-
-fn zig_zag_i128(n: i128) -> u128 {
-    ((n << 1) ^ (n >> 127)) as u128
 }
