@@ -26,6 +26,8 @@ pub mod owned;
 #[cfg(any(feature = "use-std", feature = "alloc"))]
 pub mod fmt;
 
+pub mod intern;
+
 use serde::Serialize;
 
 /// This enum lists which of the Data Model Types apply to a given type. This describes how the
@@ -100,6 +102,18 @@ pub enum DataModelType {
 
     /// The "Tuple" Serde Data Model Type
     Tuple(&'static [&'static Self]),
+
+    /// The Array type: Not part of the Serde Data Model
+    ///
+    /// This is for fixed length arrays like [T; N], in earlier
+    /// versions of the schema, we mapped this to a Tuple, which
+    /// worked but makes schemas unfortunately long.
+    Array {
+        /// The array element's type
+        item: &'static Self,
+        /// The number of items in the fixed size array
+        count: usize,
+    },
 
     /// The "Map" Serde Data Model Type
     Map {
