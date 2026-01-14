@@ -124,11 +124,11 @@ Don't forget to add [the `no-std` subset](https://serde.rs/no-std.html) of `serd
 
 ```toml
 [dependencies]
-postcard = "1.0.0"
+postcard = "1.1"
 
 # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
 # disabling default-features fixes this
-serde = { version = "1.0.*", default-features = false }
+serde = { version = "1.0", default-features = false }
 ```
 
 ## Unsupported serde attributes
