@@ -75,6 +75,12 @@ pub use ser::{serialize_with_flavor, serializer::Serializer, to_extend, to_slice
 #[cfg(feature = "heapless")]
 pub use ser::{to_vec, to_vec_cobs};
 
+#[cfg(feature = "heapless-v0_8")]
+pub use ser::{to_vec_cobs_v0_8, to_vec_v0_8};
+
+#[cfg(feature = "heapless-v0_9")]
+pub use ser::{to_vec_cobs_v0_9, to_vec_v0_9};
+
 #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub use ser::to_eio;
 
@@ -98,6 +104,12 @@ pub use {
 
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
 pub use ser::to_vec_crc32;
+
+#[cfg(all(feature = "use-crc", feature = "heapless-v0_8"))]
+pub use ser::to_vec_crc32_v0_8;
+
+#[cfg(all(feature = "use-crc", feature = "heapless-v0_9"))]
+pub use ser::to_vec_crc32_v0_9;
 
 #[cfg(all(feature = "use-crc", feature = "use-std"))]
 pub use ser::to_stdvec_crc32;
