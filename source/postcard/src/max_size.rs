@@ -347,6 +347,20 @@ const fn max(lhs: usize, rhs: usize) -> usize {
     }
 }
 
+/// Returns the max size in a slice of variant sizes, or zero if the slice is empty.
+#[doc(hidden)] // used only in macro codegen
+pub const fn max_of_variants(sizes: &[usize]) -> usize {
+    let (mut max, mut idx) = (0, 0);
+    while idx < sizes.len() {
+        let size = sizes[idx];
+        if size > max {
+            max = size;
+        }
+        idx += 1;
+    }
+    max
+}
+
 #[cfg(any(feature = "alloc", feature = "use-std"))]
 #[cfg(test)]
 mod tests {
