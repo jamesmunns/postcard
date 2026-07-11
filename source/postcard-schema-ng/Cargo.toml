@@ -85,6 +85,12 @@ package = "serde-big-array"
 version = "0.5.1"
 optional = true
 
+[dependencies.enum-map_v3_0]
+package = "enum-map"
+version = "3.0.0"
+default-features = false
+optional = true
+
 [dev-dependencies.postcard]
 path = "../postcard"
 version = "1.0"
@@ -107,6 +113,7 @@ core-num-saturating = []
 
 chrono-v0_4 = ["chrono_v0_4"]
 defmt-v0_3 = ["defmt_v0_3"]
+enum-map-v3_0 = ["enum-map_v3_0"]
 fixed-v1_0 = ["fixed_v1_0"]
 heapless-v0_7 = ["heapless_v0_7"]
 heapless-v0_8 = ["heapless_v0_8"]
