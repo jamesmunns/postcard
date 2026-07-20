@@ -80,6 +80,12 @@ version = "0.33.0"
 optional = true
 default-features = false
 
+[dependencies.enum-map-v3_0]
+package = "enum-map"
+version = "3.0.0"
+default-features = false
+optional = true
+
 [dev-dependencies.serde]
 version = "1.0.100"
 default-features = false
@@ -126,3 +132,4 @@ heapless = ["dep:heapless"]
 postcard-derive = ["dep:postcard-derive"]
 heapless-v0_8 = ["dep:heapless-v0_8"]
 heapless-v0_9 = ["dep:heapless-v0_9"]
+enum-map-v3_0 = ["dep:enum-map-v3_0"]

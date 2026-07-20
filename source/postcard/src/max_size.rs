@@ -314,6 +314,13 @@ impl<T: MaxSize + nalgebra_v0_33::Scalar> MaxSize for nalgebra_v0_33::Quaternion
     const POSTCARD_MAX_SIZE: usize = nalgebra_v0_33::Vector4::<T>::POSTCARD_MAX_SIZE;
 }
 
+#[cfg(all(feature = "enum-map-v3_0", feature = "experimental-derive"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "enum-map-v3_0")))]
+impl<K: enum_map_v3_0::Enum<Array<V>: MaxSize>, V> MaxSize for enum_map_v3_0::EnumMap<K, V> {
+    // K::Array is guaranteed to be [T; N]
+    const POSTCARD_MAX_SIZE: usize = K::Array::POSTCARD_MAX_SIZE;
+}
+
 #[cfg(any(
     feature = "heapless",
     feature = "heapless-v0_8",
