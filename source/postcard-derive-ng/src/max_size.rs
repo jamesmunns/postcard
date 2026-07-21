@@ -41,28 +41,17 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
 /// Generate a constant expression that sums up the maximum size of the type.
 fn max_size_sum(data: &Data, span: Span) -> Result<TokenStream, syn::Error> {
     match data {
-        Data::Struct(data) => Ok(sum_fields(&data.fields)),
+        Data::Struct(data) => Ok(sum_fields(&data.fields).unwrap_or(quote!(0))),
         Data::Enum(data) => {
             let variant_count = data.variants.len();
 
-            let recurse = data.variants.iter().map(|v| sum_fields(&v.fields));
+            let variant_sizes = data.variants.iter().filter_map(|v| sum_fields(&v.fields));
 
             let discriminant_size = varint_size_discriminant(variant_count as u32) as usize;
 
-            // Generate a tree of max expressions.
-            let max = recurse.fold(quote!(0), |acc, x| {
-                quote! {
-                    {
-                        let lhs = #acc;
-                        let rhs = #x;
-                        if lhs > rhs {
-                            lhs
-                        } else {
-                            rhs
-                        }
-                    }
-                }
-            });
+            let max = quote! {
+                ::postcard2::experimental::max_size::max_of_variants(&[#(#variant_sizes),*])
+            };
 
             Ok(quote! {
                 #discriminant_size + #max
@@ -75,12 +64,12 @@ fn max_size_sum(data: &Data, span: Span) -> Result<TokenStream, syn::Error> {
     }
 }
 
-fn sum_fields(fields: &Fields) -> TokenStream {
+fn sum_fields(fields: &Fields) -> Option<TokenStream> {
     match fields {
         syn::Fields::Named(fields) => {
             // Expands to an expression like
             //
-            //    0 + <Field1Type>::POSTCARD_MAX_SIZE + <Field2Type>::POSTCARD_MAX_SIZE + ...
+            //    <Field1Type>::POSTCARD_MAX_SIZE + <Field2Type>::POSTCARD_MAX_SIZE + ...
             //
             // but using fully qualified syntax.
 
@@ -89,9 +78,11 @@ fn sum_fields(fields: &Fields) -> TokenStream {
                 quote_spanned! { f.span() => <#ty as ::postcard2::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
-            quote! {
-                0 #(+ #recurse)*
-            }
+            (!fields.named.is_empty()).then(|| {
+                quote! {
+                    #(#recurse)+*
+                }
+            })
         }
         syn::Fields::Unnamed(fields) => {
             let recurse = fields.unnamed.iter().map(|f| {
@@ -99,11 +90,13 @@ fn sum_fields(fields: &Fields) -> TokenStream {
                 quote_spanned! { f.span() => <#ty as ::postcard2::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
-            quote! {
-                0 #(+ #recurse)*
-            }
+            (!fields.unnamed.is_empty()).then(|| {
+                quote! {
+                    #(#recurse)+*
+                }
+            })
         }
-        syn::Fields::Unit => quote!(0),
+        syn::Fields::Unit => None,
     }
 }
 

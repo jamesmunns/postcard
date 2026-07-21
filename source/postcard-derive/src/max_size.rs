@@ -45,24 +45,13 @@ fn max_size_sum(data: &Data, span: Span) -> Result<TokenStream, syn::Error> {
         Data::Enum(data) => {
             let variant_count = data.variants.len();
 
-            let recurse = data.variants.iter().filter_map(|v| sum_fields(&v.fields));
+            let variant_sizes = data.variants.iter().filter_map(|v| sum_fields(&v.fields));
 
             let discriminant_size = varint_size_discriminant(variant_count as u32) as usize;
 
-            // Generate a tree of max expressions.
-            let max = recurse.fold(quote!(0), |acc, x| {
-                quote! {
-                    {
-                        let lhs = #acc;
-                        let rhs = #x;
-                        if lhs > rhs {
-                            lhs
-                        } else {
-                            rhs
-                        }
-                    }
-                }
-            });
+            let max = quote! {
+                ::postcard::experimental::max_size::max_of_variants(&[#(#variant_sizes),*])
+            };
 
             Ok(quote! {
                 #discriminant_size + #max
@@ -80,7 +69,7 @@ fn sum_fields(fields: &Fields) -> Option<TokenStream> {
         syn::Fields::Named(fields) => {
             // Expands to an expression like
             //
-            //    0 + <Field1Type>::POSTCARD_MAX_SIZE + <Field2Type>::POSTCARD_MAX_SIZE + ...
+            //    <Field1Type>::POSTCARD_MAX_SIZE + <Field2Type>::POSTCARD_MAX_SIZE + ...
             //
             // but using fully qualified syntax.
 
@@ -89,8 +78,10 @@ fn sum_fields(fields: &Fields) -> Option<TokenStream> {
                 quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
-            Some(quote! {
-                0 #(+ #recurse)*
+            (!fields.named.is_empty()).then(|| {
+                quote! {
+                    #(#recurse)+*
+                }
             })
         }
         syn::Fields::Unnamed(fields) => {
@@ -99,8 +90,10 @@ fn sum_fields(fields: &Fields) -> Option<TokenStream> {
                 quote_spanned! { f.span() => <#ty as ::postcard::experimental::max_size::MaxSize>::POSTCARD_MAX_SIZE }
             });
 
-            Some(quote! {
-                0 #(+ #recurse)*
+            (!fields.unnamed.is_empty()).then(|| {
+                quote! {
+                    #(#recurse)+*
+                }
             })
         }
         syn::Fields::Unit => None,
