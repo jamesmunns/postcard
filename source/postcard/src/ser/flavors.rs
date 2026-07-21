@@ -95,6 +95,12 @@ use core::ops::IndexMut;
 #[cfg(feature = "heapless")]
 pub use heapless_vec::*;
 
+#[cfg(feature = "heapless-v0_8")]
+pub use heapless_vec_v0_8::*;
+
+#[cfg(feature = "heapless-v0_9")]
+pub use heapless_vec_v0_9::*;
+
 #[cfg(feature = "use-std")]
 pub use std_vec::*;
 
@@ -426,6 +432,72 @@ mod heapless_vec {
     }
 }
 
+macro_rules! impl_heapless_vec_flavor {
+    ($feature:literal, $mod_name:ident, $name:ident, $heapless:ident, $version:literal) => {
+        #[cfg(feature = $feature)]
+        mod $mod_name {
+            use super::Flavor;
+            use super::Index;
+            use super::IndexMut;
+            use crate::{Error, Result};
+            use $heapless::Vec;
+
+            #[doc = concat!("The `", stringify!($name), "` flavor is a wrapper type around a `heapless` ", $version, " `Vec`.")]
+            /// This is a stack allocated data structure, with a fixed maximum size and
+            /// variable amount of contents.
+            #[derive(Default)]
+            pub struct $name<const B: usize> {
+                vec: Vec<u8, B>,
+            }
+
+            impl<const B: usize> $name<B> {
+                #[doc = concat!("Create a new, currently empty, `heapless` ", $version, " `Vec` to be used for")]
+                /// storing serialized output data.
+                pub fn new() -> Self {
+                    Self::default()
+                }
+            }
+
+            impl<const B: usize> Flavor for $name<B> {
+                type Output = Vec<u8, B>;
+
+                #[inline(always)]
+                fn try_extend(&mut self, data: &[u8]) -> Result<()> {
+                    self.vec
+                        .extend_from_slice(data)
+                        .map_err(|_| Error::SerializeBufferFull)
+                }
+
+                #[inline(always)]
+                fn try_push(&mut self, data: u8) -> Result<()> {
+                    self.vec.push(data).map_err(|_| Error::SerializeBufferFull)
+                }
+
+                fn finalize(self) -> Result<Vec<u8, B>> {
+                    Ok(self.vec)
+                }
+            }
+
+            impl<const B: usize> Index<usize> for $name<B> {
+                type Output = u8;
+
+                fn index(&self, idx: usize) -> &u8 {
+                    &self.vec[idx]
+                }
+            }
+
+            impl<const B: usize> IndexMut<usize> for $name<B> {
+                fn index_mut(&mut self, idx: usize) -> &mut u8 {
+                    &mut self.vec[idx]
+                }
+            }
+        }
+    };
+}
+
+impl_heapless_vec_flavor!("heapless-v0_8", heapless_vec_v0_8, HVecV0_8, heapless_v0_8, "0.8");
+impl_heapless_vec_flavor!("heapless-v0_9", heapless_vec_v0_9, HVecV0_9, heapless_v0_9, "0.9");
+
 #[cfg(feature = "use-std")]
 mod std_vec {
     /// The `StdVec` flavor is a wrapper type around a `std::vec::Vec`.
@@ -690,6 +762,28 @@ pub mod crc {
     impl_flavor!(u32, to_slice_u32, to_vec_u32, to_allocvec_u32);
     impl_flavor!(u64, to_slice_u64, to_vec_u64, to_allocvec_u64);
     impl_flavor!(u128, to_slice_u128, to_vec_u128, to_allocvec_u128);
+
+    macro_rules! impl_crc_heapless_vec {
+        ($feature:literal, $fn_name:ident, $hvec:ident, $heapless:ident, $version:literal) => {
+            #[doc = concat!("Serialize a `T` to a `heapless` ", $version, " `Vec<u8>`, with the `Vec` containing")]
+            /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
+            #[cfg(feature = $feature)]
+            #[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = $feature))))]
+            pub fn $fn_name<T, const B: usize>(
+                value: &T,
+                digest: Digest<'_, u32>,
+            ) -> Result<$heapless::Vec<u8, B>>
+            where
+                T: Serialize + ?Sized,
+            {
+                use super::$hvec;
+                serialize_with_flavor(value, CrcModifier::new($hvec::default(), digest))
+            }
+        };
+    }
+
+    impl_crc_heapless_vec!("heapless-v0_8", to_vec_u32_v0_8, HVecV0_8, heapless_v0_8, "0.8");
+    impl_crc_heapless_vec!("heapless-v0_9", to_vec_u32_v0_9, HVecV0_9, heapless_v0_9, "0.9");
 }
 
 /// The `Size` flavor is a measurement flavor, which accumulates the number of bytes needed to
