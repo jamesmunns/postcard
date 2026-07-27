@@ -356,6 +356,9 @@ fn smoke() {
         (dewit::<Option<Classic>>, "Option<Classic>"),
         (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
         (dewit::<PathBuf>, "String"),
+        (dewit::<std::collections::VecDeque<u32>>, "[u32]"),
+        (dewit::<std::rc::Rc<u32>>, "u32"),
+        (dewit::<std::sync::Arc<u32>>, "u32"),
     ];
     for (f, s) in tests {
         assert_eq!(f().as_str(), *s);
