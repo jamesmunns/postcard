@@ -91,7 +91,10 @@ impl<T: Schema> Schema for [T] {
 }
 
 impl<T: Schema, const N: usize> Schema for [T; N] {
-    const SCHEMA: &'static DataModelType = &DataModelType::Tuple(&[T::SCHEMA; N]);
+    const SCHEMA: &'static DataModelType = &DataModelType::Array {
+        item: T::SCHEMA,
+        count: N,
+    };
 }
 
 impl<T: Schema> Schema for Range<T> {

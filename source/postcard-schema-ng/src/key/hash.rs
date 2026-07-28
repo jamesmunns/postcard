@@ -163,6 +163,18 @@ pub mod fnv1a64 {
                 state
             }
             DataModelType::Schema => hash_update(state, &[0xE5]),
+            DataModelType::Array { item, count } => {
+                let mut state = hash_update(state, &[0x2B]);
+                let mut idx = 0;
+
+                // TODO: Do we want to hash the len or something? I'm not
+                // sure how to handle this for different sizes of `usize`.
+                while idx < *count {
+                    state = hash_sdm_type(state, item);
+                    idx += 1;
+                }
+                state
+            }
         }
     }
 
@@ -333,6 +345,18 @@ pub mod fnv1a64_owned {
                 state
             }
             OwnedDataModelType::Schema => hash_update(state, &[0xE5]),
+            OwnedDataModelType::Array { item, count } => {
+                let mut state = hash_update(state, &[0x2B]);
+                let mut idx = 0;
+
+                // TODO: Do we want to hash the len or something? I'm not
+                // sure how to handle this for different sizes of `usize`.
+                while idx < *count {
+                    state = hash_sdm_type_owned(state, item);
+                    idx += 1;
+                }
+                state
+            }
         }
     }
 
