@@ -83,15 +83,16 @@ pub trait Schema {
 mod tests {
     use super::*;
 
+    #[allow(unused)]
+    #[derive(Schema)]
+    #[postcard(crate = crate)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+
     #[test]
     fn crate_path() {
-        #[allow(unused)]
-        #[derive(Schema)]
-        #[postcard(crate = crate)]
-        struct Point {
-            x: i32,
-            y: i32,
-        }
 
         assert_eq!(
             Point::SCHEMA,

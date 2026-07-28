@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 #[serde(rename = "Inner'")]
 enum Inner {
     #[serde(rename = "⍺")]
@@ -21,6 +22,7 @@ enum Inner {
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 #[serde(rename = "Outer'")]
 struct Outer<'a> {
     a: u32,
@@ -34,6 +36,7 @@ struct Outer<'a> {
 
 #[allow(unused)]
 #[derive(Schema)]
+#[postcard(snapshot)]
 struct Slice<'a> {
     x: &'a [u8],
 }

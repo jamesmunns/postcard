@@ -46,6 +46,10 @@ version = "0.7"
 default-features = false
 optional = true
 
+[dependencies.insta]
+package = "insta"
+version = "1"
+
 [dependencies.heapless_v0_8]
 package = "heapless"
 version = "0.8"

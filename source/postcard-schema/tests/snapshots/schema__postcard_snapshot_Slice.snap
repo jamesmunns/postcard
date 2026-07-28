@@ -1,0 +1,23 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "Slice :: SCHEMA"
+---
+NamedType {
+    name: "Slice",
+    ty: Struct(
+        [
+            NamedValue {
+                name: "x",
+                ty: NamedType {
+                    name: "[T]",
+                    ty: Seq(
+                        NamedType {
+                            name: "u8",
+                            ty: U8,
+                        },
+                    ),
+                },
+            },
+        ],
+    ),
+}
