@@ -1,7 +1,7 @@
 use std::num::TryFromIntError;
 
 use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
-use serde_json::Value;
+use serde_json::{Number, Value};
 use varint::{
     varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128,
     zig_zag_i16, zig_zag_i32, zig_zag_i64,
@@ -244,14 +244,6 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             }
         }
         OwnedDataModelType::Map { key, val } => {
-            // TODO: impling blind because we can't test this, oops
-            //
-            // TODO: There's also a mismatch here because serde_json::Value requires
-            // keys to be strings, when postcard doesn't.
-            if **key != OwnedDataModelType::String {
-                return Err(Error::ShouldSupportButDont);
-            }
-
             let obj = value.as_object().right()?;
 
             // First add len
@@ -263,14 +255,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             // Then for each pair, serialize key then val
             for (k, v) in obj.iter() {
                 // KEY
-                //
-                // First add len
-                let len = k.len();
-                let used = varint_usize(len, &mut buf);
-                out.extend_from_slice(used);
-
-                // Then add payload
-                out.extend_from_slice(k.as_bytes());
+                ser_map_key(key, k, out)?;
 
                 // VALUE
                 ser_named_type(val, v, out)?;
@@ -375,6 +360,48 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
         OwnedDataModelType::Schema => todo!(),
     }
     Ok(())
+}
+
+/// Serialize a single map key.
+///
+/// `serde_json::Value` requires map keys to be strings, when postcard doesn't.
+/// `serde_json` handles that by encoding primitive keys as their string
+/// representation, so we recover the original key by parsing that string back
+/// into the type the schema calls for. Key types that `serde_json` also can't
+/// represent as a string are still rejected.
+fn ser_map_key(ty: &OwnedDataModelType, key: &str, out: &mut Vec<u8>) -> Result<(), Error> {
+    let value = match ty {
+        // Unit variants of an enum are stored as their name, which is exactly
+        // what `ser_named_type` expects for an enum.
+        OwnedDataModelType::String | OwnedDataModelType::Enum { .. } => {
+            Value::String(key.to_string())
+        }
+        OwnedDataModelType::Bool => Value::Bool(key.parse().map_err(|_| Error::SchemaMismatch)?),
+        OwnedDataModelType::I8
+        | OwnedDataModelType::I16
+        | OwnedDataModelType::I32
+        | OwnedDataModelType::I64
+        | OwnedDataModelType::I128
+        | OwnedDataModelType::Isize => {
+            let val: i64 = key.parse().map_err(|_| Error::SchemaMismatch)?;
+            Value::Number(Number::from(val))
+        }
+        OwnedDataModelType::U8
+        | OwnedDataModelType::U16
+        | OwnedDataModelType::U32
+        | OwnedDataModelType::U64
+        | OwnedDataModelType::U128
+        | OwnedDataModelType::Usize => {
+            let val: u64 = key.parse().map_err(|_| Error::SchemaMismatch)?;
+            Value::Number(Number::from(val))
+        }
+        // TODO: `serde_json` also stores `char` and float keys as strings, but
+        // deserialization of those types isn't implemented yet, so accepting
+        // them here would give us a serializer the deserializer can't undo.
+        _ => return Err(Error::ShouldSupportButDont),
+    };
+
+    ser_named_type(ty, &value, out)
 }
 
 pub(crate) mod varint {

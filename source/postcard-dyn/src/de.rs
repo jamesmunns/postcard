@@ -204,26 +204,15 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
             }
         }
         OwnedDataModelType::Map { key, val } => {
-            // TODO: impling blind because we can't test this, oops
-            //
-            // TODO: There's also a mismatch here because serde_json::Value requires
-            // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedDataModelType::String {
-                return Err(Error::ShouldSupportButDont);
-            }
-
             let (map_len, mut rest) = try_take_varint_usize(data)?;
             let mut map = Map::new();
 
             for _ in 0..map_len {
-                let (str_len, irest) = try_take_varint_usize(rest)?;
-                let (bytes, irest) = irest.take_n(str_len)?;
-                let s = from_utf8(bytes).map_err(|_| Error::SchemaMismatch)?;
-
+                let (k, irest) = de_map_key(&key.ty, rest)?;
                 let (v, irest) = de_named_type(&val.ty, irest)?;
                 rest = irest;
 
-                map.insert(s.to_string(), v);
+                map.insert(k, v);
             }
 
             Ok((Value::Object(map), rest))
@@ -272,6 +261,47 @@ fn de_named_type<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, 
             }
         }
         OwnedDataModelType::Schema => todo!(),
+    }
+}
+
+/// Deserialize a single map key.
+///
+/// `serde_json::Value` requires map keys to be strings, when postcard doesn't.
+/// `serde_json` handles that by encoding primitive keys as their string
+/// representation, so we do the same. Key types that `serde_json` also can't
+/// represent as a string are still rejected.
+fn de_map_key<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(String, &'a [u8]), Error> {
+    match ty {
+        OwnedDataModelType::Bool
+        | OwnedDataModelType::I8
+        | OwnedDataModelType::I16
+        | OwnedDataModelType::I32
+        | OwnedDataModelType::I64
+        | OwnedDataModelType::I128
+        | OwnedDataModelType::Isize
+        | OwnedDataModelType::U8
+        | OwnedDataModelType::U16
+        | OwnedDataModelType::U32
+        | OwnedDataModelType::U64
+        | OwnedDataModelType::U128
+        | OwnedDataModelType::Usize
+        | OwnedDataModelType::String
+        | OwnedDataModelType::Enum(_) => {
+            let (val, rest) = de_named_type(ty, data)?;
+            let key = match val {
+                // Unit variants of an enum come back as their name, anything
+                // else is an object, which can't be a key.
+                Value::String(s) => s,
+                Value::Bool(b) => b.to_string(),
+                Value::Number(n) => n.to_string(),
+                _ => return Err(Error::ShouldSupportButDont),
+            };
+            Ok((key, rest))
+        }
+        // TODO: `serde_json` also stores `char` and float keys as strings, but
+        // `char` isn't implemented above, and round tripping a float through a
+        // decimal string is not something we want to do silently.
+        _ => Err(Error::ShouldSupportButDont),
     }
 }
 
@@ -432,11 +462,13 @@ impl TakeExt for [u8] {
 
 #[cfg(test)]
 mod test {
-    use postcard_schema::Schema;
-    use serde::{Deserialize, Serialize};
-    use serde_json::json;
+    use std::collections::BTreeMap;
 
-    use crate::{from_slice_dyn, to_stdvec_dyn};
+    use postcard_schema::{schema::owned::OwnedNamedType, Schema};
+    use serde::{Deserialize, Serialize};
+    use serde_json::{json, Value};
+
+    use crate::{de::Error as DeError, from_slice_dyn, ser::Error as SerError, to_stdvec_dyn};
 
     #[derive(Serialize, Deserialize, Schema)]
     struct Struct1 {
@@ -521,6 +553,67 @@ mod test {
             json! {
                 {"Epsilon": [8, false]}
             }
+        );
+    }
+
+    #[derive(Serialize, Deserialize, Schema, PartialEq, Eq, PartialOrd, Ord)]
+    enum Key1 {
+        Alpha,
+        Beta,
+    }
+
+    /// Round trip a map through postcard, into a `Value`, and back into postcard,
+    /// checking the `Value` along the way.
+    fn map_round_trip<T: Serialize + Schema>(map: &T, expect: Value) {
+        let schema = OwnedNamedType::from(T::SCHEMA);
+        let bytes = postcard::to_stdvec(map).unwrap();
+
+        let de = from_slice_dyn(&schema, &bytes).unwrap();
+        assert_eq!(de, expect);
+        assert_eq!(de, serde_json::to_value(map).unwrap());
+
+        let ser = to_stdvec_dyn(&schema, &de).unwrap();
+        assert_eq!(ser, bytes);
+    }
+
+    #[test]
+    fn maps() {
+        // String keys, which have always worked
+        map_round_trip(
+            &BTreeMap::from([("bib".to_string(), 10u8), ("bim".to_string(), 20)]),
+            json! {{"bib": 10, "bim": 20}},
+        );
+
+        // Anything serde_json can store as a string key, we can too
+        map_round_trip(
+            &BTreeMap::from([(false, 10u8), (true, 20)]),
+            json! {{"false": 10, "true": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(1u32, 10u8), (2, 20)]),
+            json! {{"1": 10, "2": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(-1i64, 10u8), (5, 20)]),
+            json! {{"-1": 10, "5": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(Key1::Alpha, 10u8), (Key1::Beta, 20)]),
+            json! {{"Alpha": 10, "Beta": 20}},
+        );
+
+        // Keys serde_json can't store as a string are still rejected, rather
+        // than silently mangled
+        type Map1 = BTreeMap<(u8, u8), u8>;
+        let map = Map1::from([((1, 2), 10)]);
+        let bytes = postcard::to_stdvec(&map).unwrap();
+        assert_eq!(
+            from_slice_dyn(&Map1::SCHEMA.into(), &bytes),
+            Err(DeError::ShouldSupportButDont)
+        );
+        assert_eq!(
+            to_stdvec_dyn(&Map1::SCHEMA.into(), &json! {{"[1,2]": 10}}),
+            Err(SerError::ShouldSupportButDont)
         );
     }
 }
