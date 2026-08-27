@@ -583,6 +583,13 @@ mod test {
         Beta,
     }
 
+    /// Like [`Key1`], but declared in an order the variant names don't sort in.
+    #[derive(Serialize, Deserialize, Schema, PartialEq, Eq, PartialOrd, Ord)]
+    enum Key2 {
+        Zeta,
+        Alpha,
+    }
+
     /// Round trip a map through postcard, into a `Value`, and back into postcard,
     /// checking the `Value` along the way.
     fn map_round_trip<T: Serialize + Schema>(map: &T, expect: Value) {
@@ -621,6 +628,43 @@ mod test {
         map_round_trip(
             &BTreeMap::from([(Key1::Alpha, 10u8), (Key1::Beta, 20)]),
             json! {{"Alpha": 10, "Beta": 20}},
+        );
+
+        // Keys only sort the same as their string form when they are strings,
+        // so every other key type needs its entries put back in key order
+        // before they are written out again.
+
+        // Unsigned, digit widths that sort the other way around as strings
+        map_round_trip(
+            &BTreeMap::from([(2u32, 20u8), (10, 100)]),
+            json! {{"2": 20, "10": 100}},
+        );
+
+        // Negative, same digit width, which sorts backwards as strings
+        map_round_trip(
+            &BTreeMap::from([(-1i8, 1u8), (-2, 2)]),
+            json! {{"-1": 1, "-2": 2}},
+        );
+
+        // Mixed sign
+        map_round_trip(
+            &BTreeMap::from([(-2i16, 1u8), (-1, 2), (3, 3), (10, 4)]),
+            json! {{"-2": 1, "-1": 2, "3": 3, "10": 4}},
+        );
+
+        // Unit variants sort by declaration order, not by name
+        map_round_trip(
+            &BTreeMap::from([(Key2::Zeta, 10u8), (Key2::Alpha, 20)]),
+            json! {{"Zeta": 10, "Alpha": 20}},
+        );
+
+        // Nested maps get the same treatment
+        map_round_trip(
+            &BTreeMap::from([
+                (2u32, BTreeMap::from([(2u32, 1u8), (10, 2)])),
+                (10, BTreeMap::new()),
+            ]),
+            json! {{"2": {"2": 1, "10": 2}, "10": {}}},
         );
 
         // Keys serde_json can't store as a string are still rejected, rather
