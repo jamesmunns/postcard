@@ -8,39 +8,41 @@
 //! here — exactly the class of bug OSS-Fuzz is built to surface for Rust.
 #![no_main]
 
-use std::collections::BTreeMap;
-
 use libfuzzer_sys::fuzz_target;
-use serde::{Deserialize, Serialize};
 
-/// Recursive, self-describing value covering every serde type path postcard
-/// must serialize/deserialize (unit, bool, int, uint, float, str, bytes, seq,
-/// map).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-enum FuzzValue {
-    Null,
-    Bool(bool),
-    Int(i64),
-    UInt(u64),
-    Float(f64),
-    Str(String),
-    Bytes(Vec<u8>),
-    Seq(Vec<FuzzValue>),
-    Map(BTreeMap<String, FuzzValue>),
+use crate::common::FuzzValue;
+
+mod common;
+
+/// Assert that `value` encodes and decodes back to the identical value.
+fn assert_stable_roundtrip(value: &FuzzValue) {
+    // Heap path (varint framing).
+    if let Ok(bytes) = postcard::to_stdvec(value) {
+        let round = postcard::from_bytes::<FuzzValue>(&bytes);
+        assert_eq!(round.as_ref(), Ok(value), "varint roundtrip unstable");
+    }
+
+    // Fixed-buffer path (varint framing into a caller-provided slice).
+    let mut buf = [0u8; 4096];
+    if let Ok(written) = postcard::to_slice(value, &mut buf) {
+        let round = postcard::from_bytes::<FuzzValue>(written);
+        assert_eq!(round.as_ref(), Ok(value), "slice roundtrip unstable");
+    }
+
+    // COBS-framing roundtrip (the crate's second framing scheme).
+    let mut out = [0u8; 8192];
+    let mut in_buf = [0u8; 8192];
+    if let Ok(written) = postcard::to_slice_cobs(value, &mut out) {
+        in_buf[..written.len()].copy_from_slice(written);
+        let round = postcard::from_bytes_cobs::<FuzzValue>(&mut in_buf[..written.len()]);
+        assert_eq!(round.as_ref(), Ok(value), "COBS roundtrip unstable");
+    }
 }
 
 fuzz_target!(|data: &[u8]| {
-    // 1. Deserialize arbitrary input into a recursive value.
+    // Deserialize arbitrary input into a recursive value, then prove the
+    // encoder and decoder are mutually stable across all three framing paths.
     if let Ok(v) = postcard::from_bytes::<FuzzValue>(data) {
-        // 2. Re-encode it.
-        if let Ok(bytes) = postcard::to_stdvec(&v) {
-            // 3. Decode the canonical bytes again and require stability.
-            if let Ok(v2) = postcard::from_bytes::<FuzzValue>(&bytes) {
-                assert_eq!(v, v2, "postcard roundtrip produced a different value");
-            }
-        }
+        assert_stable_roundtrip(&v);
     }
-    // Also run the raw input through the fixed-buffer serializer path.
-    let mut buf = [0u8; 4096];
-    let _ = postcard::to_slice(&FuzzValue::Bytes(data.to_vec()), &mut buf);
 });
