@@ -65,6 +65,24 @@ pub mod fnv1a64 {
         hash_sdm_type(state, schema).to_le_bytes()
     }
 
+    pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
+        let mut state = hash_update(state, &[0x2B]);
+        let Some(bound) = bounds else {
+            return state;
+        };
+        let mut value = bound;
+        while value != 0 {
+            let byte = value.to_le_bytes()[0];
+            if value < 128 {
+                return hash_update(state, &[byte]);
+            }
+
+            state = hash_update(state, &[byte | 0x80]);
+            value >>= 7;
+        }
+        state
+    }
+
     pub(crate) const fn hash_update(mut state: u64, bytes: &[u8]) -> u64 {
         let mut idx = 0;
         while idx < bytes.len() {
@@ -110,6 +128,8 @@ pub mod fnv1a64 {
         //     0x1F, 0xA3, 0x35, 0x43, 0x89, 0x49, 0xE3, 0x07,
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
+        //
+        // 0x2B reserved for bounds
         match sdmty {
             DataModelType::Bool => hash_update(state, &[0x11]),
             DataModelType::I8 => hash_update(state, &[0xC5]),
@@ -127,16 +147,23 @@ pub mod fnv1a64 {
             DataModelType::F32 => hash_update(state, &[0xEF]),
             DataModelType::F64 => hash_update(state, &[0x71]),
             DataModelType::Char => hash_update(state, &[0xC1]),
-            DataModelType::String => hash_update(state, &[0x25]),
-            DataModelType::ByteArray => hash_update(state, &[0x65]),
+            DataModelType::String { bounds } => {
+                let state = hash_update(state, &[0x25]);
+                hash_bounds(state, *bounds)
+            }
+            DataModelType::ByteArray { bounds } => {
+                let state = hash_update(state, &[0x65]);
+                hash_bounds(state, *bounds)
+            }
             DataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
                 hash_sdm_type(state, t)
             }
             DataModelType::Unit => hash_update(state, &[0x47]),
-            DataModelType::Seq(t) => {
+            DataModelType::Seq { item: t, bounds } => {
                 let state = hash_update(state, &[0x03]);
-                hash_sdm_type(state, t)
+                let state = hash_sdm_type(state, t);
+                hash_bounds(state, *bounds)
             }
             DataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
@@ -147,10 +174,11 @@ pub mod fnv1a64 {
                 }
                 state
             }
-            DataModelType::Map { key, val } => {
+            DataModelType::Map { key, val, bounds } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type(state, key);
-                hash_sdm_type(state, val)
+                let state = hash_sdm_type(state, val);
+                hash_bounds(state, *bounds)
             }
             DataModelType::Struct { name, data } => hash_struct(state, name, data),
             DataModelType::Enum { name: _, variants } => {
@@ -280,6 +308,8 @@ pub mod fnv1a64_owned {
         //     0x1F, 0xA3, 0x35, 0x43, 0x89, 0x49, 0xE3, 0x07,
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
+        //
+        // 0x2B reserved for bounds
         match sdmty {
             OwnedDataModelType::Bool => hash_update(state, &[0x11]),
             OwnedDataModelType::I8 => hash_update(state, &[0xC5]),
@@ -297,16 +327,23 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::F32 => hash_update(state, &[0xEF]),
             OwnedDataModelType::F64 => hash_update(state, &[0x71]),
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
-            OwnedDataModelType::String => hash_update(state, &[0x25]),
-            OwnedDataModelType::ByteArray => hash_update(state, &[0x65]),
+            OwnedDataModelType::String { bounds } => {
+                let state = hash_update(state, &[0x25]);
+                hash_bounds(state, *bounds)
+            }
+            OwnedDataModelType::ByteArray { bounds } => {
+                let state = hash_update(state, &[0x65]);
+                hash_bounds(state, *bounds)
+            }
             OwnedDataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
                 hash_sdm_type_owned(state, t)
             }
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
-            OwnedDataModelType::Seq(t) => {
+            OwnedDataModelType::Seq { item: t, bounds } => {
                 let state = hash_update(state, &[0x03]);
-                hash_sdm_type_owned(state, t)
+                let state = hash_sdm_type_owned(state, t);
+                hash_bounds(state, *bounds)
             }
             OwnedDataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
@@ -317,10 +354,11 @@ pub mod fnv1a64_owned {
                 }
                 state
             }
-            OwnedDataModelType::Map { key, val } => {
+            OwnedDataModelType::Map { key, val, bounds } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type_owned(state, key);
-                hash_sdm_type_owned(state, val)
+                let state = hash_sdm_type_owned(state, val);
+                hash_bounds(state, *bounds)
             }
             OwnedDataModelType::Struct { name, data } => hash_struct(state, name, data),
             OwnedDataModelType::Enum { name: _, variants } => {
@@ -431,7 +469,7 @@ mod test {
 
         assert_eq!(
             hash_ty_path::<Bar>("test_path"),
-            [139, 128, 52, 27, 107, 8, 218, 98]
+            [224, 143, 54, 58, 255, 237, 252, 44]
         );
     }
 

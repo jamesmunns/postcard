@@ -1,5 +1,7 @@
 //! Owned Schema version
 
+use crate::schema::size_as_varint_usize;
+
 use super::{Data, DataModelType, NamedField, Variant};
 use serde::{Deserialize, Serialize};
 
@@ -96,10 +98,16 @@ pub enum OwnedDataModelType {
     Char,
 
     /// The `String` Serde Data Model Type
-    String,
+    String {
+        /// Upper bound of payload bytes
+        bounds: Option<usize>,
+    },
 
     /// The `&[u8]` Serde Data Model Type
-    ByteArray,
+    ByteArray {
+        /// Upper bound of payload bytes
+        bounds: Option<usize>,
+    },
 
     /// The `Option<T>` Serde Data Model Type
     Option(Box<Self>),
@@ -108,7 +116,12 @@ pub enum OwnedDataModelType {
     Unit,
 
     /// The "Sequence" Serde Data Model Type
-    Seq(Box<Self>),
+    Seq {
+        /// Items in the sequence
+        item: Box<Self>,
+        /// Upper bound of items in the sequence
+        bounds: Option<usize>,
+    },
 
     /// The "Tuple" Serde Data Model Type
     Tuple(Box<[Self]>),
@@ -119,6 +132,8 @@ pub enum OwnedDataModelType {
         key: Box<Self>,
         /// The map "Value" type
         val: Box<Self>,
+        /// Upper bound of k:v pairs in the map
+        bounds: Option<usize>,
     },
 
     /// One of the struct Serde Data Model types
@@ -141,6 +156,21 @@ pub enum OwnedDataModelType {
     Schema,
 }
 
+const fn arr_max_size(data_model_types: &[OwnedDataModelType]) -> Option<usize> {
+    let mut idx = 0;
+    let mut sum = 0;
+    while idx < data_model_types.len() {
+        let Some(size) = data_model_types[idx].max_size() else {
+            return None;
+        };
+        sum += size;
+        idx += 1;
+    }
+    Some(sum)
+}
+
+max_size_dmt!(OwnedDataModelType);
+
 impl From<&DataModelType> for OwnedDataModelType {
     fn from(other: &DataModelType) -> Self {
         match other {
@@ -160,15 +190,19 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::F32 => Self::F32,
             DataModelType::F64 => Self::F64,
             DataModelType::Char => Self::Char,
-            DataModelType::String => Self::String,
-            DataModelType::ByteArray => Self::ByteArray,
+            DataModelType::String { bounds } => Self::String { bounds: *bounds },
+            DataModelType::ByteArray { bounds } => Self::ByteArray { bounds: *bounds },
             DataModelType::Option(o) => Self::Option(Box::new((*o).into())),
             DataModelType::Unit => Self::Unit,
-            DataModelType::Seq(s) => Self::Seq(Box::new((*s).into())),
+            DataModelType::Seq { item: s, bounds } => Self::Seq {
+                item: Box::new((*s).into()),
+                bounds: *bounds,
+            },
             DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
-            DataModelType::Map { key, val } => Self::Map {
+            DataModelType::Map { key, val, bounds } => Self::Map {
                 key: Box::new((*key).into()),
                 val: Box::new((*val).into()),
+                bounds: *bounds,
             },
             DataModelType::Struct { name, data } => Self::Struct {
                 name: (*name).into(),
@@ -199,6 +233,29 @@ pub enum OwnedData {
 
     /// The "Struct" or "Struct Variant" Serde Data Model Type
     Struct(Box<[OwnedNamedField]>),
+}
+
+impl OwnedData {
+    /// Max serialized size
+    pub const fn max_size(&self) -> Option<usize> {
+        match self {
+            OwnedData::Unit => Some(0),
+            OwnedData::Newtype(data_model_type) => data_model_type.max_size(),
+            OwnedData::Tuple(data_model_types) => arr_max_size(data_model_types),
+            OwnedData::Struct(named_fields) => {
+                let mut idx = 0;
+                let mut sum = 0;
+                while idx < named_fields.len() {
+                    let Some(size) = named_fields[idx].ty.max_size() else {
+                        return None;
+                    };
+                    sum += size;
+                    idx += 1;
+                }
+                Some(sum)
+            }
+        }
+    }
 }
 
 impl From<&Data> for OwnedData {

@@ -21,9 +21,6 @@
 //! counterpoint, so if you need to deserialize something, you probably want the Owned variant!
 
 #[cfg(any(feature = "use-std", feature = "alloc"))]
-pub mod owned;
-
-#[cfg(any(feature = "use-std", feature = "alloc"))]
 pub mod fmt;
 
 use serde::Serialize;
@@ -84,10 +81,16 @@ pub enum DataModelType {
     Char,
 
     /// The `String` Serde Data Model Type
-    String,
+    String {
+        /// Upper bound of items in the sequence
+        bounds: Option<usize>,
+    },
 
     /// The `&[u8]` Serde Data Model Type
-    ByteArray,
+    ByteArray {
+        /// Upper bound of items in the sequence
+        bounds: Option<usize>,
+    },
 
     /// The `Option<T>` Serde Data Model Type
     Option(&'static Self),
@@ -96,7 +99,12 @@ pub enum DataModelType {
     Unit,
 
     /// The "Sequence" Serde Data Model Type
-    Seq(&'static Self),
+    Seq {
+        /// Items in the sequence
+        item: &'static Self,
+        /// Upper bound of items in the sequence
+        bounds: Option<usize>,
+    },
 
     /// The "Tuple" Serde Data Model Type
     Tuple(&'static [&'static Self]),
@@ -107,6 +115,8 @@ pub enum DataModelType {
         key: &'static Self,
         /// The map "Value" type
         val: &'static Self,
+        /// Bounds
+        bounds: Option<usize>,
     },
 
     /// One of the struct Serde Data Model types
@@ -129,6 +139,119 @@ pub enum DataModelType {
     Schema,
 }
 
+const fn arr_max_size(data_model_types: &[&DataModelType]) -> Option<usize> {
+    let mut idx = 0;
+    let mut sum = 0;
+    while idx < data_model_types.len() {
+        let Some(size) = data_model_types[idx].max_size() else {
+            return None;
+        };
+        sum += size;
+        idx += 1;
+    }
+    Some(sum)
+}
+
+pub(crate) const fn size_as_varint_usize(n: usize) -> usize {
+    if n == 0 {
+        return 1;
+    }
+    let ttl_bits = usize::BITS as usize;
+    let ldg_bits = n.leading_zeros() as usize;
+    let used_bits = ttl_bits - ldg_bits;
+    used_bits.div_ceil(7)
+}
+
+macro_rules! max_size_dmt {
+    ($kind:ty) => {
+        impl $kind {
+            /// Max serialized size
+            pub const fn max_size(&self) -> Option<usize> {
+                use $kind::*;
+                match self {
+                    Bool => Some(1),
+                    I8 => Some(1),
+                    U8 => Some(1),
+                    I16 => Some(postcard_core::varint::varint_max::<i16>()),
+                    I32 => Some(postcard_core::varint::varint_max::<i32>()),
+                    I64 => Some(postcard_core::varint::varint_max::<i64>()),
+                    I128 => Some(postcard_core::varint::varint_max::<i128>()),
+                    U16 => Some(postcard_core::varint::varint_max::<u16>()),
+                    U32 => Some(postcard_core::varint::varint_max::<i32>()),
+                    U64 => Some(postcard_core::varint::varint_max::<u64>()),
+                    U128 => Some(postcard_core::varint::varint_max::<u128>()),
+                    Usize => Some(postcard_core::varint::varint_max::<usize>()),
+                    Isize => Some(postcard_core::varint::varint_max::<isize>()),
+                    F32 => Some(4),
+                    F64 => Some(8),
+                    Char => Some(5),
+                    String { bounds } | ByteArray { bounds } => {
+                        if let Some(bound) = bounds {
+                            Some(size_as_varint_usize(*bound) + *bound)
+                        } else {
+                            None
+                        }
+                    }
+                    Option(data_model_type) => {
+                        if let Some(bound) = data_model_type.max_size() {
+                            Some(1 + bound)
+                        } else {
+                            None
+                        }
+                    }
+                    Unit => Some(0),
+                    Seq { item, bounds } => {
+                        let Some(bound) = bounds else {
+                            return None;
+                        };
+                        let Some(size) = item.max_size() else {
+                            return None;
+                        };
+                        Some((*bound) * size)
+                    }
+                    Tuple(data_model_types) => arr_max_size(data_model_types),
+                    Map { key, val, bounds } => {
+                        let Some(bound) = bounds else {
+                            return None;
+                        };
+                        let Some(ksize) = key.max_size() else {
+                            return None;
+                        };
+                        let Some(vsize) = val.max_size() else {
+                            return None;
+                        };
+                        let pair = ksize + vsize;
+                        let pairs = (*bound) * pair;
+                        Some(size_as_varint_usize(*bound) + pairs)
+                    }
+                    Struct { name: _, data } => data.max_size(),
+                    Enum { name: _, variants } => {
+                        let mut idx = 0;
+                        let disc = if variants.is_empty() {
+                            1
+                        } else {
+                            size_as_varint_usize(variants.len() - 1)
+                        };
+                        let mut max = 0;
+                        while idx < variants.len() {
+                            let Some(size) = variants[idx].data.max_size() else {
+                                return None;
+                            };
+                            if size > max {
+                                max = size;
+                            }
+                            idx += 1;
+                        }
+                        Some(disc + max)
+                    }
+                    Schema => todo!(),
+                }
+            }
+        }
+    };
+}
+max_size_dmt!(DataModelType);
+
 /// The contents of a struct or enum variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum Data {
@@ -143,6 +266,29 @@ pub enum Data {
 
     /// The "Struct" or "Struct Variant" Serde Data Model Type
     Struct(&'static [&'static NamedField]),
+}
+
+impl Data {
+    /// Max serialized size
+    pub const fn max_size(&self) -> Option<usize> {
+        match self {
+            Data::Unit => Some(0),
+            Data::Newtype(data_model_type) => data_model_type.max_size(),
+            Data::Tuple(data_model_types) => arr_max_size(data_model_types),
+            Data::Struct(named_fields) => {
+                let mut idx = 0;
+                let mut sum = 0;
+                while idx < named_fields.len() {
+                    let Some(size) = named_fields[idx].ty.max_size() else {
+                        return None;
+                    };
+                    sum += size;
+                    idx += 1;
+                }
+                Some(sum)
+            }
+        }
+    }
 }
 
 /// This represents a named struct field.
@@ -165,3 +311,6 @@ pub struct Variant {
     /// The data contained in this variant
     pub data: Data,
 }
+
+#[cfg(any(feature = "use-std", feature = "alloc"))]
+pub mod owned;

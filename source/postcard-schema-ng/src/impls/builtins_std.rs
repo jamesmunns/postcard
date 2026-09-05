@@ -4,17 +4,20 @@ use crate::{schema::DataModelType, Schema};
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<T: Schema> Schema for std::vec::Vec<T> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq(T::SCHEMA);
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        item: T::SCHEMA,
+        bounds: None,
+    };
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl Schema for std::string::String {
-    const SCHEMA: &'static DataModelType = &DataModelType::String;
+    const SCHEMA: &'static DataModelType = &DataModelType::String { bounds: None };
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
 impl Schema for std::path::PathBuf {
-    const SCHEMA: &'static DataModelType = &DataModelType::String;
+    const SCHEMA: &'static DataModelType = &DataModelType::String { bounds: None };
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
@@ -22,6 +25,7 @@ impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
     const SCHEMA: &'static DataModelType = &DataModelType::Map {
         key: K::SCHEMA,
         val: V::SCHEMA,
+        bounds: None,
     };
 }
 
@@ -30,17 +34,24 @@ impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
     const SCHEMA: &'static DataModelType = &DataModelType::Map {
         key: K::SCHEMA,
         val: V::SCHEMA,
+        bounds: None,
     };
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<K: Schema> Schema for std::collections::HashSet<K> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        item: K::SCHEMA,
+        bounds: None,
+    };
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq(K::SCHEMA);
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        item: K::SCHEMA,
+        bounds: None,
+    };
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]

@@ -33,13 +33,16 @@ pub fn is_prim(osdmty: &OwnedDataModelType) -> bool {
         OwnedDataModelType::F32 => true,
         OwnedDataModelType::F64 => true,
         OwnedDataModelType::Char => true,
-        OwnedDataModelType::String => true,
-        OwnedDataModelType::ByteArray => true,
+        // TODO(AJM) is this right?
+        OwnedDataModelType::String { bounds } => bounds.is_none(),
+        OwnedDataModelType::ByteArray { bounds } => bounds.is_none(),
         OwnedDataModelType::Option(ty) => is_prim(ty),
         OwnedDataModelType::Unit => true,
-        OwnedDataModelType::Seq(_) => false,
+        OwnedDataModelType::Seq { .. } => false,
         OwnedDataModelType::Tuple(_) => false,
-        OwnedDataModelType::Map { key, val } => is_prim(key) && is_prim(val),
+        OwnedDataModelType::Map { key, val, bounds } => {
+            bounds.is_none() && is_prim(key) && is_prim(val)
+        }
         OwnedDataModelType::Struct { .. } => false,
         OwnedDataModelType::Enum { .. } => false,
         OwnedDataModelType::Schema => true,
@@ -105,18 +108,31 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
         OwnedDataModelType::F32 => *buf += "f32",
         OwnedDataModelType::F64 => *buf += "f64",
         OwnedDataModelType::Char => *buf += "char",
-        OwnedDataModelType::String => *buf += "String",
-        OwnedDataModelType::ByteArray => *buf += "[u8]",
+        OwnedDataModelType::String { bounds } => {
+            *buf += "String";
+            if let Some(bound) = bounds {
+                *buf += &format!("[..{bound}]");
+            }
+        }
+        OwnedDataModelType::ByteArray { bounds } => {
+            *buf += "[u8]";
+            if let Some(bound) = bounds {
+                *buf += &format!("[..{bound}]");
+            }
+        }
         OwnedDataModelType::Option(ty) => {
             *buf += "Option<";
             fmt_owned_dmt_to_buf(ty, buf, false);
             *buf += ">";
         }
         OwnedDataModelType::Unit => *buf += "()",
-        OwnedDataModelType::Seq(ty) => {
+        OwnedDataModelType::Seq { item: ty, bounds } => {
             *buf += "[";
             fmt_owned_dmt_to_buf(ty, buf, false);
             *buf += "]";
+            if let Some(bound) = bounds {
+                *buf += &format!("[..{bound}]");
+            }
         }
         OwnedDataModelType::Tuple(vec) => {
             if !vec.is_empty() {
@@ -146,12 +162,15 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
                 *buf += "()";
             }
         }
-        OwnedDataModelType::Map { key, val } => {
+        OwnedDataModelType::Map { key, val, bounds } => {
             *buf += "Map<";
             fmt_owned_dmt_to_buf(key, buf, false);
             *buf += ", ";
             fmt_owned_dmt_to_buf(val, buf, false);
             *buf += ">";
+            if let Some(bound) = bounds {
+                *buf += &format!("[..{bound}]");
+            }
         }
         OwnedDataModelType::Struct { name, data } => {
             if top_level {
@@ -230,13 +249,16 @@ pub fn discover_tys(
         OwnedDataModelType::F32 => {}
         OwnedDataModelType::F64 => {}
         OwnedDataModelType::Char => {}
-        OwnedDataModelType::String => {}
-        OwnedDataModelType::ByteArray => {}
+        OwnedDataModelType::String { bounds: _ } => {}
+        OwnedDataModelType::ByteArray { bounds: _ } => {}
         OwnedDataModelType::Option(inner) => {
             discover_tys(inner, set);
         }
         OwnedDataModelType::Unit => {}
-        OwnedDataModelType::Seq(elements) => {
+        OwnedDataModelType::Seq {
+            item: elements,
+            bounds: _,
+        } => {
             discover_tys(elements, set);
         }
         OwnedDataModelType::Tuple(vec) => {
@@ -244,7 +266,11 @@ pub fn discover_tys(
                 discover_tys(v, set);
             }
         }
-        OwnedDataModelType::Map { key, val } => {
+        OwnedDataModelType::Map {
+            key,
+            val,
+            bounds: _,
+        } => {
             discover_tys(key, set);
             discover_tys(val, set);
         }

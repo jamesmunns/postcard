@@ -3,5 +3,5 @@
 use crate::{schema::DataModelType, Schema};
 
 impl Schema for uuid_v1_0::Uuid {
-    const SCHEMA: &'static DataModelType = &DataModelType::ByteArray;
+    const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { bounds: Some(16) };
 }
