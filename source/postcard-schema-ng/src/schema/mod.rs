@@ -207,7 +207,8 @@ macro_rules! max_size_dmt {
                         let Some(size) = item.max_size() else {
                             return None;
                         };
-                        Some((*bound) * size)
+                        let items = (*bound) * size;
+                        Some(size_as_varint_usize(*bound) + items)
                     }
                     Tuple(data_model_types) => arr_max_size(data_model_types),
                     Map { key, val, bounds } => {
