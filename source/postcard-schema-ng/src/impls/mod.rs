@@ -4,6 +4,7 @@
 
 use crate::{schema::DataModelType, Schema};
 
+pub(crate) mod builtins_bounded;
 pub mod builtins_nostd;
 
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]

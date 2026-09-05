@@ -7,6 +7,11 @@ pub mod impls;
 pub mod key;
 pub mod schema;
 
+/// Types with a fixed upper bound
+pub mod bounded {
+    pub use crate::impls::builtins_bounded::{BoundedBytes, BoundedStr, TooLong};
+}
+
 /// Derive [`Schema`] for a struct or enum
 ///
 /// # Examples
