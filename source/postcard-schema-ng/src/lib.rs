@@ -9,7 +9,9 @@ pub mod schema;
 
 /// Types with a fixed upper bound
 pub mod bounded {
-    pub use crate::impls::builtins_bounded::{BoundedBytes, BoundedStr, TooLong};
+    #[cfg(feature = "use-std")]
+    pub use crate::impls::builtins_bounded::std::{BoundedBytes, BoundedString};
+    pub use crate::impls::builtins_bounded::{BoundedByteSlice, BoundedStr, TooLong};
 }
 
 /// Derive [`Schema`] for a struct or enum
