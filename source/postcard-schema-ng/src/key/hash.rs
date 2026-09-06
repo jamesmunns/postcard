@@ -65,6 +65,24 @@ pub mod fnv1a64 {
         hash_sdm_type(state, schema).to_le_bytes()
     }
 
+    pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
+        let Some(bound) = bounds else {
+            return state;
+        };
+        let mut state = hash_update(state, &[0x2B]);
+        let mut value = bound;
+        while value != 0 {
+            let byte = value.to_le_bytes()[0];
+            if value < 128 {
+                return hash_update(state, &[byte]);
+            }
+
+            state = hash_update(state, &[byte | 0x80]);
+            value >>= 7;
+        }
+        state
+    }
+
     pub(crate) const fn hash_update(mut state: u64, bytes: &[u8]) -> u64 {
         let mut idx = 0;
         while idx < bytes.len() {
@@ -110,6 +128,8 @@ pub mod fnv1a64 {
         //     0x1F, 0xA3, 0x35, 0x43, 0x89, 0x49, 0xE3, 0x07,
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
+        //
+        // 0x2B reserved for bounds
         match sdmty {
             DataModelType::Bool => hash_update(state, &[0x11]),
             DataModelType::I8 => hash_update(state, &[0xC5]),
@@ -127,16 +147,26 @@ pub mod fnv1a64 {
             DataModelType::F32 => hash_update(state, &[0xEF]),
             DataModelType::F64 => hash_update(state, &[0x71]),
             DataModelType::Char => hash_update(state, &[0xC1]),
-            DataModelType::String => hash_update(state, &[0x25]),
-            DataModelType::ByteArray => hash_update(state, &[0x65]),
+            DataModelType::String { max_len: bounds } => {
+                let state = hash_update(state, &[0x25]);
+                hash_bounds(state, *bounds)
+            }
+            DataModelType::ByteArray { max_len: bounds } => {
+                let state = hash_update(state, &[0x65]);
+                hash_bounds(state, *bounds)
+            }
             DataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
                 hash_sdm_type(state, t)
             }
             DataModelType::Unit => hash_update(state, &[0x47]),
-            DataModelType::Seq(t) => {
+            DataModelType::Seq {
+                element: t,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x03]);
-                hash_sdm_type(state, t)
+                let state = hash_sdm_type(state, t);
+                hash_bounds(state, *bounds)
             }
             DataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
@@ -147,10 +177,15 @@ pub mod fnv1a64 {
                 }
                 state
             }
-            DataModelType::Map { key, val } => {
+            DataModelType::Map {
+                key,
+                val,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type(state, key);
-                hash_sdm_type(state, val)
+                let state = hash_sdm_type(state, val);
+                hash_bounds(state, *bounds)
             }
             DataModelType::Struct { name, data } => hash_struct(state, name, data),
             DataModelType::Enum { name: _, variants } => {
@@ -280,6 +315,8 @@ pub mod fnv1a64_owned {
         //     0x1F, 0xA3, 0x35, 0x43, 0x89, 0x49, 0xE3, 0x07,
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
+        //
+        // 0x2B reserved for bounds
         match sdmty {
             OwnedDataModelType::Bool => hash_update(state, &[0x11]),
             OwnedDataModelType::I8 => hash_update(state, &[0xC5]),
@@ -297,16 +334,26 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::F32 => hash_update(state, &[0xEF]),
             OwnedDataModelType::F64 => hash_update(state, &[0x71]),
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
-            OwnedDataModelType::String => hash_update(state, &[0x25]),
-            OwnedDataModelType::ByteArray => hash_update(state, &[0x65]),
+            OwnedDataModelType::String { max_len: bounds } => {
+                let state = hash_update(state, &[0x25]);
+                hash_bounds(state, *bounds)
+            }
+            OwnedDataModelType::ByteArray { max_len: bounds } => {
+                let state = hash_update(state, &[0x65]);
+                hash_bounds(state, *bounds)
+            }
             OwnedDataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
                 hash_sdm_type_owned(state, t)
             }
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
-            OwnedDataModelType::Seq(t) => {
+            OwnedDataModelType::Seq {
+                element: t,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x03]);
-                hash_sdm_type_owned(state, t)
+                let state = hash_sdm_type_owned(state, t);
+                hash_bounds(state, *bounds)
             }
             OwnedDataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
@@ -317,10 +364,15 @@ pub mod fnv1a64_owned {
                 }
                 state
             }
-            OwnedDataModelType::Map { key, val } => {
+            OwnedDataModelType::Map {
+                key,
+                val,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type_owned(state, key);
-                hash_sdm_type_owned(state, val)
+                let state = hash_sdm_type_owned(state, val);
+                hash_bounds(state, *bounds)
             }
             OwnedDataModelType::Struct { name, data } => hash_struct(state, name, data),
             OwnedDataModelType::Enum { name: _, variants } => {
@@ -409,6 +461,8 @@ pub mod fnv1a64_owned {
 mod test {
     use postcard_derive_ng::Schema;
 
+    use crate::max_len::MaxLenString;
+
     use super::fnv1a64::hash_ty_path;
 
     #[test]
@@ -429,9 +483,33 @@ mod test {
             B(Foo),
         }
 
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        struct Foo2<const N: usize> {
+            a: u32,
+            b: MaxLenString<N>,
+        }
+
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        enum Bar2<const N: usize> {
+            A,
+            B(Foo2<N>),
+        }
+
         assert_eq!(
             hash_ty_path::<Bar>("test_path"),
             [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+
+        assert_eq!(
+            hash_ty_path::<Bar2<32>>("test_path"),
+            [64, 67, 182, 234, 175, 40, 88, 168]
+        );
+
+        assert_eq!(
+            hash_ty_path::<Bar2<64>>("test_path"),
+            [224, 12, 182, 234, 175, 8, 88, 168]
         );
     }
 
