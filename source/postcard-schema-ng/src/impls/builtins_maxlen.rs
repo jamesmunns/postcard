@@ -313,7 +313,7 @@ pub(crate) mod std {
         where
             S: serde::Serializer,
         {
-            self.inner.serialize(serializer)
+            serializer.serialize_str(&self.inner)
         }
     }
 
@@ -431,7 +431,7 @@ pub(crate) mod std {
         where
             S: serde::Serializer,
         {
-            self.inner.serialize(serializer)
+            serializer.serialize_bytes(&self.inner)
         }
     }
 
