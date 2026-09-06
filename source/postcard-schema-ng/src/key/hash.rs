@@ -71,9 +71,10 @@ pub mod fnv1a64 {
         T: Schema + ?Sized,
         U: Schema + ?Sized,
     {
-        let schema = T::SCHEMA;
         let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
-        hash_sdm_type(state, schema).to_le_bytes()
+        let state = hash_sdm_type(state, T::SCHEMA);
+        let state = hash_sdm_type(state, U::SCHEMA);
+        state.to_le_bytes()
     }
 
     pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
@@ -472,7 +473,7 @@ pub mod fnv1a64_owned {
 mod test {
     use postcard_derive_ng::Schema;
 
-    use crate::max_len::MaxLenString;
+    use crate::{key::Key, max_len::MaxLenString};
 
     use super::fnv1a64::hash_ty_path;
 
@@ -538,5 +539,21 @@ mod test {
         assert_ne!(hash_2, hash_4);
         assert_ne!(hash_1, hash_5);
         assert_ne!(hash_2, hash_6);
+    }
+
+    #[test]
+    fn twohash() {
+        assert_ne!(
+            Key::for_2ty_path::<u32, u32>("p"),
+            Key::for_2ty_path::<u32, bool>("p")
+        );
+        assert_ne!(
+            Key::for_2ty_path::<u32, bool>("p"),
+            Key::for_2ty_path::<bool, u32>("p")
+        );
+        assert_ne!(
+            Key::for_2ty_path::<u32, u32>("p").to_bytes(),
+            Key::for_path::<u32>("p").to_bytes()
+        );
     }
 }
