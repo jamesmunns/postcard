@@ -4,8 +4,8 @@ use crate::{schema::DataModelType, Schema};
 
 impl Schema for uuid_v1_0::Uuid {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-        item: &DataModelType::U8,
-        bounds: Some(16),
+        element: &DataModelType::U8,
+        max_len: Some(16),
     };
 }
 

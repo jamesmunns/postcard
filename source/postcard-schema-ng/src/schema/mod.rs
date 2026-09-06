@@ -82,14 +82,14 @@ pub enum DataModelType {
 
     /// The `String` Serde Data Model Type
     String {
-        /// Upper bound of items in the sequence
-        bounds: Option<usize>,
+        /// Maximum length (in bytes) of the string
+        max_len: Option<usize>,
     },
 
     /// The `&[u8]` Serde Data Model Type
     ByteArray {
-        /// Upper bound of items in the sequence
-        bounds: Option<usize>,
+        /// Maximum length of byte array
+        max_len: Option<usize>,
     },
 
     /// The `Option<T>` Serde Data Model Type
@@ -100,10 +100,10 @@ pub enum DataModelType {
 
     /// The "Sequence" Serde Data Model Type
     Seq {
-        /// Items in the sequence
-        item: &'static Self,
-        /// Upper bound of items in the sequence
-        bounds: Option<usize>,
+        /// Element type of the sequence
+        element: &'static Self,
+        /// Maximum length of the sequence
+        max_len: Option<usize>,
     },
 
     /// The "Tuple" Serde Data Model Type
@@ -115,8 +115,8 @@ pub enum DataModelType {
         key: &'static Self,
         /// The map "Value" type
         val: &'static Self,
-        /// Bounds
-        bounds: Option<usize>,
+        /// Maximum length of K:V pairs
+        max_len: Option<usize>,
     },
 
     /// One of the struct Serde Data Model types
@@ -185,34 +185,34 @@ macro_rules! max_size_dmt {
                     F32 => Some(4),
                     F64 => Some(8),
                     Char => Some(5),
-                    String { bounds } | ByteArray { bounds } => {
-                        if let Some(bound) = bounds {
-                            Some(size_as_varint_usize(*bound) + *bound)
+                    String { max_len } | ByteArray { max_len } => {
+                        if let Some(len) = max_len {
+                            Some(size_as_varint_usize(*len) + *len)
                         } else {
                             None
                         }
                     }
                     Option(data_model_type) => {
-                        if let Some(bound) = data_model_type.max_size() {
-                            Some(1 + bound)
+                        if let Some(len) = data_model_type.max_size() {
+                            Some(1 + len)
                         } else {
                             None
                         }
                     }
                     Unit => Some(0),
-                    Seq { item, bounds } => {
-                        let Some(bound) = bounds else {
+                    Seq { element, max_len } => {
+                        let Some(len) = max_len else {
                             return None;
                         };
-                        let Some(size) = item.max_size() else {
+                        let Some(size) = element.max_size() else {
                             return None;
                         };
-                        let items = (*bound) * size;
-                        Some(size_as_varint_usize(*bound) + items)
+                        let elements = (*len) * size;
+                        Some(size_as_varint_usize(*len) + elements)
                     }
                     Tuple(data_model_types) => arr_max_size(data_model_types),
-                    Map { key, val, bounds } => {
-                        let Some(bound) = bounds else {
+                    Map { key, val, max_len } => {
+                        let Some(len) = max_len else {
                             return None;
                         };
                         let Some(ksize) = key.max_size() else {
@@ -222,8 +222,8 @@ macro_rules! max_size_dmt {
                             return None;
                         };
                         let pair = ksize + vsize;
-                        let pairs = (*bound) * pair;
-                        Some(size_as_varint_usize(*bound) + pairs)
+                        let pairs = (*len) * pair;
+                        Some(size_as_varint_usize(*len) + pairs)
                     }
                     Struct { name: _, data } => data.max_size(),
                     Enum { name: _, variants } => {
@@ -245,7 +245,8 @@ macro_rules! max_size_dmt {
                         }
                         Some(disc + max)
                     }
-                    Schema => todo!(),
+                    // Schemas are unbounded
+                    Schema => None,
                 }
             }
         }

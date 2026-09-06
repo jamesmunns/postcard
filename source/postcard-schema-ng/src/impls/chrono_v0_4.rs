@@ -17,7 +17,7 @@ impl<Tz: chrono_v0_4::TimeZone> Schema for chrono_v0_4::DateTime<Tz> {
     // "+262142-12-31T23:59:59.999999999+23:59"
     //  00000000001111111111222222222233333333
     //  01234567890123456789012345678901234567
-    const SCHEMA: &'static DataModelType = &DataModelType::String { bounds: Some(38) };
+    const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: Some(38) };
 }
 
 #[cfg(test)]

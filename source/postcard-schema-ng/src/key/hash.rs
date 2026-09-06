@@ -147,11 +147,11 @@ pub mod fnv1a64 {
             DataModelType::F32 => hash_update(state, &[0xEF]),
             DataModelType::F64 => hash_update(state, &[0x71]),
             DataModelType::Char => hash_update(state, &[0xC1]),
-            DataModelType::String { bounds } => {
+            DataModelType::String { max_len: bounds } => {
                 let state = hash_update(state, &[0x25]);
                 hash_bounds(state, *bounds)
             }
-            DataModelType::ByteArray { bounds } => {
+            DataModelType::ByteArray { max_len: bounds } => {
                 let state = hash_update(state, &[0x65]);
                 hash_bounds(state, *bounds)
             }
@@ -160,7 +160,10 @@ pub mod fnv1a64 {
                 hash_sdm_type(state, t)
             }
             DataModelType::Unit => hash_update(state, &[0x47]),
-            DataModelType::Seq { item: t, bounds } => {
+            DataModelType::Seq {
+                element: t,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x03]);
                 let state = hash_sdm_type(state, t);
                 hash_bounds(state, *bounds)
@@ -174,7 +177,11 @@ pub mod fnv1a64 {
                 }
                 state
             }
-            DataModelType::Map { key, val, bounds } => {
+            DataModelType::Map {
+                key,
+                val,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type(state, key);
                 let state = hash_sdm_type(state, val);
@@ -327,11 +334,11 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::F32 => hash_update(state, &[0xEF]),
             OwnedDataModelType::F64 => hash_update(state, &[0x71]),
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
-            OwnedDataModelType::String { bounds } => {
+            OwnedDataModelType::String { max_len: bounds } => {
                 let state = hash_update(state, &[0x25]);
                 hash_bounds(state, *bounds)
             }
-            OwnedDataModelType::ByteArray { bounds } => {
+            OwnedDataModelType::ByteArray { max_len: bounds } => {
                 let state = hash_update(state, &[0x65]);
                 hash_bounds(state, *bounds)
             }
@@ -340,7 +347,10 @@ pub mod fnv1a64_owned {
                 hash_sdm_type_owned(state, t)
             }
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
-            OwnedDataModelType::Seq { item: t, bounds } => {
+            OwnedDataModelType::Seq {
+                element: t,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x03]);
                 let state = hash_sdm_type_owned(state, t);
                 hash_bounds(state, *bounds)
@@ -354,7 +364,11 @@ pub mod fnv1a64_owned {
                 }
                 state
             }
-            OwnedDataModelType::Map { key, val, bounds } => {
+            OwnedDataModelType::Map {
+                key,
+                val,
+                max_len: bounds,
+            } => {
                 let state = hash_update(state, &[0x4F]);
                 let state = hash_sdm_type_owned(state, key);
                 let state = hash_sdm_type_owned(state, val);
@@ -447,7 +461,7 @@ pub mod fnv1a64_owned {
 mod test {
     use postcard_derive_ng::Schema;
 
-    use crate::bounded::BoundedString;
+    use crate::max_len::MaxLenString;
 
     use super::fnv1a64::hash_ty_path;
 
@@ -473,7 +487,7 @@ mod test {
         #[postcard(crate = crate)]
         struct Foo2<const N: usize> {
             a: u32,
-            b: BoundedString<N>,
+            b: MaxLenString<N>,
         }
 
         #[derive(Schema)]

@@ -1,4 +1,4 @@
-//! Bounded collections
+//! MaxLen collections
 //!
 //! These items have schemas that include bounded information.
 
@@ -14,31 +14,31 @@ pub struct TooLong;
 // STR
 //
 
-/// Bounded version of `&str`
+/// MaxLen version of `&str`
 #[derive(PartialEq, Clone, Copy)]
-pub struct BoundedStr<'a, const N: usize> {
+pub struct MaxLenStr<'a, const N: usize> {
     inner: &'a str,
 }
 
-impl<'a, const N: usize> core::fmt::Debug for BoundedStr<'a, N> {
+impl<'a, const N: usize> core::fmt::Debug for MaxLenStr<'a, N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.inner.fmt(f)
     }
 }
 
-impl<'a, const N: usize> core::fmt::Display for BoundedStr<'a, N> {
+impl<'a, const N: usize> core::fmt::Display for MaxLenStr<'a, N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.inner.fmt(f)
     }
 }
 
-impl<'a, const N: usize> From<BoundedStr<'a, N>> for &'a str {
-    fn from(value: BoundedStr<'a, N>) -> Self {
+impl<'a, const N: usize> From<MaxLenStr<'a, N>> for &'a str {
+    fn from(value: MaxLenStr<'a, N>) -> Self {
         value.inner
     }
 }
 
-impl<'a, const N: usize> Deref for BoundedStr<'a, N> {
+impl<'a, const N: usize> Deref for MaxLenStr<'a, N> {
     type Target = str;
 
     #[inline]
@@ -47,14 +47,14 @@ impl<'a, const N: usize> Deref for BoundedStr<'a, N> {
     }
 }
 
-impl<'a, const N: usize> AsRef<str> for BoundedStr<'a, N> {
+impl<'a, const N: usize> AsRef<str> for MaxLenStr<'a, N> {
     #[inline]
     fn as_ref(&self) -> &str {
         self.inner
     }
 }
 
-impl<'a, const N: usize> TryFrom<&'a str> for BoundedStr<'a, N> {
+impl<'a, const N: usize> TryFrom<&'a str> for MaxLenStr<'a, N> {
     type Error = TooLong;
 
     #[inline]
@@ -67,7 +67,7 @@ impl<'a, const N: usize> TryFrom<&'a str> for BoundedStr<'a, N> {
     }
 }
 
-impl<'a, const N: usize> Serialize for BoundedStr<'a, N> {
+impl<'a, const N: usize> Serialize for MaxLenStr<'a, N> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -77,14 +77,14 @@ impl<'a, const N: usize> Serialize for BoundedStr<'a, N> {
     }
 }
 
-impl<'de, const N: usize> Deserialize<'de> for BoundedStr<'de, N> {
+impl<'de, const N: usize> Deserialize<'de> for MaxLenStr<'de, N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct StrVisitor<const N: usize>;
         impl<'de, const N: usize> Visitor<'de> for StrVisitor<N> {
-            type Value = BoundedStr<'de, N>;
+            type Value = MaxLenStr<'de, N>;
 
             #[inline]
             fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -96,7 +96,7 @@ impl<'de, const N: usize> Deserialize<'de> for BoundedStr<'de, N> {
             where
                 E: serde::de::Error,
             {
-                if let Ok(b) = BoundedStr::<'de, N>::try_from(v) {
+                if let Ok(b) = MaxLenStr::<'de, N>::try_from(v) {
                     Ok(b)
                 } else {
                     Err(E::invalid_length(v.len(), &self))
@@ -108,32 +108,32 @@ impl<'de, const N: usize> Deserialize<'de> for BoundedStr<'de, N> {
     }
 }
 
-impl<'a, const N: usize> Schema for BoundedStr<'a, N> {
-    const SCHEMA: &'static DataModelType = &DataModelType::String { bounds: Some(N) };
+impl<'a, const N: usize> Schema for MaxLenStr<'a, N> {
+    const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: Some(N) };
 }
 
 //
 // BYTES
 //
-/// Bounded version of `&[u8]`
+/// MaxLen version of `&[u8]`
 #[derive(PartialEq, Clone, Copy)]
-pub struct BoundedByteSlice<'a, const N: usize> {
+pub struct MaxLenByteSlice<'a, const N: usize> {
     inner: &'a [u8],
 }
 
-impl<'a, const N: usize> core::fmt::Debug for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> core::fmt::Debug for MaxLenByteSlice<'a, N> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.inner.fmt(f)
     }
 }
 
-impl<'a, const N: usize> From<BoundedByteSlice<'a, N>> for &'a [u8] {
-    fn from(value: BoundedByteSlice<'a, N>) -> Self {
+impl<'a, const N: usize> From<MaxLenByteSlice<'a, N>> for &'a [u8] {
+    fn from(value: MaxLenByteSlice<'a, N>) -> Self {
         value.inner
     }
 }
 
-impl<'a, const N: usize> Deref for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> Deref for MaxLenByteSlice<'a, N> {
     type Target = [u8];
 
     #[inline]
@@ -142,14 +142,14 @@ impl<'a, const N: usize> Deref for BoundedByteSlice<'a, N> {
     }
 }
 
-impl<'a, const N: usize> AsRef<[u8]> for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> AsRef<[u8]> for MaxLenByteSlice<'a, N> {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.inner
     }
 }
 
-impl<'a, const N: usize> TryFrom<&'a [u8]> for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> TryFrom<&'a [u8]> for MaxLenByteSlice<'a, N> {
     type Error = TooLong;
 
     #[inline]
@@ -162,7 +162,7 @@ impl<'a, const N: usize> TryFrom<&'a [u8]> for BoundedByteSlice<'a, N> {
     }
 }
 
-impl<'a, const N: usize, const M: usize> TryFrom<&'a [u8; M]> for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize, const M: usize> TryFrom<&'a [u8; M]> for MaxLenByteSlice<'a, N> {
     type Error = TooLong;
 
     #[inline]
@@ -177,7 +177,7 @@ impl<'a, const N: usize, const M: usize> TryFrom<&'a [u8; M]> for BoundedByteSli
     }
 }
 
-impl<'a, const N: usize> Serialize for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> Serialize for MaxLenByteSlice<'a, N> {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -187,14 +187,14 @@ impl<'a, const N: usize> Serialize for BoundedByteSlice<'a, N> {
     }
 }
 
-impl<'de, const N: usize> Deserialize<'de> for BoundedByteSlice<'de, N> {
+impl<'de, const N: usize> Deserialize<'de> for MaxLenByteSlice<'de, N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct BytesVisitor<const N: usize>;
         impl<'de, const N: usize> Visitor<'de> for BytesVisitor<N> {
-            type Value = BoundedByteSlice<'de, N>;
+            type Value = MaxLenByteSlice<'de, N>;
 
             #[inline]
             fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -206,7 +206,7 @@ impl<'de, const N: usize> Deserialize<'de> for BoundedByteSlice<'de, N> {
             where
                 E: serde::de::Error,
             {
-                if let Ok(b) = BoundedByteSlice::<'de, N>::try_from(v) {
+                if let Ok(b) = MaxLenByteSlice::<'de, N>::try_from(v) {
                     Ok(b)
                 } else {
                     Err(E::invalid_length(v.len(), &self))
@@ -218,10 +218,10 @@ impl<'de, const N: usize> Deserialize<'de> for BoundedByteSlice<'de, N> {
     }
 }
 
-impl<'a, const N: usize> Schema for BoundedByteSlice<'a, N> {
+impl<'a, const N: usize> Schema for MaxLenByteSlice<'a, N> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-        item: &DataModelType::U8,
-        bounds: Some(N),
+        element: &DataModelType::U8,
+        max_len: Some(N),
     };
 }
 
@@ -235,33 +235,33 @@ pub(crate) mod std {
 
     use serde::{de::Visitor, Deserialize, Serialize};
 
-    use crate::{bounded::TooLong, schema::DataModelType, Schema};
+    use crate::{max_len::TooLong, schema::DataModelType, Schema};
 
-    /// Bounded version of `String`
+    /// MaxLen version of `String`
     #[derive(PartialEq, Clone)]
-    pub struct BoundedString<const N: usize> {
+    pub struct MaxLenString<const N: usize> {
         inner: String,
     }
 
-    impl<const N: usize> core::fmt::Debug for BoundedString<N> {
+    impl<const N: usize> core::fmt::Debug for MaxLenString<N> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             self.inner.fmt(f)
         }
     }
 
-    impl<const N: usize> core::fmt::Display for BoundedString<N> {
+    impl<const N: usize> core::fmt::Display for MaxLenString<N> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             self.inner.fmt(f)
         }
     }
 
-    impl<const N: usize> From<BoundedString<N>> for String {
-        fn from(value: BoundedString<N>) -> Self {
+    impl<const N: usize> From<MaxLenString<N>> for String {
+        fn from(value: MaxLenString<N>) -> Self {
             value.inner
         }
     }
 
-    impl<const N: usize> Deref for BoundedString<N> {
+    impl<const N: usize> Deref for MaxLenString<N> {
         type Target = str;
 
         #[inline]
@@ -272,14 +272,14 @@ pub(crate) mod std {
     // We don't implement DerefMut because we don't want people extending
     // the string.
 
-    impl<const N: usize> AsRef<str> for BoundedString<N> {
+    impl<const N: usize> AsRef<str> for MaxLenString<N> {
         #[inline]
         fn as_ref(&self) -> &str {
             &self.inner
         }
     }
 
-    impl<const N: usize> TryFrom<&str> for BoundedString<N> {
+    impl<const N: usize> TryFrom<&str> for MaxLenString<N> {
         type Error = TooLong;
 
         #[inline]
@@ -294,7 +294,7 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> TryFrom<String> for BoundedString<N> {
+    impl<const N: usize> TryFrom<String> for MaxLenString<N> {
         type Error = TooLong;
 
         #[inline]
@@ -307,7 +307,7 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> Serialize for BoundedString<N> {
+    impl<const N: usize> Serialize for MaxLenString<N> {
         #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -317,14 +317,14 @@ pub(crate) mod std {
         }
     }
 
-    impl<'de, const N: usize> Deserialize<'de> for BoundedString<N> {
+    impl<'de, const N: usize> Deserialize<'de> for MaxLenString<N> {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: serde::Deserializer<'de>,
         {
             struct StrVisitor<const N: usize>;
             impl<'de, const N: usize> Visitor<'de> for StrVisitor<N> {
-                type Value = BoundedString<N>;
+                type Value = MaxLenString<N>;
 
                 #[inline]
                 fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -336,7 +336,7 @@ pub(crate) mod std {
                     E: serde::de::Error,
                 {
                     let len = v.len();
-                    if let Ok(b) = BoundedString::<N>::try_from(v) {
+                    if let Ok(b) = MaxLenString::<N>::try_from(v) {
                         Ok(b)
                     } else {
                         Err(E::invalid_length(len, &self))
@@ -348,7 +348,7 @@ pub(crate) mod std {
                 where
                     E: serde::de::Error,
                 {
-                    if let Ok(b) = BoundedString::<N>::try_from(v) {
+                    if let Ok(b) = MaxLenString::<N>::try_from(v) {
                         Ok(b)
                     } else {
                         Err(E::invalid_length(v.len(), &self))
@@ -360,26 +360,26 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> Schema for BoundedString<N> {
-        const SCHEMA: &'static DataModelType = &DataModelType::String { bounds: Some(N) };
+    impl<const N: usize> Schema for MaxLenString<N> {
+        const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: Some(N) };
     }
 
     //
     // BYTES
     //
-    /// Bounded version of `Box<[u8]>`
+    /// MaxLen version of `Box<[u8]>`
     #[derive(PartialEq, Clone)]
-    pub struct BoundedBytes<const N: usize> {
+    pub struct MaxLenBytes<const N: usize> {
         inner: Box<[u8]>,
     }
 
-    impl<const N: usize> core::fmt::Debug for BoundedBytes<N> {
+    impl<const N: usize> core::fmt::Debug for MaxLenBytes<N> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             self.inner.fmt(f)
         }
     }
 
-    impl<const N: usize> Deref for BoundedBytes<N> {
+    impl<const N: usize> Deref for MaxLenBytes<N> {
         type Target = [u8];
 
         #[inline]
@@ -388,14 +388,14 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> AsRef<[u8]> for BoundedBytes<N> {
+    impl<const N: usize> AsRef<[u8]> for MaxLenBytes<N> {
         #[inline]
         fn as_ref(&self) -> &[u8] {
             &self.inner
         }
     }
 
-    impl<const N: usize> TryFrom<&[u8]> for BoundedBytes<N> {
+    impl<const N: usize> TryFrom<&[u8]> for MaxLenBytes<N> {
         type Error = TooLong;
 
         #[inline]
@@ -410,7 +410,7 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize, const M: usize> TryFrom<&[u8; M]> for BoundedBytes<N> {
+    impl<const N: usize, const M: usize> TryFrom<&[u8; M]> for MaxLenBytes<N> {
         type Error = TooLong;
 
         #[inline]
@@ -425,7 +425,7 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> Serialize for BoundedBytes<N> {
+    impl<const N: usize> Serialize for MaxLenBytes<N> {
         #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
@@ -435,14 +435,14 @@ pub(crate) mod std {
         }
     }
 
-    impl<'de, const N: usize> Deserialize<'de> for BoundedBytes<N> {
+    impl<'de, const N: usize> Deserialize<'de> for MaxLenBytes<N> {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: serde::Deserializer<'de>,
         {
             struct BytesVisitor<const N: usize>;
             impl<'de, const N: usize> Visitor<'de> for BytesVisitor<N> {
-                type Value = BoundedBytes<N>;
+                type Value = MaxLenBytes<N>;
 
                 #[inline]
                 fn expecting(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -454,7 +454,7 @@ pub(crate) mod std {
                 where
                     E: serde::de::Error,
                 {
-                    if let Ok(b) = BoundedBytes::<N>::try_from(v) {
+                    if let Ok(b) = MaxLenBytes::<N>::try_from(v) {
                         Ok(b)
                     } else {
                         Err(E::invalid_length(v.len(), &self))
@@ -466,10 +466,10 @@ pub(crate) mod std {
         }
     }
 
-    impl<const N: usize> Schema for BoundedBytes<N> {
+    impl<const N: usize> Schema for MaxLenBytes<N> {
         const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-            item: &DataModelType::U8,
-            bounds: Some(N),
+            element: &DataModelType::U8,
+            max_len: Some(N),
         };
     }
 
@@ -477,67 +477,67 @@ pub(crate) mod std {
     mod test {
         use postcard::Error::SerdeDeCustom;
 
-        use crate::bounded::{BoundedByteSlice, BoundedStr};
+        use crate::max_len::{MaxLenByteSlice, MaxLenStr};
 
         #[test]
         fn bounded_str() {
             use super::*;
-            assert_eq!(BoundedString::<8>::SCHEMA.max_size(), Some(9));
-            assert_eq!(BoundedString::<127>::SCHEMA.max_size(), Some(128));
-            assert_eq!(BoundedString::<128>::SCHEMA.max_size(), Some(130));
+            assert_eq!(MaxLenString::<8>::SCHEMA.max_size(), Some(9));
+            assert_eq!(MaxLenString::<127>::SCHEMA.max_size(), Some(128));
+            assert_eq!(MaxLenString::<128>::SCHEMA.max_size(), Some(130));
 
-            let b: BoundedString<5> = "hello".try_into().unwrap();
+            let b: MaxLenString<5> = "hello".try_into().unwrap();
             let x = postcard::to_stdvec(&b).unwrap();
             let base = postcard::to_stdvec("hello").unwrap();
             assert_eq!(x, base);
-            assert!(BoundedString::<4>::try_from("hello").is_err());
+            assert!(MaxLenString::<4>::try_from("hello").is_err());
 
-            let c = postcard::from_bytes::<BoundedString<5>>(&x).unwrap();
+            let c = postcard::from_bytes::<MaxLenString<5>>(&x).unwrap();
             assert_eq!(b, c);
-            let c2 = postcard::from_bytes::<BoundedStr<'_, 5>>(&x).unwrap();
+            let c2 = postcard::from_bytes::<MaxLenStr<'_, 5>>(&x).unwrap();
             assert_eq!(b.deref(), c2.deref());
 
-            let d = postcard::from_bytes::<BoundedString<4>>(&x);
+            let d = postcard::from_bytes::<MaxLenString<4>>(&x);
             assert_eq!(d, Err(SerdeDeCustom));
 
             assert_eq!(
-                <BoundedString<5>>::SCHEMA,
-                &DataModelType::String { bounds: Some(5) }
+                <MaxLenString<5>>::SCHEMA,
+                &DataModelType::String { max_len: Some(5) }
             );
-            assert_eq!(<BoundedString<5>>::SCHEMA, <BoundedStr<'_, 5>>::SCHEMA);
+            assert_eq!(<MaxLenString<5>>::SCHEMA, <MaxLenStr<'_, 5>>::SCHEMA);
         }
 
         #[test]
         fn bounded_bytes() {
             use super::*;
-            assert_eq!(BoundedBytes::<8>::SCHEMA.max_size(), Some(9));
-            assert_eq!(BoundedBytes::<127>::SCHEMA.max_size(), Some(128));
-            assert_eq!(BoundedBytes::<128>::SCHEMA.max_size(), Some(130));
+            assert_eq!(MaxLenBytes::<8>::SCHEMA.max_size(), Some(9));
+            assert_eq!(MaxLenBytes::<127>::SCHEMA.max_size(), Some(128));
+            assert_eq!(MaxLenBytes::<128>::SCHEMA.max_size(), Some(130));
 
-            let _b: BoundedBytes<6> = b"hello".try_into().unwrap();
-            let b: BoundedBytes<5> = b"hello".try_into().unwrap();
+            let _b: MaxLenBytes<6> = b"hello".try_into().unwrap();
+            let b: MaxLenBytes<5> = b"hello".try_into().unwrap();
             assert_eq!(b.get(..3), Some(b"hel".as_slice()));
             let x = postcard::to_stdvec(&b).unwrap();
             let base = postcard::to_stdvec(b"hello".as_slice()).unwrap();
             assert_eq!(x, base);
-            assert!(BoundedBytes::<4>::try_from(b"hello").is_err());
+            assert!(MaxLenBytes::<4>::try_from(b"hello").is_err());
 
-            let c = postcard::from_bytes::<BoundedBytes<5>>(&x).unwrap();
+            let c = postcard::from_bytes::<MaxLenBytes<5>>(&x).unwrap();
             assert_eq!(b, c);
-            let c2 = postcard::from_bytes::<BoundedByteSlice<'_, 5>>(&x).unwrap();
+            let c2 = postcard::from_bytes::<MaxLenByteSlice<'_, 5>>(&x).unwrap();
             assert_eq!(b.deref(), c2.deref());
 
-            let d = postcard::from_bytes::<BoundedBytes<4>>(&x);
+            let d = postcard::from_bytes::<MaxLenBytes<4>>(&x);
             assert_eq!(d, Err(SerdeDeCustom));
 
             assert_eq!(
-                <BoundedBytes<5>>::SCHEMA,
+                <MaxLenBytes<5>>::SCHEMA,
                 &DataModelType::Seq {
-                    item: &DataModelType::U8,
-                    bounds: Some(5),
+                    element: &DataModelType::U8,
+                    max_len: Some(5),
                 }
             );
-            assert_eq!(<BoundedBytes<5>>::SCHEMA, <BoundedByteSlice<'_, 5>>::SCHEMA);
+            assert_eq!(<MaxLenBytes<5>>::SCHEMA, <MaxLenByteSlice<'_, 5>>::SCHEMA);
         }
     }
 }
@@ -549,54 +549,54 @@ mod test {
     #[test]
     fn bounded_str() {
         use super::*;
-        assert_eq!(BoundedStr::<8>::SCHEMA.max_size(), Some(9));
-        assert_eq!(BoundedStr::<127>::SCHEMA.max_size(), Some(128));
-        assert_eq!(BoundedStr::<128>::SCHEMA.max_size(), Some(130));
+        assert_eq!(MaxLenStr::<8>::SCHEMA.max_size(), Some(9));
+        assert_eq!(MaxLenStr::<127>::SCHEMA.max_size(), Some(128));
+        assert_eq!(MaxLenStr::<128>::SCHEMA.max_size(), Some(130));
 
-        let b: BoundedStr<'_, 5> = "hello".try_into().unwrap();
+        let b: MaxLenStr<'_, 5> = "hello".try_into().unwrap();
         let x = postcard::to_stdvec(&b).unwrap();
         let base = postcard::to_stdvec("hello").unwrap();
         assert_eq!(x, base);
-        assert!(BoundedStr::<4>::try_from("hello").is_err());
+        assert!(MaxLenStr::<4>::try_from("hello").is_err());
 
-        let c = postcard::from_bytes::<BoundedStr<5>>(&x).unwrap();
+        let c = postcard::from_bytes::<MaxLenStr<5>>(&x).unwrap();
         assert_eq!(b, c);
 
-        let d = postcard::from_bytes::<BoundedStr<4>>(&x);
+        let d = postcard::from_bytes::<MaxLenStr<4>>(&x);
         assert_eq!(d, Err(SerdeDeCustom));
 
         assert_eq!(
-            <BoundedStr<'_, 5>>::SCHEMA,
-            &DataModelType::String { bounds: Some(5) }
+            <MaxLenStr<'_, 5>>::SCHEMA,
+            &DataModelType::String { max_len: Some(5) }
         );
     }
 
     #[test]
     fn bounded_bytes() {
         use super::*;
-        assert_eq!(BoundedByteSlice::<8>::SCHEMA.max_size(), Some(9));
-        assert_eq!(BoundedByteSlice::<127>::SCHEMA.max_size(), Some(128));
-        assert_eq!(BoundedByteSlice::<128>::SCHEMA.max_size(), Some(130));
+        assert_eq!(MaxLenByteSlice::<8>::SCHEMA.max_size(), Some(9));
+        assert_eq!(MaxLenByteSlice::<127>::SCHEMA.max_size(), Some(128));
+        assert_eq!(MaxLenByteSlice::<128>::SCHEMA.max_size(), Some(130));
 
-        let _b: BoundedByteSlice<'_, 6> = b"hello".try_into().unwrap();
-        let b: BoundedByteSlice<'_, 5> = b"hello".try_into().unwrap();
+        let _b: MaxLenByteSlice<'_, 6> = b"hello".try_into().unwrap();
+        let b: MaxLenByteSlice<'_, 5> = b"hello".try_into().unwrap();
         assert_eq!(b.get(..3), Some(b"hel".as_slice()));
         let x = postcard::to_stdvec(&b).unwrap();
         let base = postcard::to_stdvec(b"hello".as_slice()).unwrap();
         assert_eq!(x, base);
-        assert!(BoundedByteSlice::<4>::try_from(b"hello").is_err());
+        assert!(MaxLenByteSlice::<4>::try_from(b"hello").is_err());
 
-        let c = postcard::from_bytes::<BoundedByteSlice<5>>(&x).unwrap();
+        let c = postcard::from_bytes::<MaxLenByteSlice<5>>(&x).unwrap();
         assert_eq!(b, c);
 
-        let d = postcard::from_bytes::<BoundedByteSlice<4>>(&x);
+        let d = postcard::from_bytes::<MaxLenByteSlice<4>>(&x);
         assert_eq!(d, Err(SerdeDeCustom));
 
         assert_eq!(
-            <BoundedByteSlice<'_, 5>>::SCHEMA,
+            <MaxLenByteSlice<'_, 5>>::SCHEMA,
             &DataModelType::Seq {
-                item: &DataModelType::U8,
-                bounds: Some(5),
+                element: &DataModelType::U8,
+                max_len: Some(5),
             }
         );
     }

@@ -8,10 +8,10 @@ pub mod key;
 pub mod schema;
 
 /// Types with a fixed upper bound
-pub mod bounded {
+pub mod max_len {
     #[cfg(feature = "use-std")]
-    pub use crate::impls::builtins_bounded::std::{BoundedBytes, BoundedString};
-    pub use crate::impls::builtins_bounded::{BoundedByteSlice, BoundedStr, TooLong};
+    pub use crate::impls::builtins_maxlen::std::{MaxLenBytes, MaxLenString};
+    pub use crate::impls::builtins_maxlen::{MaxLenByteSlice, MaxLenStr, TooLong};
 }
 
 /// Derive [`Schema`] for a struct or enum

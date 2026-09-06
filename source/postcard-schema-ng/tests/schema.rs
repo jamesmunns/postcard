@@ -129,8 +129,8 @@ fn test_struct_serialize() {
                 &NamedField {
                     name: "f",
                     ty: &DataModelType::Seq {
-                        item: u8::SCHEMA,
-                        bounds: None
+                        element: u8::SCHEMA,
+                        max_len: None
                     },
                 },
             ]),
@@ -146,8 +146,8 @@ fn test_slice_serialize() {
             data: Data::Struct(&[&NamedField {
                 name: "x",
                 ty: &DataModelType::Seq {
-                    item: u8::SCHEMA,
-                    bounds: None
+                    element: u8::SCHEMA,
+                    max_len: None
                 },
             }]),
         },

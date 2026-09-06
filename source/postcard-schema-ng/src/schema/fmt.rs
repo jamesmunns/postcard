@@ -34,15 +34,17 @@ pub fn is_prim(osdmty: &OwnedDataModelType) -> bool {
         OwnedDataModelType::F64 => true,
         OwnedDataModelType::Char => true,
         // TODO(AJM) is this right?
-        OwnedDataModelType::String { bounds } => bounds.is_none(),
-        OwnedDataModelType::ByteArray { bounds } => bounds.is_none(),
+        OwnedDataModelType::String { max_len: bounds } => bounds.is_none(),
+        OwnedDataModelType::ByteArray { max_len: bounds } => bounds.is_none(),
         OwnedDataModelType::Option(ty) => is_prim(ty),
         OwnedDataModelType::Unit => true,
         OwnedDataModelType::Seq { .. } => false,
         OwnedDataModelType::Tuple(_) => false,
-        OwnedDataModelType::Map { key, val, bounds } => {
-            bounds.is_none() && is_prim(key) && is_prim(val)
-        }
+        OwnedDataModelType::Map {
+            key,
+            val,
+            max_len: bounds,
+        } => bounds.is_none() && is_prim(key) && is_prim(val),
         OwnedDataModelType::Struct { .. } => false,
         OwnedDataModelType::Enum { .. } => false,
         OwnedDataModelType::Schema => true,
@@ -108,13 +110,13 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
         OwnedDataModelType::F32 => *buf += "f32",
         OwnedDataModelType::F64 => *buf += "f64",
         OwnedDataModelType::Char => *buf += "char",
-        OwnedDataModelType::String { bounds } => {
+        OwnedDataModelType::String { max_len: bounds } => {
             *buf += "String";
             if let Some(bound) = bounds {
                 *buf += &format!("[..{bound}]");
             }
         }
-        OwnedDataModelType::ByteArray { bounds } => {
+        OwnedDataModelType::ByteArray { max_len: bounds } => {
             *buf += "[u8]";
             if let Some(bound) = bounds {
                 *buf += &format!("[..{bound}]");
@@ -126,7 +128,10 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
             *buf += ">";
         }
         OwnedDataModelType::Unit => *buf += "()",
-        OwnedDataModelType::Seq { item: ty, bounds } => {
+        OwnedDataModelType::Seq {
+            element: ty,
+            max_len: bounds,
+        } => {
             *buf += "[";
             fmt_owned_dmt_to_buf(ty, buf, false);
             *buf += "]";
@@ -162,7 +167,11 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
                 *buf += "()";
             }
         }
-        OwnedDataModelType::Map { key, val, bounds } => {
+        OwnedDataModelType::Map {
+            key,
+            val,
+            max_len: bounds,
+        } => {
             *buf += "Map<";
             fmt_owned_dmt_to_buf(key, buf, false);
             *buf += ", ";
@@ -249,15 +258,15 @@ pub fn discover_tys(
         OwnedDataModelType::F32 => {}
         OwnedDataModelType::F64 => {}
         OwnedDataModelType::Char => {}
-        OwnedDataModelType::String { bounds: _ } => {}
-        OwnedDataModelType::ByteArray { bounds: _ } => {}
+        OwnedDataModelType::String { max_len: _ } => {}
+        OwnedDataModelType::ByteArray { max_len: _ } => {}
         OwnedDataModelType::Option(inner) => {
             discover_tys(inner, set);
         }
         OwnedDataModelType::Unit => {}
         OwnedDataModelType::Seq {
-            item: elements,
-            bounds: _,
+            element: elements,
+            max_len: _,
         } => {
             discover_tys(elements, set);
         }
@@ -269,7 +278,7 @@ pub fn discover_tys(
         OwnedDataModelType::Map {
             key,
             val,
-            bounds: _,
+            max_len: _,
         } => {
             discover_tys(key, set);
             discover_tys(val, set);

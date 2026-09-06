@@ -99,14 +99,14 @@ pub enum OwnedDataModelType {
 
     /// The `String` Serde Data Model Type
     String {
-        /// Upper bound of payload bytes
-        bounds: Option<usize>,
+        /// Maximum length (in bytes) of the string
+        max_len: Option<usize>,
     },
 
     /// The `&[u8]` Serde Data Model Type
     ByteArray {
-        /// Upper bound of payload bytes
-        bounds: Option<usize>,
+        /// Maximum length of byte array
+        max_len: Option<usize>,
     },
 
     /// The `Option<T>` Serde Data Model Type
@@ -118,9 +118,9 @@ pub enum OwnedDataModelType {
     /// The "Sequence" Serde Data Model Type
     Seq {
         /// Items in the sequence
-        item: Box<Self>,
-        /// Upper bound of items in the sequence
-        bounds: Option<usize>,
+        element: Box<Self>,
+        /// Maximum length of the sequence
+        max_len: Option<usize>,
     },
 
     /// The "Tuple" Serde Data Model Type
@@ -132,8 +132,8 @@ pub enum OwnedDataModelType {
         key: Box<Self>,
         /// The map "Value" type
         val: Box<Self>,
-        /// Upper bound of k:v pairs in the map
-        bounds: Option<usize>,
+        /// Maximum length of K:V pairs
+        max_len: Option<usize>,
     },
 
     /// One of the struct Serde Data Model types
@@ -190,19 +190,26 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::F32 => Self::F32,
             DataModelType::F64 => Self::F64,
             DataModelType::Char => Self::Char,
-            DataModelType::String { bounds } => Self::String { bounds: *bounds },
-            DataModelType::ByteArray { bounds } => Self::ByteArray { bounds: *bounds },
+            DataModelType::String { max_len: bounds } => Self::String { max_len: *bounds },
+            DataModelType::ByteArray { max_len: bounds } => Self::ByteArray { max_len: *bounds },
             DataModelType::Option(o) => Self::Option(Box::new((*o).into())),
             DataModelType::Unit => Self::Unit,
-            DataModelType::Seq { item: s, bounds } => Self::Seq {
-                item: Box::new((*s).into()),
-                bounds: *bounds,
+            DataModelType::Seq {
+                element: s,
+                max_len: bounds,
+            } => Self::Seq {
+                element: Box::new((*s).into()),
+                max_len: *bounds,
             },
             DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
-            DataModelType::Map { key, val, bounds } => Self::Map {
+            DataModelType::Map {
+                key,
+                val,
+                max_len: bounds,
+            } => Self::Map {
                 key: Box::new((*key).into()),
                 val: Box::new((*val).into()),
-                bounds: *bounds,
+                max_len: *bounds,
             },
             DataModelType::Struct { name, data } => Self::Struct {
                 name: (*name).into(),
