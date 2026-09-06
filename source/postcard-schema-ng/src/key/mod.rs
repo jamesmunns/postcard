@@ -65,6 +65,15 @@ impl Key {
         Key(hash::fnv1a64::hash_ty_path::<T>(path))
     }
 
+    /// Create a Key for the given type and path
+    pub const fn for_2ty_path<T, U>(path: &str) -> Self
+    where
+        T: Schema + ?Sized,
+        U: Schema + ?Sized,
+    {
+        Key(hash::fnv1a64::hash_ty2_path::<T, U>(path))
+    }
+
     /// Create a key from a given 8-byte value
     ///
     /// NOTE: Since [`Key`]s should never be used to replace full type safety,
