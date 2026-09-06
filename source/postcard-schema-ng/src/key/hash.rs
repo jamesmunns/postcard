@@ -65,6 +65,17 @@ pub mod fnv1a64 {
         hash_sdm_type(state, schema).to_le_bytes()
     }
 
+    /// Calculate the Key hash for the given path and two types T + U
+    pub const fn hash_ty2_path<T, U>(path: &str) -> [u8; 8]
+    where
+        T: Schema + ?Sized,
+        U: Schema + ?Sized,
+    {
+        let schema = T::SCHEMA;
+        let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
+        hash_sdm_type(state, schema).to_le_bytes()
+    }
+
     pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
         let Some(bound) = bounds else {
             return state;
