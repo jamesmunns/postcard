@@ -66,10 +66,10 @@ pub mod fnv1a64 {
     }
 
     pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
-        let mut state = hash_update(state, &[0x2B]);
         let Some(bound) = bounds else {
             return state;
         };
+        let mut state = hash_update(state, &[0x2B]);
         let mut value = bound;
         while value != 0 {
             let byte = value.to_le_bytes()[0];
@@ -447,6 +447,8 @@ pub mod fnv1a64_owned {
 mod test {
     use postcard_derive_ng::Schema;
 
+    use crate::bounded::BoundedString;
+
     use super::fnv1a64::hash_ty_path;
 
     #[test]
@@ -467,9 +469,33 @@ mod test {
             B(Foo),
         }
 
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        struct Foo2<const N: usize> {
+            a: u32,
+            b: BoundedString<N>,
+        }
+
+        #[derive(Schema)]
+        #[postcard(crate = crate)]
+        enum Bar2<const N: usize> {
+            A,
+            B(Foo2<N>),
+        }
+
         assert_eq!(
             hash_ty_path::<Bar>("test_path"),
-            [224, 143, 54, 58, 255, 237, 252, 44]
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+
+        assert_eq!(
+            hash_ty_path::<Bar2<32>>("test_path"),
+            [64, 67, 182, 234, 175, 40, 88, 168]
+        );
+
+        assert_eq!(
+            hash_ty_path::<Bar2<64>>("test_path"),
+            [224, 12, 182, 234, 175, 8, 88, 168]
         );
     }
 

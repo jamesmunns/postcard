@@ -106,6 +106,18 @@ version = "0.33.0"
 default-features = false
 features = ["serde-serialize-no-std"]
 
+[dev-dependencies.uuid_v1_0]
+package = "uuid"
+version = "1.0"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.chrono_v0_4]
+package = "chrono"
+version = "0.4"
+default-features = false
+features = ["serde", "clock"]
+
 [features]
 default = []
 use-std = ["serde/std"]

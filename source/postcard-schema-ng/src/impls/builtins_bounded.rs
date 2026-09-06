@@ -73,7 +73,7 @@ impl<'a, const N: usize> Serialize for BoundedStr<'a, N> {
     where
         S: serde::Serializer,
     {
-        self.inner.serialize(serializer)
+        serializer.serialize_str(self.inner)
     }
 }
 
@@ -183,7 +183,7 @@ impl<'a, const N: usize> Serialize for BoundedByteSlice<'a, N> {
     where
         S: serde::Serializer,
     {
-        self.inner.serialize(serializer)
+        serializer.serialize_bytes(self.inner)
     }
 }
 
@@ -373,7 +373,7 @@ pub(crate) mod std {
         inner: Box<[u8]>,
     }
 
-    impl<'a, const N: usize> core::fmt::Debug for BoundedBytes<N> {
+    impl<const N: usize> core::fmt::Debug for BoundedBytes<N> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             self.inner.fmt(f)
         }
