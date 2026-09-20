@@ -3,10 +3,7 @@
 use crate::{schema::DataModelType, Schema};
 
 impl Schema for uuid_v1_0::Uuid {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-        element: &DataModelType::U8,
-        max_len: Some(16),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: Some(16) };
 }
 
 #[cfg(test)]

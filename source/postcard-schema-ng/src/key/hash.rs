@@ -152,7 +152,10 @@ pub mod fnv1a64 {
                 hash_bounds(state, *bounds)
             }
             DataModelType::ByteArray { max_len: bounds } => {
-                let state = hash_update(state, &[0x65]);
+                // This is an identical hash to `Seq(u8)` for compatibility reasons,
+                // in postcard these types are equivalent.
+                let state = hash_update(state, &[0x03]);
+                let state = hash_sdm_type(state, u8::SCHEMA);
                 hash_bounds(state, *bounds)
             }
             DataModelType::Option(t) => {
@@ -285,7 +288,7 @@ pub mod fnv1a64_owned {
         hash_sdm_type_owned(state, ty).to_le_bytes()
     }
 
-    const fn hash_sdm_type_owned(state: u64, sdmty: &OwnedDataModelType) -> u64 {
+    fn hash_sdm_type_owned(state: u64, sdmty: &OwnedDataModelType) -> u64 {
         // The actual values we use here don't matter that much (as far as I know),
         // as long as the values for each variant are unique. I am unsure of the
         // implications of doing a TON of single byte calls to `update`, it may be
@@ -339,7 +342,11 @@ pub mod fnv1a64_owned {
                 hash_bounds(state, *bounds)
             }
             OwnedDataModelType::ByteArray { max_len: bounds } => {
-                let state = hash_update(state, &[0x65]);
+                // This is an identical hash to `Seq(u8)` for compatibility reasons,
+                // in postcard these types are equivalent.
+                let state = hash_update(state, &[0x03]);
+                let schema = u8::SCHEMA.into();
+                let state = hash_sdm_type_owned(state, &schema);
                 hash_bounds(state, *bounds)
             }
             OwnedDataModelType::Option(t) => {
@@ -388,7 +395,7 @@ pub mod fnv1a64_owned {
         }
     }
 
-    const fn hash_struct(state: u64, _name: &str, data: &OwnedData) -> u64 {
+    fn hash_struct(state: u64, _name: &str, data: &OwnedData) -> u64 {
         // NOTE: We do *not* hash the name of the type in hashv2. This
         // is to allow "safe" type punning, e.g. treating `Vec<u8>` and
         // `&[u8]` as compatible types, when talking between std and no-std
@@ -422,7 +429,7 @@ pub mod fnv1a64_owned {
         }
     }
 
-    const fn hash_variant(state: u64, nt: &OwnedVariant) -> u64 {
+    fn hash_variant(state: u64, nt: &OwnedVariant) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
         match &nt.data {
             OwnedData::Unit => hash_update(state, &[0xB5]),
@@ -451,7 +458,7 @@ pub mod fnv1a64_owned {
         }
     }
 
-    const fn hash_named_field(state: u64, nt: &OwnedNamedField) -> u64 {
+    fn hash_named_field(state: u64, nt: &OwnedNamedField) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
         hash_sdm_type_owned(state, &nt.ty)
     }

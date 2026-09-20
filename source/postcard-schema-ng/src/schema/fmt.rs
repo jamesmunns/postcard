@@ -14,43 +14,6 @@ use std::{string::String, vec::Vec};
 #[cfg(all(not(feature = "use-std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
 
-/// Is this [`OwnedDataModelType`] a primitive?
-pub fn is_prim(osdmty: &OwnedDataModelType) -> bool {
-    match osdmty {
-        OwnedDataModelType::Bool => true,
-        OwnedDataModelType::I8 => true,
-        OwnedDataModelType::U8 => true,
-        OwnedDataModelType::I16 => true,
-        OwnedDataModelType::I32 => true,
-        OwnedDataModelType::I64 => true,
-        OwnedDataModelType::I128 => true,
-        OwnedDataModelType::U16 => true,
-        OwnedDataModelType::U32 => true,
-        OwnedDataModelType::U64 => true,
-        OwnedDataModelType::U128 => true,
-        OwnedDataModelType::Usize => true,
-        OwnedDataModelType::Isize => true,
-        OwnedDataModelType::F32 => true,
-        OwnedDataModelType::F64 => true,
-        OwnedDataModelType::Char => true,
-        // TODO(AJM) is this right?
-        OwnedDataModelType::String { max_len: bounds } => bounds.is_none(),
-        OwnedDataModelType::ByteArray { max_len: bounds } => bounds.is_none(),
-        OwnedDataModelType::Option(ty) => is_prim(ty),
-        OwnedDataModelType::Unit => true,
-        OwnedDataModelType::Seq { .. } => false,
-        OwnedDataModelType::Tuple(_) => false,
-        OwnedDataModelType::Map {
-            key,
-            val,
-            max_len: bounds,
-        } => bounds.is_none() && is_prim(key) && is_prim(val),
-        OwnedDataModelType::Struct { .. } => false,
-        OwnedDataModelType::Enum { .. } => false,
-        OwnedDataModelType::Schema => true,
-    }
-}
-
 /// Format an [`OwnedDataModelType`] to the given string.
 ///
 /// Use `top_level = true` when this is a standalone type, and `top_level = false`
