@@ -385,7 +385,7 @@ where
     flavors::crc::to_vec_u32(value, digest)
 }
 
-/// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// Conveniently serialize a `T` to a `std::vec::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
 ///
 /// ## Example
@@ -416,7 +416,7 @@ where
     flavors::crc::to_allocvec_u32(value, digest)
 }
 
-/// Conveniently serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
+/// Conveniently serialize a `T` to an `alloc::vec::Vec<u8>`, with the `Vec` containing
 /// data followed by a 32-bit  CRC. The CRC bytes are included in the output `Vec`.
 ///
 /// ## Example
