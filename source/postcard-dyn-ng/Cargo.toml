@@ -1,6 +1,6 @@
 [package]
 name = "postcard-dyn-ng"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
 repository = "https://github.com/jamesmunns/postcard"
@@ -27,6 +27,6 @@ features = ["use-std"]
 path = "../postcard"
 
 [dependencies.postcard-schema-ng]
-version = "0.3"
+version = "0.4"
 features = ["use-std", "derive"]
 path = "../postcard-schema-ng"
