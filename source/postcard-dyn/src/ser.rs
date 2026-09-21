@@ -1,7 +1,7 @@
 use std::num::TryFromIntError;
 
 use postcard_schema::schema::owned::{OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType};
-use serde_json::Value;
+use serde_json::{Number, Value};
 use varint::{
     varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128,
     zig_zag_i16, zig_zag_i32, zig_zag_i64,
@@ -234,14 +234,6 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             }
         }
         OwnedDataModelType::Map { key, val } => {
-            // TODO: impling blind because we can't test this, oops
-            //
-            // TODO: There's also a mismatch here because serde_json::Value requires
-            // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedDataModelType::String {
-                return Err(Error::ShouldSupportButDont);
-            }
-
             let obj = value.as_object().right()?;
 
             // First add len
@@ -250,17 +242,18 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             let used = varint_usize(len, &mut buf);
             out.extend_from_slice(used);
 
-            // Then for each pair, serialize key then val
+            // Recover the keys, then put the entries back in key order, as the
+            // order `serde_json` keeps them in is not the one postcard uses.
+            let mut entries = Vec::with_capacity(len);
             for (k, v) in obj.iter() {
-                // KEY
-                //
-                // First add len
-                let len = k.len();
-                let used = varint_usize(len, &mut buf);
-                out.extend_from_slice(used);
+                entries.push((map_key(&key.ty, k)?, v));
+            }
+            entries.sort_by_key(|((order, _), _)| *order);
 
-                // Then add payload
-                out.extend_from_slice(k.as_bytes());
+            // Then for each pair, serialize key then val
+            for ((_, k), v) in entries.iter() {
+                // KEY
+                ser_named_type(&key.ty, k, out)?;
 
                 // VALUE
                 ser_named_type(&val.ty, v, out)?;
@@ -359,6 +352,70 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
         OwnedDataModelType::Schema => todo!(),
     }
     Ok(())
+}
+
+/// Where a map key sorts, relative to the other keys of the same map.
+///
+/// `serde_json` keeps map entries in the lexicographic order of the stringified
+/// key, which is only the order of the key type itself when the keys really are
+/// strings: `"10"` sorts before `"2"`, and a unit variant sorts by name instead
+/// of by declaration. Sorting the entries by this before writing them puts them
+/// back in the order postcard wrote them in.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum MapKeyOrder<'a> {
+    Bool(bool),
+    Signed(i64),
+    Unsigned(u64),
+    /// Unit variants sort by declaration order, which is the index we write.
+    Variant(usize),
+    Str(&'a str),
+}
+
+/// Recover a single map key, and where it sorts.
+///
+/// `serde_json::Value` requires map keys to be strings, when postcard doesn't.
+/// `serde_json` handles that by encoding primitive keys as their string
+/// representation, so we recover the original key by parsing that string back
+/// into the type the schema calls for. Key types that `serde_json` also can't
+/// represent as a string are still rejected.
+fn map_key<'a>(ty: &OwnedDataModelType, key: &'a str) -> Result<(MapKeyOrder<'a>, Value), Error> {
+    let out = match ty {
+        OwnedDataModelType::String => (MapKeyOrder::Str(key), Value::String(key.to_string())),
+        // Unit variants of an enum are stored as their name, which is exactly
+        // what `ser_named_type` expects for an enum.
+        OwnedDataModelType::Enum(nvars) => {
+            let idx = nvars.iter().position(|v| v.name == key).right()?;
+            (MapKeyOrder::Variant(idx), Value::String(key.to_string()))
+        }
+        OwnedDataModelType::Bool => {
+            let val: bool = key.parse().map_err(|_| Error::SchemaMismatch)?;
+            (MapKeyOrder::Bool(val), Value::Bool(val))
+        }
+        OwnedDataModelType::I8
+        | OwnedDataModelType::I16
+        | OwnedDataModelType::I32
+        | OwnedDataModelType::I64
+        | OwnedDataModelType::I128
+        | OwnedDataModelType::Isize => {
+            let val: i64 = key.parse().map_err(|_| Error::SchemaMismatch)?;
+            (MapKeyOrder::Signed(val), Value::Number(Number::from(val)))
+        }
+        OwnedDataModelType::U8
+        | OwnedDataModelType::U16
+        | OwnedDataModelType::U32
+        | OwnedDataModelType::U64
+        | OwnedDataModelType::U128
+        | OwnedDataModelType::Usize => {
+            let val: u64 = key.parse().map_err(|_| Error::SchemaMismatch)?;
+            (MapKeyOrder::Unsigned(val), Value::Number(Number::from(val)))
+        }
+        // TODO: `serde_json` also stores `char` and float keys as strings, but
+        // deserialization of those types isn't implemented yet, so accepting
+        // them here would give us a serializer the deserializer can't undo.
+        _ => return Err(Error::ShouldSupportButDont),
+    };
+
+    Ok(out)
 }
 
 pub(crate) mod varint {
@@ -480,7 +537,7 @@ pub(crate) mod varint {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
 
     use serde::{Deserialize, Serialize};
     use serde_json::json;
@@ -661,6 +718,12 @@ mod test {
         map.insert("bap".to_string(), 30);
         let bym = serde_json::to_value(map).unwrap();
         let _t = to_stdvec_dyn(&Map1::SCHEMA.into(), &bym).unwrap();
+
+        // Non-string keys are stored as their string form, which `serde_json`
+        // orders lexicographically. The entries are written in key order.
+        type Map2 = BTreeMap<u32, u8>;
+        let t = to_stdvec_dyn(&Map2::SCHEMA.into(), &json! {{"2": 20, "10": 100}}).unwrap();
+        assert_eq!(t, vec![2, 2, 20, 10, 100]);
     }
 
     // Figuring out how serde_json handles various types
