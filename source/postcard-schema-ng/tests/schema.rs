@@ -329,11 +329,11 @@ fn smoke() {
         (dewit::<()>, "()"),
         (dewit::<char>, "char"),
         (dewit::<bool>, "bool"),
-        (dewit::<String>, "String"),
+        (dewit::<String>, "str"),
         (dewit::<Option<u16>>, "Option<u16>"),
         (dewit::<UnitStruct>, "struct UnitStruct"),
         (dewit::<Option<UnitStruct>>, "Option<UnitStruct>"),
-        (dewit::<NewTypeStruct>, "struct NewTypeStruct(String)"),
+        (dewit::<NewTypeStruct>, "struct NewTypeStruct(str)"),
         (dewit::<Option<NewTypeStruct>>, "Option<NewTypeStruct>"),
         (
             dewit::<Enums>,
@@ -344,11 +344,11 @@ fn smoke() {
         (dewit::<Vec<u16>>, "[u16]"),
         (dewit::<[u8; 16]>, "[u8; 16]"),
         (dewit::<(u8, u16, u32)>, "(u8, u16, u32)"),
-        (dewit::<TupStruct>, "struct TupStruct(u64, String)"),
+        (dewit::<TupStruct>, "struct TupStruct(u64, str)"),
         (dewit::<Option<TupStruct>>, "Option<TupStruct>"),
         (
             dewit::<std::collections::HashMap<u32, String>>,
-            "Map<u32, String>",
+            "Map<u32, str>",
         ),
         (dewit::<std::collections::HashSet<u32>>, "[u32]"),
         (
@@ -361,7 +361,7 @@ fn smoke() {
         ),
         (dewit::<Option<Classic>>, "Option<Classic>"),
         (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
-        (dewit::<PathBuf>, "String"),
+        (dewit::<PathBuf>, "str"),
     ];
     for (f, s) in tests {
         assert_eq!(f().as_str(), *s);

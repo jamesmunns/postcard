@@ -6,7 +6,7 @@ use crate::{schema::DataModelType, Schema};
 use core::ops::Deref;
 use serde::{de::Visitor, Deserialize, Serialize};
 
-/// Provided item exceeded the bounds of this type
+/// Provided item exceeded the max len of this type
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct TooLong;
 

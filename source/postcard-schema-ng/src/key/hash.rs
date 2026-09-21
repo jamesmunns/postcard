@@ -175,7 +175,7 @@ pub mod fnv1a64 {
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
         //
-        // 0x2B reserved for bounds
+        // 0x2B reserved for max len
         match sdmty {
             DataModelType::Bool => hash_update(state, &[0x11]),
             DataModelType::I8 => hash_update(state, &[0xC5]),
@@ -193,20 +193,20 @@ pub mod fnv1a64 {
             DataModelType::F32 => hash_update(state, &[0xEF]),
             DataModelType::F64 => hash_update(state, &[0x71]),
             DataModelType::Char => hash_update(state, &[0xC1]),
-            DataModelType::String { max_len: bounds } => {
+            DataModelType::String { max_len } => {
                 let mut state = hash_update(state, &[0x25]);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
-            DataModelType::ByteArray { max_len: bounds } => {
+            DataModelType::ByteArray { max_len } => {
                 // This is an identical hash to `Seq(u8)` for compatibility reasons,
                 // in postcard these types are equivalent.
                 let mut state = hash_update(state, &[0x03]);
                 state = hash_sdm_type(opt, state, u8::SCHEMA);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
@@ -217,12 +217,12 @@ pub mod fnv1a64 {
             DataModelType::Unit => hash_update(state, &[0x47]),
             DataModelType::Seq {
                 element: t,
-                max_len: bounds,
+                max_len,
             } => {
                 let mut state = hash_update(state, &[0x03]);
                 state = hash_sdm_type(opt, state, t);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
@@ -235,16 +235,12 @@ pub mod fnv1a64 {
                 }
                 state
             }
-            DataModelType::Map {
-                key,
-                val,
-                max_len: bounds,
-            } => {
+            DataModelType::Map { key, val, max_len } => {
                 let mut state = hash_update(state, &[0x4F]);
                 state = hash_sdm_type(opt, state, key);
                 state = hash_sdm_type(opt, state, val);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
@@ -404,7 +400,7 @@ pub mod fnv1a64_owned {
         //     0x53, 0xF1, 0x17, 0x2F, 0x29, 0x59,
         // ];
         //
-        // 0x2B reserved for bounds
+        // 0x2B reserved for max_len
         match sdmty {
             OwnedDataModelType::Bool => hash_update(state, &[0x11]),
             OwnedDataModelType::I8 => hash_update(state, &[0xC5]),
@@ -422,21 +418,21 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::F32 => hash_update(state, &[0xEF]),
             OwnedDataModelType::F64 => hash_update(state, &[0x71]),
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
-            OwnedDataModelType::String { max_len: bounds } => {
+            OwnedDataModelType::String { max_len } => {
                 let mut state = hash_update(state, &[0x25]);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
-            OwnedDataModelType::ByteArray { max_len: bounds } => {
+            OwnedDataModelType::ByteArray { max_len } => {
                 // This is an identical hash to `Seq(u8)` for compatibility reasons,
                 // in postcard these types are equivalent.
                 let mut state = hash_update(state, &[0x03]);
                 let schema = u8::SCHEMA.into();
                 state = hash_sdm_type_owned(opt, state, &schema);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
@@ -447,12 +443,12 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
             OwnedDataModelType::Seq {
                 element: t,
-                max_len: bounds,
+                max_len,
             } => {
                 let mut state = hash_update(state, &[0x03]);
                 state = hash_sdm_type_owned(opt, state, t);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }
@@ -465,16 +461,12 @@ pub mod fnv1a64_owned {
                 }
                 state
             }
-            OwnedDataModelType::Map {
-                key,
-                val,
-                max_len: bounds,
-            } => {
+            OwnedDataModelType::Map { key, val, max_len } => {
                 let mut state = hash_update(state, &[0x4F]);
                 state = hash_sdm_type_owned(opt, state, key);
                 state = hash_sdm_type_owned(opt, state, val);
                 if opt.hash_max_size {
-                    state = hash_max_len(state, *bounds);
+                    state = hash_max_len(state, *max_len);
                 }
                 state
             }

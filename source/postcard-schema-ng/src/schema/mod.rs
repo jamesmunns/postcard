@@ -228,8 +228,13 @@ macro_rules! max_size_dmt {
                     Struct { name: _, data } => data.max_size(),
                     Enum { name: _, variants } => {
                         let mut idx = 0;
+
+                        // So, if an enum has zero variants, we can't actually
+                        // really serialize or deserialize it, because it is
+                        // uninhabited! I guess logically the max len is then
+                        // also zero?
                         let disc = if variants.is_empty() {
-                            1
+                            0
                         } else {
                             size_as_varint_usize(variants.len() - 1)
                         };

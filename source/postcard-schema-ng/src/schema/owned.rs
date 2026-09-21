@@ -190,26 +190,22 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::F32 => Self::F32,
             DataModelType::F64 => Self::F64,
             DataModelType::Char => Self::Char,
-            DataModelType::String { max_len: bounds } => Self::String { max_len: *bounds },
-            DataModelType::ByteArray { max_len: bounds } => Self::ByteArray { max_len: *bounds },
+            DataModelType::String { max_len } => Self::String { max_len: *max_len },
+            DataModelType::ByteArray { max_len } => Self::ByteArray { max_len: *max_len },
             DataModelType::Option(o) => Self::Option(Box::new((*o).into())),
             DataModelType::Unit => Self::Unit,
             DataModelType::Seq {
                 element: s,
-                max_len: bounds,
+                max_len,
             } => Self::Seq {
                 element: Box::new((*s).into()),
-                max_len: *bounds,
+                max_len: *max_len,
             },
             DataModelType::Tuple(t) => Self::Tuple(t.iter().map(|i| (*i).into()).collect()),
-            DataModelType::Map {
-                key,
-                val,
-                max_len: bounds,
-            } => Self::Map {
+            DataModelType::Map { key, val, max_len } => Self::Map {
                 key: Box::new((*key).into()),
                 val: Box::new((*val).into()),
-                max_len: *bounds,
+                max_len: *max_len,
             },
             DataModelType::Struct { name, data } => Self::Struct {
                 name: (*name).into(),

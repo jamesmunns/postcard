@@ -1,4 +1,4 @@
-use std::str::from_utf8;
+use std::{ops::Deref, str::from_utf8};
 
 use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
@@ -139,14 +139,14 @@ fn deserialize<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'
             Ok((val, rest))
         }
         OwnedDataModelType::Char => todo!(),
-        OwnedDataModelType::String => {
+        OwnedDataModelType::String { .. } => {
             let (val, rest) = try_take_varint_usize(data)?;
             let (bytes, rest) = rest.take_n(val)?;
             let s = from_utf8(bytes).map_err(|_| Error::SchemaMismatch)?;
             let val = Value::String(s.to_string());
             Ok((val, rest))
         }
-        OwnedDataModelType::ByteArray => {
+        OwnedDataModelType::ByteArray { .. } => {
             let (val, rest) = try_take_varint_usize(data)?;
             let (bytes, rest) = rest.take_n(val)?;
             let vvec = bytes
@@ -178,7 +178,7 @@ fn deserialize<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'
             name: _,
             data: OwnedData::Newtype(ty),
         } => deserialize(ty, data),
-        OwnedDataModelType::Seq(ty) => {
+        OwnedDataModelType::Seq { element: ty, .. } => {
             let (val, mut rest) = try_take_varint_usize(data)?;
             let mut vec = vec![];
             for _ in 0..val {
@@ -214,12 +214,12 @@ fn deserialize<'a>(ty: &OwnedDataModelType, data: &'a [u8]) -> Result<(Value, &'
                 }
             }
         }
-        OwnedDataModelType::Map { key, val } => {
+        OwnedDataModelType::Map { key, val, .. } => {
             // TODO: impling blind because we can't test this, oops
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if **key != OwnedDataModelType::String {
+            if !matches!(key.deref(), &OwnedDataModelType::String { max_len: _ }) {
                 return Err(Error::ShouldSupportButDont);
             }
 

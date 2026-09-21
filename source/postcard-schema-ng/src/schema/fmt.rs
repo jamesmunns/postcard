@@ -73,16 +73,16 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
         OwnedDataModelType::F32 => *buf += "f32",
         OwnedDataModelType::F64 => *buf += "f64",
         OwnedDataModelType::Char => *buf += "char",
-        OwnedDataModelType::String { max_len: bounds } => {
-            *buf += "String";
-            if let Some(bound) = bounds {
-                *buf += &format!("[..{bound}]");
+        OwnedDataModelType::String { max_len } => {
+            *buf += "str";
+            if let Some(max_len) = max_len {
+                *buf += &format!("[..{max_len}]");
             }
         }
-        OwnedDataModelType::ByteArray { max_len: bounds } => {
+        OwnedDataModelType::ByteArray { max_len } => {
             *buf += "[u8]";
-            if let Some(bound) = bounds {
-                *buf += &format!("[..{bound}]");
+            if let Some(max_len) = max_len {
+                *buf += &format!("[..{max_len}]");
             }
         }
         OwnedDataModelType::Option(ty) => {
@@ -93,13 +93,13 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
         OwnedDataModelType::Unit => *buf += "()",
         OwnedDataModelType::Seq {
             element: ty,
-            max_len: bounds,
+            max_len,
         } => {
             *buf += "[";
             fmt_owned_dmt_to_buf(ty, buf, false);
             *buf += "]";
-            if let Some(bound) = bounds {
-                *buf += &format!("[..{bound}]");
+            if let Some(max_len) = max_len {
+                *buf += &format!("[..{max_len}]");
             }
         }
         OwnedDataModelType::Tuple(vec) => {
@@ -130,18 +130,14 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
                 *buf += "()";
             }
         }
-        OwnedDataModelType::Map {
-            key,
-            val,
-            max_len: bounds,
-        } => {
+        OwnedDataModelType::Map { key, val, max_len } => {
             *buf += "Map<";
             fmt_owned_dmt_to_buf(key, buf, false);
             *buf += ", ";
             fmt_owned_dmt_to_buf(val, buf, false);
             *buf += ">";
-            if let Some(bound) = bounds {
-                *buf += &format!("[..{bound}]");
+            if let Some(max_len) = max_len {
+                *buf += &format!("[..{max_len}]");
             }
         }
         OwnedDataModelType::Struct { name, data } => {
