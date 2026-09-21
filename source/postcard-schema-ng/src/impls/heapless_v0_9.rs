@@ -4,10 +4,13 @@ use crate::{schema::DataModelType, Schema};
 
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
 impl<T: Schema, const N: usize> Schema for heapless_v0_9::Vec<T, N> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq(T::SCHEMA);
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        element: T::SCHEMA,
+        max_len: Some(N),
+    };
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
 impl<const N: usize> Schema for heapless_v0_9::String<N> {
-    const SCHEMA: &'static DataModelType = &DataModelType::String;
+    const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: Some(N) };
 }

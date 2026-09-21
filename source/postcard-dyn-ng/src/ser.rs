@@ -1,4 +1,4 @@
-use std::num::TryFromIntError;
+use std::{num::TryFromIntError, ops::Deref};
 
 use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
@@ -162,7 +162,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             let val = val.to_le_bytes();
             out.extend_from_slice(&val);
         }
-        OwnedDataModelType::String | OwnedDataModelType::Char => {
+        OwnedDataModelType::String { .. } | OwnedDataModelType::Char => {
             let val = value.as_str().right()?;
 
             // First add len
@@ -174,7 +174,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             // Then add payload
             out.extend_from_slice(val.as_bytes());
         }
-        OwnedDataModelType::ByteArray => {
+        OwnedDataModelType::ByteArray { .. } => {
             let val = value.as_array().right()?;
 
             // First add len
@@ -209,7 +209,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
         } => {
             ser_named_type(ty, value, out)?;
         }
-        OwnedDataModelType::Seq(ty) => {
+        OwnedDataModelType::Seq { element: ty, .. } => {
             let val = value.as_array().right()?;
 
             // First add len
@@ -243,12 +243,12 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 ser_named_type(ty, val, out)?;
             }
         }
-        OwnedDataModelType::Map { key, val } => {
+        OwnedDataModelType::Map { key, val, .. } => {
             // TODO: impling blind because we can't test this, oops
             //
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if **key != OwnedDataModelType::String {
+            if !matches!(key.deref(), OwnedDataModelType::String { max_len: _ }) {
                 return Err(Error::ShouldSupportButDont);
             }
 

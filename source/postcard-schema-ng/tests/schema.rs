@@ -128,7 +128,10 @@ fn test_struct_serialize() {
                 },
                 &NamedField {
                     name: "f",
-                    ty: &DataModelType::Seq(u8::SCHEMA),
+                    ty: &DataModelType::Seq {
+                        element: u8::SCHEMA,
+                        max_len: None
+                    },
                 },
             ]),
         }
@@ -142,7 +145,10 @@ fn test_slice_serialize() {
             name: "Slice",
             data: Data::Struct(&[&NamedField {
                 name: "x",
-                ty: &DataModelType::Seq(u8::SCHEMA),
+                ty: &DataModelType::Seq {
+                    element: u8::SCHEMA,
+                    max_len: None
+                },
             }]),
         },
         Slice::SCHEMA
@@ -202,7 +208,7 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 187);
+    assert_eq!(ser_borrowed_schema.len(), 189);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
@@ -323,11 +329,11 @@ fn smoke() {
         (dewit::<()>, "()"),
         (dewit::<char>, "char"),
         (dewit::<bool>, "bool"),
-        (dewit::<String>, "String"),
+        (dewit::<String>, "str"),
         (dewit::<Option<u16>>, "Option<u16>"),
         (dewit::<UnitStruct>, "struct UnitStruct"),
         (dewit::<Option<UnitStruct>>, "Option<UnitStruct>"),
-        (dewit::<NewTypeStruct>, "struct NewTypeStruct(String)"),
+        (dewit::<NewTypeStruct>, "struct NewTypeStruct(str)"),
         (dewit::<Option<NewTypeStruct>>, "Option<NewTypeStruct>"),
         (
             dewit::<Enums>,
@@ -338,11 +344,11 @@ fn smoke() {
         (dewit::<Vec<u16>>, "[u16]"),
         (dewit::<[u8; 16]>, "[u8; 16]"),
         (dewit::<(u8, u16, u32)>, "(u8, u16, u32)"),
-        (dewit::<TupStruct>, "struct TupStruct(u64, String)"),
+        (dewit::<TupStruct>, "struct TupStruct(u64, str)"),
         (dewit::<Option<TupStruct>>, "Option<TupStruct>"),
         (
             dewit::<std::collections::HashMap<u32, String>>,
-            "Map<u32, String>",
+            "Map<u32, str>",
         ),
         (dewit::<std::collections::HashSet<u32>>, "[u32]"),
         (
@@ -355,9 +361,56 @@ fn smoke() {
         ),
         (dewit::<Option<Classic>>, "Option<Classic>"),
         (dewit::<Option<ClassicGen<i32>>>, "Option<ClassicGen>"),
-        (dewit::<PathBuf>, "String"),
+        (dewit::<PathBuf>, "str"),
     ];
     for (f, s) in tests {
         assert_eq!(f().as_str(), *s);
+    }
+}
+
+#[test]
+fn size_smoke() {
+    #[allow(clippy::type_complexity)]
+    let tests: &[(Option<usize>, Option<usize>)] = &[
+        (u8::SCHEMA.max_size(), Some(1)),
+        (u16::SCHEMA.max_size(), Some(3)),
+        (u32::SCHEMA.max_size(), Some(5)),
+        (u64::SCHEMA.max_size(), Some(10)),
+        (u128::SCHEMA.max_size(), Some(19)),
+        (i8::SCHEMA.max_size(), Some(1)),
+        (i16::SCHEMA.max_size(), Some(3)),
+        (i32::SCHEMA.max_size(), Some(5)),
+        (i64::SCHEMA.max_size(), Some(10)),
+        (i128::SCHEMA.max_size(), Some(19)),
+        (<()>::SCHEMA.max_size(), Some(0)),
+        (char::SCHEMA.max_size(), Some(5)),
+        (bool::SCHEMA.max_size(), Some(1)),
+        (String::SCHEMA.max_size(), None),
+        (<Option<u16>>::SCHEMA.max_size(), Some(4)),
+        (UnitStruct::SCHEMA.max_size(), Some(0)),
+        (<Option<UnitStruct>>::SCHEMA.max_size(), Some(1)),
+        (NewTypeStruct::SCHEMA.max_size(), None),
+        (<Option<NewTypeStruct>>::SCHEMA.max_size(), None),
+        (Enums::SCHEMA.max_size(), Some(11)),
+        (<Option<Enums>>::SCHEMA.max_size(), Some(12)),
+        (<&[u8]>::SCHEMA.max_size(), None),
+        (<Vec<u16>>::SCHEMA.max_size(), None),
+        (<[u8; 16]>::SCHEMA.max_size(), Some(16)),
+        (<(u8, u16, u32)>::SCHEMA.max_size(), Some(9)),
+        (TupStruct::SCHEMA.max_size(), None),
+        (<Option<TupStruct>>::SCHEMA.max_size(), None),
+        (
+            <std::collections::HashMap<u32, String>>::SCHEMA.max_size(),
+            None,
+        ),
+        (<std::collections::HashSet<u32>>::SCHEMA.max_size(), None),
+        (<Classic>::SCHEMA.max_size(), Some(9)),
+        (<ClassicGen<i32>>::SCHEMA.max_size(), Some(10)),
+        (<Option<Classic>>::SCHEMA.max_size(), Some(10)),
+        (<Option<ClassicGen<i32>>>::SCHEMA.max_size(), Some(11)),
+        (PathBuf::SCHEMA.max_size(), None),
+    ];
+    for (calc, bound) in tests {
+        assert_eq!(calc, bound);
     }
 }
