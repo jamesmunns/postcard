@@ -15,6 +15,40 @@ pub struct Fnv1a64Hasher {
     state: u64,
 }
 
+/// Options for const hashing
+///
+/// All options start as disabled. The default value can be obtained either
+/// using `HashOptions::DEFAULT` (in const context), or `HashOptions::default()`
+/// (in non-const context)
+#[non_exhaustive]
+#[derive(Debug, Copy, Clone)]
+pub struct HashOptions {
+    /// Include the type's max serialized size as part of the hash
+    pub hash_max_size: bool,
+}
+
+impl HashOptions {
+    /// The default (all options off) value for use in const context
+    pub const DEFAULT: Self = HashOptions {
+        hash_max_size: false,
+    };
+}
+
+impl Default for HashOptions {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// A hashable item, used for hashing a series of items together at once
+#[non_exhaustive]
+pub enum HashItem<'a> {
+    /// A type's schema
+    Schema(&'a DataModelType),
+    /// A string
+    String(&'a str),
+}
+
 impl Fnv1a64Hasher {
     // source: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
     const BASIS: u64 = 0xcbf2_9ce4_8422_2325;
@@ -58,20 +92,33 @@ pub mod fnv1a64 {
 
     use super::*;
 
-    /// Calculate the Key hash for the given path and type T
-    pub const fn hash_ty_path<T: Schema + ?Sized>(path: &str) -> [u8; 8] {
-        let schema = T::SCHEMA;
-        let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
-        hash_sdm_type(state, schema).to_le_bytes()
+    /// Hash an arbitrary sequence of items in the order provided
+    pub const fn hasher(opt: &HashOptions, items: &[HashItem<'_>]) -> [u8; 8] {
+        let mut state = Fnv1a64Hasher::BASIS;
+        let mut idx = 0;
+        while idx < items.len() {
+            state = match items[idx] {
+                HashItem::Schema(sdmty) => hash_sdm_type(opt, state, sdmty),
+                HashItem::String(s) => hash_update_str(state, s),
+            };
+            idx += 1;
+        }
+        state.to_le_bytes()
     }
 
-    pub(crate) const fn hash_bounds(state: u64, bounds: Option<usize>) -> u64 {
-        let Some(bound) = bounds else {
+    /// Calculate the Key hash for the given path and type T
+    pub const fn hash_ty_path<T: Schema + ?Sized>(path: &str) -> [u8; 8] {
+        let items = [HashItem::String(path), HashItem::Schema(T::SCHEMA)];
+        hasher(&HashOptions::DEFAULT, &items)
+    }
+
+    pub(crate) const fn hash_max_len(state: u64, max_len: Option<usize>) -> u64 {
+        let mut state = hash_update(state, &[0x2B]);
+        let Some(bound) = max_len else {
             return state;
         };
-        let mut state = hash_update(state, &[0x2B]);
         let mut value = bound;
-        while value != 0 {
+        loop {
             let byte = value.to_le_bytes()[0];
             if value < 128 {
                 return hash_update(state, &[byte]);
@@ -80,7 +127,6 @@ pub mod fnv1a64 {
             state = hash_update(state, &[byte | 0x80]);
             value >>= 7;
         }
-        state
     }
 
     pub(crate) const fn hash_update(mut state: u64, bytes: &[u8]) -> u64 {
@@ -98,7 +144,7 @@ pub mod fnv1a64 {
         hash_update(state, s.as_bytes())
     }
 
-    const fn hash_sdm_type(state: u64, sdmty: &'static DataModelType) -> u64 {
+    const fn hash_sdm_type(opt: &HashOptions, state: u64, sdmty: &DataModelType) -> u64 {
         // The actual values we use here don't matter that much (as far as I know),
         // as long as the values for each variant are unique. I am unsure of the
         // implications of doing a TON of single byte calls to `update`, it may be
@@ -148,34 +194,43 @@ pub mod fnv1a64 {
             DataModelType::F64 => hash_update(state, &[0x71]),
             DataModelType::Char => hash_update(state, &[0xC1]),
             DataModelType::String { max_len: bounds } => {
-                let state = hash_update(state, &[0x25]);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x25]);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             DataModelType::ByteArray { max_len: bounds } => {
                 // This is an identical hash to `Seq(u8)` for compatibility reasons,
                 // in postcard these types are equivalent.
-                let state = hash_update(state, &[0x03]);
-                let state = hash_sdm_type(state, u8::SCHEMA);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x03]);
+                state = hash_sdm_type(opt, state, u8::SCHEMA);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             DataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
-                hash_sdm_type(state, t)
+                hash_sdm_type(opt, state, t)
             }
             DataModelType::Unit => hash_update(state, &[0x47]),
             DataModelType::Seq {
                 element: t,
                 max_len: bounds,
             } => {
-                let state = hash_update(state, &[0x03]);
-                let state = hash_sdm_type(state, t);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x03]);
+                state = hash_sdm_type(opt, state, t);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             DataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
                 let mut idx = 0;
                 while idx < ts.len() {
-                    state = hash_sdm_type(state, ts[idx]);
+                    state = hash_sdm_type(opt, state, ts[idx]);
                     idx += 1;
                 }
                 state
@@ -185,17 +240,20 @@ pub mod fnv1a64 {
                 val,
                 max_len: bounds,
             } => {
-                let state = hash_update(state, &[0x4F]);
-                let state = hash_sdm_type(state, key);
-                let state = hash_sdm_type(state, val);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x4F]);
+                state = hash_sdm_type(opt, state, key);
+                state = hash_sdm_type(opt, state, val);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
-            DataModelType::Struct { name, data } => hash_struct(state, name, data),
+            DataModelType::Struct { name: _, data } => hash_struct(opt, state, data),
             DataModelType::Enum { name: _, variants } => {
                 let mut state = hash_update(state, &[0xE9]);
                 let mut idx = 0;
                 while idx < variants.len() {
-                    state = hash_variant(state, variants[idx]);
+                    state = hash_variant(opt, state, variants[idx]);
                     idx += 1;
                 }
                 state
@@ -204,24 +262,22 @@ pub mod fnv1a64 {
         }
     }
 
-    const fn hash_struct(state: u64, _name: &str, data: &Data) -> u64 {
+    const fn hash_struct(opt: &HashOptions, state: u64, data: &Data) -> u64 {
         // NOTE: We do *not* hash the name of the type in hashv2. This
         // is to allow "safe" type punning, e.g. treating `Vec<u8>` and
         // `&[u8]` as compatible types, when talking between std and no-std
         // targets
-        //
-        // let state = hash_update(state, name.as_bytes());
         match data {
             Data::Unit => hash_update(state, &[0xBF]),
             Data::Newtype(dmt) => {
                 let state = hash_update(state, &[0x9D]);
-                hash_sdm_type(state, dmt)
+                hash_sdm_type(opt, state, dmt)
             }
             Data::Tuple(dmts) => {
                 let mut state = hash_update(state, &[0x05]);
                 let mut idx = 0;
                 while idx < dmts.len() {
-                    state = hash_sdm_type(state, dmts[idx]);
+                    state = hash_sdm_type(opt, state, dmts[idx]);
                     idx += 1;
                 }
                 state
@@ -230,7 +286,7 @@ pub mod fnv1a64 {
                 let mut state = hash_update(state, &[0x7F]);
                 let mut idx = 0;
                 while idx < nfs.len() {
-                    state = hash_named_field(state, nfs[idx]);
+                    state = hash_named_field(opt, state, nfs[idx]);
                     idx += 1;
                 }
                 state
@@ -238,19 +294,19 @@ pub mod fnv1a64 {
         }
     }
 
-    const fn hash_variant(state: u64, nt: &Variant) -> u64 {
+    const fn hash_variant(opt: &HashOptions, state: u64, nt: &Variant) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
         match nt.data {
             Data::Unit => hash_update(state, &[0xB5]),
             Data::Newtype(t) => {
                 let state = hash_update(state, &[0xDF]);
-                hash_sdm_type(state, t)
+                hash_sdm_type(opt, state, t)
             }
             Data::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xC7]);
                 let mut idx = 0;
                 while idx < ts.len() {
-                    state = hash_sdm_type(state, ts[idx]);
+                    state = hash_sdm_type(opt, state, ts[idx]);
                     idx += 1;
                 }
                 state
@@ -259,7 +315,7 @@ pub mod fnv1a64 {
                 let mut state = hash_update(state, &[0x67]);
                 let mut idx = 0;
                 while idx < fields.len() {
-                    state = hash_named_field(state, fields[idx]);
+                    state = hash_named_field(opt, state, fields[idx]);
                     idx += 1;
                 }
                 state
@@ -267,9 +323,9 @@ pub mod fnv1a64 {
         }
     }
 
-    const fn hash_named_field(state: u64, nt: &NamedField) -> u64 {
+    const fn hash_named_field(opt: &HashOptions, state: u64, nt: &NamedField) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        hash_sdm_type(state, nt.ty)
+        hash_sdm_type(opt, state, nt.ty)
     }
 }
 
@@ -282,13 +338,42 @@ pub mod fnv1a64_owned {
     use super::fnv1a64::*;
     use super::*;
 
+    /// A hashable item, used for hashing a series of items together at once
+    #[non_exhaustive]
+    pub enum OwnedHashItem<'a> {
+        /// A type's schema
+        Schema(&'a OwnedDataModelType),
+        /// A string
+        String(&'a str),
+    }
+
+    /// Hash an arbitrary sequence of items in the order provided
+    pub fn hasher(opt: &HashOptions, items: &[OwnedHashItem<'_>]) -> [u8; 8] {
+        let mut state = Fnv1a64Hasher::BASIS;
+        let mut idx = 0;
+        while idx < items.len() {
+            state = match items[idx] {
+                OwnedHashItem::Schema(sdmty) => hash_sdm_type_owned(opt, state, sdmty),
+                OwnedHashItem::String(s) => hash_update_str(state, s),
+            };
+            idx += 1;
+        }
+        state.to_le_bytes()
+    }
+
+    /// Calculate the Key hash for the given path and type T
+    pub fn hash_ty_path(path: &str, ty: &OwnedDataModelType) -> [u8; 8] {
+        let items = [OwnedHashItem::String(path), OwnedHashItem::Schema(ty)];
+        hasher(&HashOptions::DEFAULT, &items)
+    }
+
     /// Calculate the Key hash for the given path and [`OwnedDataModelType`]
     pub fn hash_ty_path_owned(path: &str, ty: &OwnedDataModelType) -> [u8; 8] {
         let state = hash_update_str(Fnv1a64Hasher::BASIS, path);
-        hash_sdm_type_owned(state, ty).to_le_bytes()
+        hash_sdm_type_owned(&HashOptions::default(), state, ty).to_le_bytes()
     }
 
-    fn hash_sdm_type_owned(state: u64, sdmty: &OwnedDataModelType) -> u64 {
+    fn hash_sdm_type_owned(opt: &HashOptions, state: u64, sdmty: &OwnedDataModelType) -> u64 {
         // The actual values we use here don't matter that much (as far as I know),
         // as long as the values for each variant are unique. I am unsure of the
         // implications of doing a TON of single byte calls to `update`, it may be
@@ -338,35 +423,44 @@ pub mod fnv1a64_owned {
             OwnedDataModelType::F64 => hash_update(state, &[0x71]),
             OwnedDataModelType::Char => hash_update(state, &[0xC1]),
             OwnedDataModelType::String { max_len: bounds } => {
-                let state = hash_update(state, &[0x25]);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x25]);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             OwnedDataModelType::ByteArray { max_len: bounds } => {
                 // This is an identical hash to `Seq(u8)` for compatibility reasons,
                 // in postcard these types are equivalent.
-                let state = hash_update(state, &[0x03]);
+                let mut state = hash_update(state, &[0x03]);
                 let schema = u8::SCHEMA.into();
-                let state = hash_sdm_type_owned(state, &schema);
-                hash_bounds(state, *bounds)
+                state = hash_sdm_type_owned(opt, state, &schema);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             OwnedDataModelType::Option(t) => {
                 let state = hash_update(state, &[0x6D]);
-                hash_sdm_type_owned(state, t)
+                hash_sdm_type_owned(opt, state, t)
             }
             OwnedDataModelType::Unit => hash_update(state, &[0x47]),
             OwnedDataModelType::Seq {
                 element: t,
                 max_len: bounds,
             } => {
-                let state = hash_update(state, &[0x03]);
-                let state = hash_sdm_type_owned(state, t);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x03]);
+                state = hash_sdm_type_owned(opt, state, t);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
             OwnedDataModelType::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xA7]);
                 let mut idx = 0;
                 while idx < ts.len() {
-                    state = hash_sdm_type_owned(state, &ts[idx]);
+                    state = hash_sdm_type_owned(opt, state, &ts[idx]);
                     idx += 1;
                 }
                 state
@@ -376,17 +470,20 @@ pub mod fnv1a64_owned {
                 val,
                 max_len: bounds,
             } => {
-                let state = hash_update(state, &[0x4F]);
-                let state = hash_sdm_type_owned(state, key);
-                let state = hash_sdm_type_owned(state, val);
-                hash_bounds(state, *bounds)
+                let mut state = hash_update(state, &[0x4F]);
+                state = hash_sdm_type_owned(opt, state, key);
+                state = hash_sdm_type_owned(opt, state, val);
+                if opt.hash_max_size {
+                    state = hash_max_len(state, *bounds);
+                }
+                state
             }
-            OwnedDataModelType::Struct { name, data } => hash_struct(state, name, data),
+            OwnedDataModelType::Struct { name: _, data } => hash_struct(opt, state, data),
             OwnedDataModelType::Enum { name: _, variants } => {
                 let mut state = hash_update(state, &[0xE9]);
                 let mut idx = 0;
                 while idx < variants.len() {
-                    state = hash_variant(state, &variants[idx]);
+                    state = hash_variant(opt, state, &variants[idx]);
                     idx += 1;
                 }
                 state
@@ -395,24 +492,22 @@ pub mod fnv1a64_owned {
         }
     }
 
-    fn hash_struct(state: u64, _name: &str, data: &OwnedData) -> u64 {
+    fn hash_struct(opt: &HashOptions, state: u64, data: &OwnedData) -> u64 {
         // NOTE: We do *not* hash the name of the type in hashv2. This
         // is to allow "safe" type punning, e.g. treating `Vec<u8>` and
         // `&[u8]` as compatible types, when talking between std and no-std
         // targets
-        //
-        // let state = hash_update(state, name.as_bytes());
         match data {
             OwnedData::Unit => hash_update(state, &[0xBF]),
             OwnedData::Newtype(dmt) => {
                 let state = hash_update(state, &[0x9D]);
-                hash_sdm_type_owned(state, dmt)
+                hash_sdm_type_owned(opt, state, dmt)
             }
             OwnedData::Tuple(dmts) => {
                 let mut state = hash_update(state, &[0x05]);
                 let mut idx = 0;
                 while idx < dmts.len() {
-                    state = hash_sdm_type_owned(state, &dmts[idx]);
+                    state = hash_sdm_type_owned(opt, state, &dmts[idx]);
                     idx += 1;
                 }
                 state
@@ -421,7 +516,7 @@ pub mod fnv1a64_owned {
                 let mut state = hash_update(state, &[0x7F]);
                 let mut idx = 0;
                 while idx < nfs.len() {
-                    state = hash_named_field(state, &nfs[idx]);
+                    state = hash_named_field(opt, state, &nfs[idx]);
                     idx += 1;
                 }
                 state
@@ -429,19 +524,19 @@ pub mod fnv1a64_owned {
         }
     }
 
-    fn hash_variant(state: u64, nt: &OwnedVariant) -> u64 {
+    fn hash_variant(opt: &HashOptions, state: u64, nt: &OwnedVariant) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
         match &nt.data {
             OwnedData::Unit => hash_update(state, &[0xB5]),
             OwnedData::Newtype(t) => {
                 let state = hash_update(state, &[0xDF]);
-                hash_sdm_type_owned(state, t)
+                hash_sdm_type_owned(opt, state, t)
             }
             OwnedData::Tuple(ts) => {
                 let mut state = hash_update(state, &[0xC7]);
                 let mut idx = 0;
                 while idx < ts.len() {
-                    state = hash_sdm_type_owned(state, &ts[idx]);
+                    state = hash_sdm_type_owned(opt, state, &ts[idx]);
                     idx += 1;
                 }
                 state
@@ -450,7 +545,7 @@ pub mod fnv1a64_owned {
                 let mut state = hash_update(state, &[0x67]);
                 let mut idx = 0;
                 while idx < fields.len() {
-                    state = hash_named_field(state, &fields[idx]);
+                    state = hash_named_field(opt, state, &fields[idx]);
                     idx += 1;
                 }
                 state
@@ -458,17 +553,19 @@ pub mod fnv1a64_owned {
         }
     }
 
-    fn hash_named_field(state: u64, nt: &OwnedNamedField) -> u64 {
+    fn hash_named_field(opt: &HashOptions, state: u64, nt: &OwnedNamedField) -> u64 {
         let state = hash_update(state, nt.name.as_bytes());
-        hash_sdm_type_owned(state, &nt.ty)
+        hash_sdm_type_owned(opt, state, &nt.ty)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use postcard_derive_ng::Schema;
-
-    use crate::max_len::MaxLenString;
+    use crate::{
+        key::hash::{fnv1a64::hasher, HashItem, HashOptions},
+        max_len::MaxLenString,
+        Schema,
+    };
 
     use super::fnv1a64::hash_ty_path;
 
@@ -504,18 +601,78 @@ mod test {
             B(Foo2<N>),
         }
 
+        let default_opts = HashOptions::default();
+        let max_opts = HashOptions {
+            hash_max_size: true,
+            ..HashOptions::default()
+        };
+
         assert_eq!(
             hash_ty_path::<Bar>("test_path"),
             [139, 128, 52, 27, 107, 8, 218, 98]
         );
+        assert_eq!(
+            hasher(
+                &default_opts,
+                &[HashItem::String("test_path"), HashItem::Schema(Bar::SCHEMA)]
+            ),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+        assert_eq!(
+            hasher(
+                &max_opts,
+                &[HashItem::String("test_path"), HashItem::Schema(Bar::SCHEMA)]
+            ),
+            [224, 143, 54, 58, 255, 237, 252, 44]
+        );
 
         assert_eq!(
             hash_ty_path::<Bar2<32>>("test_path"),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+        assert_eq!(
+            hasher(
+                &default_opts,
+                &[
+                    HashItem::String("test_path"),
+                    HashItem::Schema(Bar2::<32>::SCHEMA)
+                ]
+            ),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+        assert_eq!(
+            hasher(
+                &max_opts,
+                &[
+                    HashItem::String("test_path"),
+                    HashItem::Schema(Bar2::<32>::SCHEMA)
+                ]
+            ),
             [64, 67, 182, 234, 175, 40, 88, 168]
         );
 
         assert_eq!(
             hash_ty_path::<Bar2<64>>("test_path"),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+        assert_eq!(
+            hasher(
+                &default_opts,
+                &[
+                    HashItem::String("test_path"),
+                    HashItem::Schema(Bar2::<64>::SCHEMA)
+                ]
+            ),
+            [139, 128, 52, 27, 107, 8, 218, 98]
+        );
+        assert_eq!(
+            hasher(
+                &max_opts,
+                &[
+                    HashItem::String("test_path"),
+                    HashItem::Schema(Bar2::<64>::SCHEMA)
+                ]
+            ),
             [224, 12, 182, 234, 175, 8, 88, 168]
         );
     }
