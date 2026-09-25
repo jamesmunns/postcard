@@ -1,0 +1,152 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "Outer :: SCHEMA"
+---
+NamedType {
+    name: "Outer",
+    ty: Struct(
+        [
+            NamedValue {
+                name: "a",
+                ty: NamedType {
+                    name: "u32",
+                    ty: U32,
+                },
+            },
+            NamedValue {
+                name: "b",
+                ty: NamedType {
+                    name: "u64",
+                    ty: U64,
+                },
+            },
+            NamedValue {
+                name: "c",
+                ty: NamedType {
+                    name: "u8",
+                    ty: U8,
+                },
+            },
+            NamedValue {
+                name: "d",
+                ty: NamedType {
+                    name: "Inner",
+                    ty: Enum(
+                        [
+                            NamedVariant {
+                                name: "Alpha",
+                                ty: UnitVariant,
+                            },
+                            NamedVariant {
+                                name: "Beta",
+                                ty: UnitVariant,
+                            },
+                            NamedVariant {
+                                name: "Gamma",
+                                ty: UnitVariant,
+                            },
+                            NamedVariant {
+                                name: "Delta",
+                                ty: TupleVariant(
+                                    [
+                                        NamedType {
+                                            name: "i32",
+                                            ty: I32,
+                                        },
+                                        NamedType {
+                                            name: "i16",
+                                            ty: I16,
+                                        },
+                                    ],
+                                ),
+                            },
+                            NamedVariant {
+                                name: "Epsilon",
+                                ty: StructVariant(
+                                    [
+                                        NamedValue {
+                                            name: "zeta",
+                                            ty: NamedType {
+                                                name: "f32",
+                                                ty: F32,
+                                            },
+                                        },
+                                        NamedValue {
+                                            name: "eta",
+                                            ty: NamedType {
+                                                name: "bool",
+                                                ty: Bool,
+                                            },
+                                        },
+                                    ],
+                                ),
+                            },
+                        ],
+                    ),
+                },
+            },
+            NamedValue {
+                name: "e",
+                ty: NamedType {
+                    name: "[T; N]",
+                    ty: Tuple(
+                        [
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                            NamedType {
+                                name: "u8",
+                                ty: U8,
+                            },
+                        ],
+                    ),
+                },
+            },
+            NamedValue {
+                name: "f",
+                ty: NamedType {
+                    name: "[T]",
+                    ty: Seq(
+                        NamedType {
+                            name: "u8",
+                            ty: U8,
+                        },
+                    ),
+                },
+            },
+        ],
+    ),
+}
