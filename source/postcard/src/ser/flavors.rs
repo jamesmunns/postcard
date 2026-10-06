@@ -220,25 +220,25 @@ impl IndexMut<usize> for Slice<'_> {
 }
 
 /// Wrapper over a [`core::iter::Extend<u8>`] that implements the flavor trait
-pub struct ExtendFlavor<T> {
-    iter: T,
+pub struct ExtendFlavor<'a, T> {
+    iter: &'a mut T,
 }
 
-impl<T> ExtendFlavor<T>
+impl<'a, T> ExtendFlavor<'a, T>
 where
     T: core::iter::Extend<u8>,
 {
     /// Create a new [`Self`] flavor from a given [`core::iter::Extend<u8>`]
-    pub fn new(iter: T) -> Self {
+    pub fn new(iter: &'a mut T) -> Self {
         Self { iter }
     }
 }
 
-impl<T> Flavor for ExtendFlavor<T>
+impl<T> Flavor for ExtendFlavor<'_, T>
 where
     T: core::iter::Extend<u8>,
 {
-    type Output = T;
+    type Output = ();
 
     #[inline(always)]
     fn try_push(&mut self, data: u8) -> Result<()> {
@@ -253,7 +253,7 @@ where
     }
 
     fn finalize(self) -> Result<Self::Output> {
-        Ok(self.iter)
+        Ok(())
     }
 }
 
