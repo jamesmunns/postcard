@@ -60,6 +60,9 @@ pub mod experimental {
         pub use crate::max_size::MaxSize;
         // NOTE: ...and this is the derive macro
         pub use postcard_derive::MaxSize;
+        // Private utility for generated code
+        #[doc(hidden)]
+        pub use crate::max_size::max_of_variants;
     }
 
     pub use crate::ser::serialized_size;
