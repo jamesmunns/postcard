@@ -77,7 +77,7 @@ impl<'a, const N: usize> Serialize for MaxLenStr<'a, N> {
     }
 }
 
-impl<'de, const N: usize> Deserialize<'de> for MaxLenStr<'de, N> {
+impl<'de: 'a, 'a, const N: usize> Deserialize<'de> for MaxLenStr<'a, N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -187,7 +187,7 @@ impl<'a, const N: usize> Serialize for MaxLenByteSlice<'a, N> {
     }
 }
 
-impl<'de, const N: usize> Deserialize<'de> for MaxLenByteSlice<'de, N> {
+impl<'de: 'a, 'a, const N: usize> Deserialize<'de> for MaxLenByteSlice<'a, N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
