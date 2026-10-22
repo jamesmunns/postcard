@@ -1,0 +1,32 @@
+[package]
+name = "postcard-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+# The `use-std` feature exposes `to_stdvec`/`from_bytes` on the host target.
+postcard = { path = "../source/postcard", features = ["use-std"] }
+serde = { version = "1", features = ["derive"] }
+
+# `fuzz/` is its own workspace so it does not collide with the
+# postcard root workspace (`Cargo.toml` at the repo root).
+[workspace]
+
+[[bin]]
+name = "postcard_roundtrip_fuzzer"
+path = "fuzz_targets/postcard_roundtrip_fuzzer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "postcard_decoder_fuzzer"
+path = "fuzz_targets/postcard_decoder_fuzzer.rs"
+test = false
+doc = false
+bench = false
