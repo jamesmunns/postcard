@@ -1,4 +1,8 @@
-use std::{ops::Deref, str::from_utf8};
+use std::{
+    fmt::{Debug, Display},
+    ops::Deref,
+    str::from_utf8,
+};
 
 use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
@@ -16,6 +20,23 @@ pub enum Error {
     ShouldSupportButDont,
     SchemaMismatch,
 }
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::UnexpectedEndOfData => write!(f, "reached end of data unexpectedly"),
+            Error::ShouldSupportButDont => write!(
+                f,
+                "reached a limitation of using serde_json::Value as the decoding target"
+            ),
+            Error::SchemaMismatch => {
+                write!(f, "reached data that was not correct for the given schema")
+            }
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 trait GetExt {
     type Out;

@@ -1,4 +1,4 @@
-use std::{num::TryFromIntError, ops::Deref};
+use std::{fmt::Display, num::TryFromIntError, ops::Deref};
 
 use postcard_schema_ng::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
@@ -14,6 +14,24 @@ pub enum Error {
     ShouldSupportButDont,
     Unsupported,
 }
+
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::SchemaMismatch => write!(
+                f,
+                "provided schema did not match the shape of provided data"
+            ),
+            Error::ShouldSupportButDont => write!(
+                f,
+                "reached a limitation of using serde_json::Value as the encoding source"
+            ),
+            Error::Unsupported => write!(f, "reached unsupported item"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub fn to_stdvec_dyn(schema: &OwnedDataModelType, value: &Value) -> Result<Vec<u8>, Error> {
     let mut out = vec![];
