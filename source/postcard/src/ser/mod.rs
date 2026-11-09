@@ -8,6 +8,12 @@ use crate::ser::flavors::HVec;
 #[cfg(feature = "heapless")]
 use heapless::Vec;
 
+#[cfg(feature = "heapless-v0_8")]
+use crate::ser::flavors::HVecV0_8;
+
+#[cfg(feature = "heapless-v0_9")]
+use crate::ser::flavors::HVecV0_9;
+
 #[cfg(feature = "alloc")]
 use crate::ser::flavors::AllocVec;
 
@@ -157,6 +163,66 @@ where
 {
     serialize_with_flavor::<T, HVec<B>, Vec<u8, B>>(value, HVec::default())
 }
+
+macro_rules! impl_heapless_ser_fns {
+    ($feature:literal, $to_vec:ident, $to_vec_cobs:ident, $hvec:ident, $heapless:ident, $version:literal) => {
+        #[doc = concat!("Serialize a `T` to a `heapless` ", $version, " `Vec<u8>`.")]
+        ///
+        /// ## Example
+        ///
+        /// ```ignore
+        #[doc = concat!("use postcard::", stringify!($to_vec), ";")]
+        /// use heapless::Vec;
+        /// use core::ops::Deref;
+        ///
+        #[doc = concat!("let ser: Vec<u8, 32> = ", stringify!($to_vec), "(&true).unwrap();")]
+        /// assert_eq!(ser.deref(), &[0x01]);
+        ///
+        #[doc = concat!("let ser: Vec<u8, 32> = ", stringify!($to_vec), "(\"Hi!\").unwrap();")]
+        /// assert_eq!(ser.deref(), &[0x03, b'H', b'i', b'!']);
+        /// ```
+        #[cfg(feature = $feature)]
+        #[cfg_attr(docsrs, doc(cfg(feature = $feature)))]
+        pub fn $to_vec<T, const B: usize>(value: &T) -> Result<$heapless::Vec<u8, B>>
+        where
+            T: Serialize + ?Sized,
+        {
+            serialize_with_flavor::<T, $hvec<B>, $heapless::Vec<u8, B>>(value, $hvec::default())
+        }
+
+        #[doc = concat!("Serialize and COBS encode a `T` to a `heapless` ", $version, " `Vec<u8>`.")]
+        ///
+        /// The terminating sentinel `0x00` byte is included in the output.
+        ///
+        /// ## Example
+        ///
+        /// ```ignore
+        #[doc = concat!("use postcard::", stringify!($to_vec_cobs), ";")]
+        /// use heapless::Vec;
+        /// use core::ops::Deref;
+        ///
+        #[doc = concat!("let ser: Vec<u8, 32> = ", stringify!($to_vec_cobs), "(&false).unwrap();")]
+        /// assert_eq!(ser.deref(), &[0x01, 0x01, 0x00]);
+        ///
+        #[doc = concat!("let ser: Vec<u8, 32> = ", stringify!($to_vec_cobs), "(\"Hi!\").unwrap();")]
+        /// assert_eq!(ser.deref(), &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
+        /// ```
+        #[cfg(feature = $feature)]
+        #[cfg_attr(docsrs, doc(cfg(feature = $feature)))]
+        pub fn $to_vec_cobs<T, const B: usize>(value: &T) -> Result<$heapless::Vec<u8, B>>
+        where
+            T: Serialize + ?Sized,
+        {
+            serialize_with_flavor::<T, Cobs<$hvec<B>>, $heapless::Vec<u8, B>>(
+                value,
+                Cobs::try_new($hvec::default())?,
+            )
+        }
+    };
+}
+
+impl_heapless_ser_fns!("heapless-v0_8", to_vec_v0_8, to_vec_cobs_v0_8, HVecV0_8, heapless_v0_8, "0.8");
+impl_heapless_ser_fns!("heapless-v0_9", to_vec_v0_9, to_vec_cobs_v0_9, HVecV0_9, heapless_v0_9, "0.9");
 
 /// Serialize a `T` to a `std::vec::Vec<u8>`.
 ///
@@ -446,6 +512,28 @@ where
 {
     flavors::crc::to_allocvec_u32(value, digest)
 }
+
+macro_rules! impl_heapless_crc_wrapper {
+    ($feature:literal, $pub_fn:ident, $internal_fn:ident, $heapless:ident, $version:literal) => {
+        #[doc = concat!("Conveniently serialize a `T` to a `heapless` ", $version, " `Vec<u8>`, with the `Vec` containing")]
+        /// data followed by a 32-bit CRC. The CRC bytes are included in the output `Vec`.
+        #[cfg(all(feature = "use-crc", feature = $feature))]
+        #[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = $feature))))]
+        #[inline]
+        pub fn $pub_fn<T, const B: usize>(
+            value: &T,
+            digest: crc::Digest<'_, u32>,
+        ) -> Result<$heapless::Vec<u8, B>>
+        where
+            T: Serialize + ?Sized,
+        {
+            flavors::crc::$internal_fn(value, digest)
+        }
+    };
+}
+
+impl_heapless_crc_wrapper!("heapless-v0_8", to_vec_crc32_v0_8, to_vec_u32_v0_8, heapless_v0_8, "0.8");
+impl_heapless_crc_wrapper!("heapless-v0_9", to_vec_crc32_v0_9, to_vec_u32_v0_9, heapless_v0_9, "0.9");
 
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
 ///
@@ -861,3 +949,161 @@ mod test {
         assert_eq!(input, x);
     }
 }
+
+macro_rules! impl_heapless_ser_tests {
+    ($feature:literal, $mod_name:ident, $to_vec:ident, $to_vec_cobs:ident, $heapless:ident) => {
+        #[cfg(feature = $feature)]
+        #[cfg(test)]
+        mod $mod_name {
+            use super::*;
+            use core::ops::{Deref, DerefMut};
+            use serde::Deserialize;
+
+            #[test]
+            fn ser_u8() {
+                let output: $heapless::Vec<u8, 1> = $to_vec(&0x05u8).unwrap();
+                assert_eq!(&[5], output.deref());
+            }
+
+            #[test]
+            fn ser_u16() {
+                let output: $heapless::Vec<u8, 3> = $to_vec(&0xA5C7u16).unwrap();
+                assert_eq!(&[0xC7, 0xCB, 0x02], output.deref());
+            }
+
+            #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+            struct TestStruct {
+                a: u8,
+                b: u32,
+            }
+
+            #[test]
+            fn ser_struct() {
+                let input = TestStruct { a: 0x05, b: 0x1234 };
+                let output: $heapless::Vec<u8, 8> = $to_vec(&input).unwrap();
+                assert_eq!(&[0x05, 0xB4, 0x24], output.deref());
+            }
+
+            #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+            enum TestEnum {
+                A,
+                B(u8),
+            }
+
+            #[test]
+            fn ser_enum() {
+                let output: $heapless::Vec<u8, 1> = $to_vec(&TestEnum::A).unwrap();
+                assert_eq!(&[0x00], output.deref());
+
+                let output: $heapless::Vec<u8, 2> = $to_vec(&TestEnum::B(0xFF)).unwrap();
+                assert_eq!(&[0x01, 0xFF], output.deref());
+            }
+
+            #[test]
+            fn ser_str() {
+                let input: &str = "Hi!";
+                let output: $heapless::Vec<u8, 8> = $to_vec(input).unwrap();
+                assert_eq!(&[0x03, b'H', b'i', b'!'], output.deref());
+            }
+
+            #[test]
+            fn ser_byte_slice() {
+                let input: &[u8] = &[1u8, 2, 3, 4];
+                let output: $heapless::Vec<u8, 8> = $to_vec(input).unwrap();
+                assert_eq!(&[0x04, 0x01, 0x02, 0x03, 0x04], output.deref());
+            }
+
+            #[test]
+            fn buffer_full() {
+                let input: &[u8] = &[0u8; 32];
+                let result: Result<$heapless::Vec<u8, 4>> = $to_vec(input);
+                assert_eq!(result, Err(Error::SerializeBufferFull));
+            }
+
+            #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+            struct RefStruct<'a> {
+                bytes: &'a [u8],
+                str_s: &'a str,
+            }
+
+            #[test]
+            fn cobs_roundtrip() {
+                let message = "hElLo";
+                let bytes = [0x01, 0x00, 0x02, 0x20];
+                let input = RefStruct {
+                    bytes: &bytes,
+                    str_s: message,
+                };
+
+                let mut output: $heapless::Vec<u8, 13> = $to_vec_cobs(&input).unwrap();
+
+                let sz = cobs::decode_in_place(output.deref_mut()).unwrap();
+
+                let x = crate::from_bytes::<RefStruct<'_>>(&output.deref_mut()[..sz]).unwrap();
+
+                assert_eq!(input, x);
+            }
+
+            #[test]
+            fn deser_roundtrip() {
+                let input = TestStruct { a: 0xAB, b: 0xCDEF };
+                let bytes: $heapless::Vec<u8, 8> = $to_vec(&input).unwrap();
+                let output: TestStruct = crate::from_bytes(bytes.deref()).unwrap();
+                assert_eq!(input, output);
+            }
+
+            #[test]
+            fn deser_enum_roundtrip() {
+                let input = TestEnum::B(0x42);
+                let bytes: $heapless::Vec<u8, 4> = $to_vec(&input).unwrap();
+                let output: TestEnum = crate::from_bytes(bytes.deref()).unwrap();
+                assert_eq!(input, output);
+            }
+        }
+    };
+}
+
+impl_heapless_ser_tests!("heapless-v0_8", test_v0_8, to_vec_v0_8, to_vec_cobs_v0_8, heapless_v0_8);
+impl_heapless_ser_tests!("heapless-v0_9", test_v0_9, to_vec_v0_9, to_vec_cobs_v0_9, heapless_v0_9);
+
+macro_rules! impl_heapless_crc_tests {
+    ($feature:literal, $mod_name:ident, $to_vec:ident, $to_vec_crc32:ident, $heapless:ident) => {
+        #[cfg(all(feature = "use-crc", feature = $feature))]
+        #[cfg(test)]
+        mod $mod_name {
+            use super::*;
+            use core::ops::Deref;
+            use serde::Deserialize;
+
+            #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+            struct TestStruct {
+                a: u8,
+                b: u32,
+            }
+
+            #[test]
+            fn crc32_appends_checksum() {
+                let crc = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+                let input = TestStruct { a: 0xAB, b: 0xCDEF };
+                let bytes: $heapless::Vec<u8, 32> = $to_vec_crc32(&input, crc.digest()).unwrap();
+                // CRC32 appends 4 bytes to the serialized data
+                let plain: $heapless::Vec<u8, 32> = $to_vec(&input).unwrap();
+                assert_eq!(bytes.len(), plain.len() + 4);
+                // The data portion before the CRC must match plain serialization
+                assert_eq!(&bytes[..plain.len()], plain.deref());
+            }
+
+            #[test]
+            fn crc32_stable_output() {
+                let crc = crc::Crc::<u32>::new(&crc::CRC_32_ISCSI);
+                let input = TestStruct { a: 0x05, b: 0x1234 };
+                let a: $heapless::Vec<u8, 32> = $to_vec_crc32(&input, crc.digest()).unwrap();
+                let b: $heapless::Vec<u8, 32> = $to_vec_crc32(&input, crc.digest()).unwrap();
+                assert_eq!(a, b);
+            }
+        }
+    };
+}
+
+impl_heapless_crc_tests!("heapless-v0_8", test_crc_v0_8, to_vec_v0_8, to_vec_crc32_v0_8, heapless_v0_8);
+impl_heapless_crc_tests!("heapless-v0_9", test_crc_v0_9, to_vec_v0_9, to_vec_crc32_v0_9, heapless_v0_9);
