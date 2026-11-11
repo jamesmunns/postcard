@@ -65,6 +65,7 @@ use serde::Deserialize;
 pub struct CobsAccumulator<const N: usize> {
     buf: [u8; N],
     idx: usize,
+    discarding: bool,
 }
 
 /// The result of feeding the accumulator.
@@ -73,7 +74,8 @@ pub enum FeedResult<'a, T> {
     /// Consumed all data, still pending.
     Consumed,
 
-    /// Buffer was filled. Contains remaining section of input, if any.
+    /// Buffer was filled before a complete frame fit. The oversized frame is discarded through
+    /// its next zero delimiter. Contains input after that delimiter, if available.
     OverFull(&'a [u8]),
 
     /// Reached end of chunk, but deserialization failed. Contains remaining section of input, if any.
@@ -101,6 +103,7 @@ impl<const N: usize> CobsAccumulator<N> {
         CobsAccumulator {
             buf: [0; N],
             idx: 0,
+            discarding: false,
         }
     }
 
@@ -127,6 +130,18 @@ impl<const N: usize> CobsAccumulator<N> {
         if input.is_empty() {
             return FeedResult::Consumed;
         }
+
+        let input = if self.discarding {
+            match input.iter().position(|&i| i == 0) {
+                Some(n) => {
+                    self.discarding = false;
+                    &input[n + 1..]
+                }
+                None => return FeedResult::Consumed,
+            }
+        } else {
+            input
+        };
 
         let zero_pos = input.iter().position(|&i| i == 0);
 
@@ -158,9 +173,9 @@ impl<const N: usize> CobsAccumulator<N> {
             // Does it fit?
             if (self.idx + input.len()) > N {
                 // nope
-                let new_start = N - self.idx;
                 self.idx = 0;
-                FeedResult::OverFull(&input[new_start..])
+                self.discarding = true;
+                FeedResult::OverFull(&input[input.len()..])
             } else {
                 // yup!
                 self.extend_unchecked(input);
