@@ -32,6 +32,14 @@ impl<T: Schema + nalgebra_v0_34::Scalar> Schema for nalgebra_v0_34::Quaternion<T
     const SCHEMA: &'static NamedType = nalgebra_v0_34::Vector4::<T>::SCHEMA;
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
+impl<T, const D: usize> Schema for nalgebra_v0_34::Point<T, D>
+where
+    T: Schema + nalgebra_v0_34::Scalar,
+{
+    const SCHEMA: &'static NamedType = nalgebra_v0_34::SVector::<T, D>::SCHEMA;
+}
+
 /// Const version of the const-unstable [`<[[T; N]]>::as_flattened()`]
 const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
     const {
