@@ -1,0 +1,59 @@
+---
+source: source/postcard-schema/tests/schema.rs
+expression: "Inner :: SCHEMA"
+---
+NamedType {
+    name: "Inner",
+    ty: Enum(
+        [
+            NamedVariant {
+                name: "Alpha",
+                ty: UnitVariant,
+            },
+            NamedVariant {
+                name: "Beta",
+                ty: UnitVariant,
+            },
+            NamedVariant {
+                name: "Gamma",
+                ty: UnitVariant,
+            },
+            NamedVariant {
+                name: "Delta",
+                ty: TupleVariant(
+                    [
+                        NamedType {
+                            name: "i32",
+                            ty: I32,
+                        },
+                        NamedType {
+                            name: "i16",
+                            ty: I16,
+                        },
+                    ],
+                ),
+            },
+            NamedVariant {
+                name: "Epsilon",
+                ty: StructVariant(
+                    [
+                        NamedValue {
+                            name: "zeta",
+                            ty: NamedType {
+                                name: "f32",
+                                ty: F32,
+                            },
+                        },
+                        NamedValue {
+                            name: "eta",
+                            ty: NamedType {
+                                name: "bool",
+                                ty: Bool,
+                            },
+                        },
+                    ],
+                ),
+            },
+        ],
+    ),
+}

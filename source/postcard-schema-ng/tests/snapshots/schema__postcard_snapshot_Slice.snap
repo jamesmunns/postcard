@@ -1,0 +1,17 @@
+---
+source: source/postcard-schema-ng/tests/schema.rs
+expression: "Slice :: SCHEMA"
+---
+Struct {
+    name: "Slice",
+    data: Struct(
+        [
+            NamedField {
+                name: "x",
+                ty: Seq(
+                    U8,
+                ),
+            },
+        ],
+    ),
+}
