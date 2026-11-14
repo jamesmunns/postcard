@@ -244,7 +244,10 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::MapAccess<'b> for MapAccess<'a, 
 
     #[inline]
     fn size_hint(&self) -> Option<usize> {
-        Some(self.len)
+        match self.deserializer.flavor.size_hint() {
+            Some(size) if size < self.len => None,
+            _ => Some(self.len),
+        }
     }
 }
 

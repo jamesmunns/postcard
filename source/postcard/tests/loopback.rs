@@ -243,3 +243,34 @@ fn std_eio_loopback() {
         ],
     );
 }
+
+#[test]
+fn impossible_map_length_omits_size_hint() {
+    use core::fmt;
+    use core::marker::PhantomData;
+    use serde::de::{MapAccess, Visitor};
+
+    struct Probe<T>(PhantomData<T>);
+    impl<'de, T: Deserialize<'de>> Deserialize<'de> for Probe<T> {
+        fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            struct MapVisitor<T>(PhantomData<T>);
+            impl<'de, T: Deserialize<'de>> Visitor<'de> for MapVisitor<T> {
+                type Value = Probe<T>;
+                fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    f.write_str("a map with a suppressed size hint")
+                }
+                fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                    assert_eq!(map.size_hint(), None);
+                    while map.next_entry::<T, T>()?.is_some() {}
+                    Ok(Probe(PhantomData))
+                }
+            }
+            deserializer.deserialize_map(MapVisitor(PhantomData))
+        }
+    }
+
+    // A length prefix claiming a million entries, with no remaining payload.
+    assert!(from_bytes::<Probe<u8>>(&[0xc0, 0x84, 0x3d]).is_err());
+    // Suppressing the hint must not reject valid entries that use no bytes.
+    assert!(from_bytes::<Probe<()>>(&[1]).is_ok());
+}
