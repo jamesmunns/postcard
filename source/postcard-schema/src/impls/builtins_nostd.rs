@@ -53,6 +53,7 @@ impl_schema![
     (): DataModelType::Unit,
     i16: DataModelType::I16, i32: DataModelType::I32, i64: DataModelType::I64, i128: DataModelType::I128,
     u16: DataModelType::U16, u32: DataModelType::U32, u64: DataModelType::U64, u128: DataModelType::U128,
+    isize: DataModelType::Isize, usize: DataModelType::Usize,
     NonZeroI16: DataModelType::I16, NonZeroI32: DataModelType::I32,
     NonZeroI64: DataModelType::I64, NonZeroI128: DataModelType::I128,
     NonZeroU16: DataModelType::U16, NonZeroU32: DataModelType::U32,
