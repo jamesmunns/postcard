@@ -63,6 +63,16 @@ mod test {
         assert_eq!(err.source().unwrap().to_string(), "BufferFull");
     }
 
+    /// Ensure `defmt-v1` implementations.
+    #[cfg(feature = "defmt-v1")]
+    #[test]
+    fn defmt_impls() {
+        use core::convert::Infallible;
+        fn is_format<T: defmt::Format>() {}
+        is_format::<crate::SerializerError<crate::BufferFull, Infallible>>();
+        is_format::<crate::DeserializerError<crate::UnexpectedEnd, Infallible>>();
+    }
+
     #[test]
     fn signed_int128() {
         let x = -19490127978232325886905073712831_i128;

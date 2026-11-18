@@ -22,6 +22,7 @@ where
 
 /// The serialization error type
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum SerializerError<PushErr, FinErr> {
     /// A Flavor-specific error occurred while inserting data
@@ -78,6 +79,13 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError(...)")
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
@@ -106,6 +114,13 @@ mod custom {
         #[inline]
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             write!(f, "SerdeCustomError({})", self.inner)
+        }
+    }
+
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError({=str})", self.inner.as_str())
         }
     }
 

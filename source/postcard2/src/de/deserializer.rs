@@ -6,6 +6,7 @@ use postcard_core::de::{self as pcde, DecodeError};
 
 /// The deserialization error type
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum DeserializerError<PopErr, FinErr> {
     /// The postcard encoding was invalid, or the Flavor failed to provide data
@@ -43,6 +44,13 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError(...)")
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
@@ -71,6 +79,13 @@ mod custom {
         #[inline]
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             write!(f, "SerdeCustomError({})", self.inner)
+        }
+    }
+
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError({=str})", self.inner.as_str())
         }
     }
 

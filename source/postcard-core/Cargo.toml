@@ -21,5 +21,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
+[dependencies.defmt]
+version = "1"
+optional = true
+
 [features]
 alloc = []
+defmt-v1 = ["dep:defmt"]

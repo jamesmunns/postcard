@@ -93,6 +93,7 @@ pub mod de {
     use postcard2::de_flavors::Flavor;
 
     #[derive(Debug, PartialEq, Eq)]
+    #[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
     pub enum IoError<ReadErr> {
         BufferExhausted,
         ReadError(embedded_io_v0_7::ReadExactError<ReadErr>),
@@ -248,6 +249,14 @@ pub mod de {
     mod tests {
         use super::*;
         use embedded_io_v0_7::ReadExactError;
+
+        /// Ensure `defmt-v1` impls are supported.
+        #[cfg(feature = "defmt-v1")]
+        #[test]
+        fn defmt_impls() {
+            fn is_format<T: defmt::Format>() {}
+            is_format::<IoError<embedded_io_v0_7::ErrorKind>>();
+        }
 
         #[test]
         fn test_pop() {

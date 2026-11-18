@@ -720,6 +720,17 @@ fn decode_error_source() {
     assert!(e.source().is_none());
 }
 
+/// Ensure `defmt-v1` support is complete using a compile time check.
+#[cfg(feature = "defmt-v1")]
+#[test]
+fn defmt_impls() {
+    fn is_format<T: defmt::Format>() {}
+    is_format::<ser::BufferFull>();
+    is_format::<de::UnexpectedEnd>();
+    is_format::<DecodeError<de::UnexpectedEnd>>();
+    is_format::<DecodeError<core::convert::Infallible>>();
+}
+
 /// Smoke test `Vec` flavor.
 #[cfg(feature = "alloc")]
 #[test]

@@ -8,6 +8,7 @@ use crate::varint::{
 
 /// Unexpectedly reached the end of the deserialization buffer
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 pub struct UnexpectedEnd;
 
 impl core::fmt::Display for UnexpectedEnd {
@@ -21,6 +22,7 @@ impl core::error::Error for UnexpectedEnd {}
 
 /// An error while decoding a postcard item
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum DecodeError<E> {
     /// Error popping bytes, likely we have run out of input

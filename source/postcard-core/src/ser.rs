@@ -9,6 +9,7 @@ use crate::varint::{
 
 /// The serialization buffer is full
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 pub struct BufferFull;
 
 impl core::fmt::Display for BufferFull {

@@ -58,8 +58,7 @@ default = []
 std = ["postcard-core/alloc"]
 alloc = ["postcard-core/alloc"]
 
-# TODO: version these deps?
-defmt = ["dep:defmt"]
+defmt-v1 = ["dep:defmt", "postcard-core/defmt-v1"]
 serde-derive = ["serde_derive", "serde"]
 
 # Experimental features!
