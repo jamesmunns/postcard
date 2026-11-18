@@ -3,15 +3,15 @@
 //! This module provides ways of turning Data Model information into a human
 //! readable output
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use super::owned::{OwnedData, OwnedDataModelType};
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
 
 /// Format an [`OwnedDataModelType`] to the given string.
@@ -176,7 +176,7 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
 }
 
 /// Collect unique types mentioned by this [`OwnedDataModelType`]
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub fn discover_tys(
     ty: &OwnedDataModelType,
     set: &mut std::collections::HashSet<OwnedDataModelType>,

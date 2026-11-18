@@ -2,7 +2,7 @@
 
 use crate::{schema::DataModelType, Schema};
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for std::vec::Vec<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
         element: T::SCHEMA,
@@ -10,17 +10,17 @@ impl<T: Schema> Schema for std::vec::Vec<T> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl Schema for std::string::String {
     const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: None };
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Schema for std::path::PathBuf {
     const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: None };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
     const SCHEMA: &'static DataModelType = &DataModelType::Map {
         key: K::SCHEMA,
@@ -29,7 +29,7 @@ impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
     const SCHEMA: &'static DataModelType = &DataModelType::Map {
         key: K::SCHEMA,
@@ -38,7 +38,7 @@ impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema> Schema for std::collections::HashSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
         element: K::SCHEMA,
@@ -46,7 +46,7 @@ impl<K: Schema> Schema for std::collections::HashSet<K> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
         element: K::SCHEMA,
@@ -54,12 +54,12 @@ impl<K: Schema> Schema for std::collections::BTreeSet<K> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for std::boxed::Box<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: ?Sized + Schema + std::borrow::ToOwned> Schema for std::borrow::Cow<'_, T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }

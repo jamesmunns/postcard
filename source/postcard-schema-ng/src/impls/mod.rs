@@ -7,12 +7,12 @@ use crate::{schema::DataModelType, Schema};
 pub(crate) mod builtins_maxlen;
 pub mod builtins_nostd;
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-#[cfg_attr(docsrs, doc(cfg(all(not(feature = "use-std"), feature = "alloc"))))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg_attr(docsrs, doc(cfg(all(not(feature = "std"), feature = "alloc"))))]
 pub mod builtins_alloc;
 
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod builtins_std;
 
 #[cfg(feature = "chrono-v0_4")]

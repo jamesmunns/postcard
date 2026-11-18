@@ -4,7 +4,7 @@ use crate::{schema::DataModelType, Schema};
 
 extern crate alloc;
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for alloc::vec::Vec<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
         element: T::SCHEMA,
@@ -12,12 +12,12 @@ impl<T: Schema> Schema for alloc::vec::Vec<T> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl Schema for alloc::string::String {
     const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: None };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
     const SCHEMA: &'static DataModelType = &DataModelType::Map {
         key: K::SCHEMA,
@@ -26,7 +26,7 @@ impl<K: Schema, V: Schema> Schema for alloc::collections::BTreeMap<K, V> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     const SCHEMA: &'static DataModelType = &DataModelType::Seq {
         element: K::SCHEMA,
@@ -34,12 +34,12 @@ impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for alloc::boxed::Box<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<'_, T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
