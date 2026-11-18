@@ -55,8 +55,8 @@ serde = "1.0.228"
 
 [features]
 default = []
-std = []
-alloc = []
+std = ["postcard-core/alloc"]
+alloc = ["postcard-core/alloc"]
 
 # TODO: version these deps?
 defmt = ["dep:defmt"]

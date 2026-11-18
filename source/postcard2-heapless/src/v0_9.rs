@@ -38,10 +38,11 @@ where
 
 pub mod ser {
     use core::convert::Infallible;
-    use core::ops::Index;
-    use core::ops::IndexMut;
     use heapless_v0_9::Vec;
-    use postcard2::{BufferFull, ser_flavors::Flavor};
+    use postcard2::{
+        BufferFull,
+        ser_flavors::{Flavor, Patch},
+    };
 
     ////////////////////////////////////////
     // HVec
@@ -83,17 +84,24 @@ pub mod ser {
         }
     }
 
-    impl<const B: usize> Index<usize> for HVec<B> {
-        type Output = u8;
-
-        fn index(&self, idx: usize) -> &u8 {
-            &self.vec[idx]
+    impl<const B: usize> Patch for HVec<B> {
+        #[inline]
+        fn written_mut(&mut self) -> &mut [u8] {
+            &mut self.vec
         }
     }
 
-    impl<const B: usize> IndexMut<usize> for HVec<B> {
-        fn index_mut(&mut self, idx: usize) -> &mut u8 {
-            &mut self.vec[idx]
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        #[test]
+        fn patch() {
+            let mut fl = HVec::<4>::new();
+            assert_eq!(fl.written_mut(), &[] as &[u8]);
+            fl.try_extend(&[1, 2, 3]).unwrap();
+            fl.written_mut()[0] = 9;
+            assert_eq!(fl.finalize().unwrap(), [9, 2, 3]);
         }
     }
 }

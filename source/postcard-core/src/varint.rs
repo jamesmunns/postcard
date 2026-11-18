@@ -1,6 +1,24 @@
 //! Varint tools
 
 /// Returns the maximum number of bytes required to encode T.
+///
+/// This only considers `size_of::<T>()`, and is only expected to be meaningful
+/// for the integer types that postcard encodes as varints: `u16`, `u32`, `u64`,
+/// `u128`, `usize`, and corresponding signed integers.
+///
+/// For any other `T` it returns the length of a varint holding `size_of::<T>()`
+/// bytes of data, which is not useful, but also not incorrect.
+///
+/// ```
+/// use postcard_core::varint::varint_max;
+///
+/// assert_eq!(varint_max::<u16>(), 3);
+/// assert_eq!(varint_max::<i32>(), 5);
+/// assert_eq!(varint_max::<u128>(), 19);
+///
+/// // Don't do this, it is silly.
+/// assert_eq!(varint_max::<[u8; 4]>(), 5);
+/// ```
 pub const fn varint_max<T: Sized>() -> usize {
     const BITS_PER_BYTE: usize = 8;
     const BITS_PER_VARINT_BYTE: usize = 7;
@@ -18,7 +36,7 @@ pub const fn varint_max<T: Sized>() -> usize {
 }
 
 /// Returns the maximum value stored in the last encoded byte.
-pub const fn max_of_last_byte<T: Sized>() -> u8 {
+pub(crate) const fn max_of_last_byte<T: Sized>() -> u8 {
     let max_bits = core::mem::size_of::<T>() * 8;
     let extra_bits = max_bits % 7;
     (1 << extra_bits) - 1

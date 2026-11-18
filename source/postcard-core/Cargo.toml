@@ -3,6 +3,7 @@ name = "postcard-core"
 version = "0.1.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
+rust-version = "1.85"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std compatible message library for Rust"
@@ -19,3 +20,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+
+[features]
+alloc = []

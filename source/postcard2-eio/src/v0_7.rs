@@ -19,6 +19,7 @@ pub fn to_eio<T, W>(value: &T, writer: W) -> Result<W, SerializerError<W::Error,
 where
     T: Serialize + ?Sized,
     W: embedded_io_v0_7::Write,
+    W::Error: 'static,
 {
     serialize_with_flavor::<T, _>(value, ser::WriteFlavor::new(writer))
 }
@@ -32,7 +33,8 @@ pub fn from_eio<'a, T, R>(
 ) -> Result<(T, EioDeserRemainder<'a, R>), EioDeserError<R::Error>>
 where
     T: Deserialize<'a>,
-    R: embedded_io_v0_7::Read + 'a,
+    R: embedded_io_v0_7::Read,
+    R::Error: 'static,
 {
     let flavor = de::EIOReader::new(val.0, val.1);
     let mut deserializer = Deserializer::from_flavor(flavor);
@@ -61,6 +63,7 @@ pub mod ser {
     impl<T> Flavor for WriteFlavor<T>
     where
         T: embedded_io_v0_7::Write,
+        T::Error: 'static,
     {
         type Output = T;
         type PushError = T::Error;
@@ -95,14 +98,23 @@ pub mod de {
         ReadError(embedded_io_v0_7::ReadExactError<ReadErr>),
     }
 
-    impl<ReadErr> core::fmt::Display for IoError<ReadErr>
-    where
-        ReadErr: core::fmt::Display + core::fmt::Debug,
-    {
+    impl<ReadErr> core::fmt::Display for IoError<ReadErr> {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             match self {
                 Self::BufferExhausted => f.write_str("BufferExhausted"),
-                Self::ReadError(e) => write!(f, "ReadError({e})"),
+                Self::ReadError(_) => f.write_str("ReadError"),
+            }
+        }
+    }
+
+    impl<ReadErr> core::error::Error for IoError<ReadErr>
+    where
+        ReadErr: core::fmt::Debug + 'static,
+    {
+        fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+            match self {
+                Self::BufferExhausted => None,
+                Self::ReadError(e) => Some(e),
             }
         }
     }
@@ -188,11 +200,10 @@ pub mod de {
 
     impl<'de, T> Flavor<'de> for EIOReader<'de, T>
     where
-        T: embedded_io_v0_7::Read + 'de,
-        T::Error: core::fmt::Display + core::fmt::Debug,
+        T: embedded_io_v0_7::Read,
+        T::Error: 'static,
     {
         type Remainder = (T, &'de mut [u8]);
-        type Source = &'de [u8];
         type PopError = IoError<T::Error>;
         type FinalizeError = IoError<T::Error>;
 

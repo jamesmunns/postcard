@@ -13,6 +13,7 @@ pub use postcard_core::varint;
 pub use de::deserializer::{Deserializer, DeserializerError};
 pub use de::flavors::{self as de_flavors, UnexpectedEnd};
 pub use de::{from_bytes, take_from_bytes};
+pub use postcard_core::de::DecodeError;
 pub use ser::flavors::{self as ser_flavors, BufferFull};
 pub use ser::{
     serialize_with_flavor, serialized_size,
@@ -43,8 +44,23 @@ mod test {
             crate::from_bytes(&[0xFF, 0xFF, 0xFF, 0xFF, 0x1F]);
         assert_eq!(
             deser,
-            Err(crate::de::deserializer::DeserializerError::BadVarint)
+            Err(crate::de::deserializer::DeserializerError::Decode(
+                crate::DecodeError::BadVarint
+            ))
         );
+    }
+
+    #[test]
+    fn error_sources() {
+        use core::error::Error;
+        let err = crate::from_bytes::<u32>(&[0x80]).unwrap_err();
+        assert_eq!(err.to_string(), "Pop");
+        assert_eq!(err.source().unwrap().to_string(), "UnexpectedEnd");
+
+        let mut buf = [0u8; 1];
+        let err = crate::to_slice(&300u32, &mut buf).unwrap_err();
+        assert_eq!(err.to_string(), "PushError");
+        assert_eq!(err.source().unwrap().to_string(), "BufferFull");
     }
 
     #[test]
