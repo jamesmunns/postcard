@@ -274,6 +274,29 @@ where
     serialize_with_flavor::<T, _, _>(value, flavors::ExtendFlavor::new(writer))
 }
 
+/// Serialize a `T` to a [`core::iter::Extend`],
+///
+/// This is like [`to_extend`], but it takes the writer by reference instead of
+/// by value. This allows you to remain in control of the writer.
+///
+/// ## Example
+///
+/// ```rust
+/// use postcard::to_extend_ref;
+/// let mut vec = Vec::new();
+///
+/// to_extend_ref(&true, &mut vec).unwrap();
+/// to_extend_ref("Hi!", &mut vec).unwrap();
+/// assert_eq!(&vec[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
+/// ```
+pub fn to_extend_ref<T, W>(value: &T, writer: &mut W) -> Result<()>
+where
+    T: Serialize + ?Sized,
+    W: core::iter::Extend<u8>,
+{
+    serialize_with_flavor::<T, _, _>(value, flavors::ExtendRefFlavor::new(writer))
+}
+
 /// Serialize a `T` to an [`embedded_io Write`](crate::eio::Write),
 /// ## Example
 ///

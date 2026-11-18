@@ -257,6 +257,47 @@ where
     }
 }
 
+/// Wrapper over a [`core::iter::Extend<u8>`] that implements the flavor trait
+///
+/// This is like [`ExtendFlavor`], but it takes the writer by reference instead of
+/// by value. This allows you to remain in control of the writer.
+pub struct ExtendRefFlavor<'a, T> {
+    iter: &'a mut T,
+}
+
+impl<'a, T> ExtendRefFlavor<'a, T>
+where
+    T: core::iter::Extend<u8>,
+{
+    /// Create a new [`Self`] flavor from a given [`core::iter::Extend<u8>`]
+    pub fn new(iter: &'a mut T) -> Self {
+        Self { iter }
+    }
+}
+
+impl<T> Flavor for ExtendRefFlavor<'_, T>
+where
+    T: core::iter::Extend<u8>,
+{
+    type Output = ();
+
+    #[inline(always)]
+    fn try_push(&mut self, data: u8) -> Result<()> {
+        self.iter.extend([data]);
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn try_extend(&mut self, b: &[u8]) -> Result<()> {
+        self.iter.extend(b.iter().copied());
+        Ok(())
+    }
+
+    fn finalize(self) -> Result<Self::Output> {
+        Ok(())
+    }
+}
+
 /// Support for the [`embedded-io`](crate::eio::embedded_io) traits
 #[cfg(any(feature = "embedded-io-04", feature = "embedded-io-06"))]
 pub mod eio {
