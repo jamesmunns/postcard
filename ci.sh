@@ -40,6 +40,21 @@ cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive,de
 # on non-atomic systems
 cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
 
+# Check MSRV of each crate that declares a `rust-version`
+for manifest in source/*/Cargo.toml; do
+  msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' "$manifest")
+  [ -n "$msrv" ] || continue
+  pkg=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -n 1)
+  ensure_toolchain "$msrv"
+  rustup target add --toolchain "$msrv" thumbv7em-none-eabi
+  cargo +"$msrv" check -p "$pkg" --all-targets
+  cargo +"$msrv" test -p "$pkg"
+  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  cargo +"$msrv" check -p "$pkg" --all-targets --all-features
+  cargo +"$msrv" test -p "$pkg" --all-features
+  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features
+done
+
 cargo fmt --all -- --check
 
 # Check docs.rs build
