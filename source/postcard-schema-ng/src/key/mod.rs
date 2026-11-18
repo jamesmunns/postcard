@@ -95,7 +95,7 @@ impl Key {
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 mod key_owned {
     use super::*;
     use crate::schema::owned::OwnedDataModelType;

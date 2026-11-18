@@ -28,5 +28,5 @@ path = "../postcard"
 
 [dependencies.postcard-schema-ng]
 version = "0.4"
-features = ["use-std", "derive"]
+features = ["std", "derive"]
 path = "../postcard-schema-ng"

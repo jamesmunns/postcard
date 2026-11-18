@@ -2,27 +2,18 @@ use serde_core::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
 
 use crate::de::flavors::{Flavor, Slice};
 use core::marker::PhantomData;
-use postcard_core::de as pcde;
+use postcard_core::de::{self as pcde, DecodeError};
 
 /// The deserialization error type
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum DeserializerError<PopErr, FinErr> {
-    /// A Flavor-specific error occurred while extracting data
-    PopError(PopErr),
+    /// The postcard encoding was invalid, or the Flavor failed to provide data
+    /// (such as at end of input)
+    Decode(DecodeError<PopErr>),
     /// A Flavor-specific error occurred while finalizing the deserialization
     FinalizeError(FinErr),
-    /// A bad boolean value, e.g. NOT `0` or `1` was encountered while deserializing
-    BadBool,
-    /// A bad varint value was encountered while deserializing
-    BadVarint,
-    /// A bad [`char`] value was encounterered while deserializing
-    BadChar,
-    /// A bad UTF-8 string was encountered while deserializing
-    BadUtf8,
-    /// A bad [`Option`] was encountered while deserializing, e.g. the descriminant
-    /// value was NEITHER `0` (for `None`) nor `1` (for `Some`)
-    BadOption,
     /// The deserializer was requested to perform the `deserialize_any` action
     /// that postcard does not and will not ever support
     UnsupportedDeserAny,
@@ -53,10 +44,17 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError(...)")
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
     where
-        PopErr: core::fmt::Debug + core::fmt::Display,
-        FinErr: core::fmt::Debug + core::fmt::Display,
+        PopErr: core::error::Error + 'static,
+        FinErr: core::error::Error + 'static,
     {
         #[inline]
         fn custom<T>(_msg: T) -> Self
@@ -84,10 +82,17 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError({=str})", self.inner.as_str())
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
     where
-        PopErr: core::fmt::Debug + core::fmt::Display,
-        FinErr: core::fmt::Debug + core::fmt::Display,
+        PopErr: core::error::Error + 'static,
+        FinErr: core::error::Error + 'static,
     {
         #[inline]
         fn custom<T>(msg: T) -> Self
@@ -104,20 +109,11 @@ mod custom {
 
 pub use custom::SerdeCustomError;
 
-impl<PopErr, FinErr> core::fmt::Display for DeserializerError<PopErr, FinErr>
-where
-    PopErr: core::fmt::Display,
-    FinErr: core::fmt::Display,
-{
+impl<PopErr, FinErr> core::fmt::Display for DeserializerError<PopErr, FinErr> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            DeserializerError::PopError(e) => write!(f, "PopError({e})"),
-            DeserializerError::FinalizeError(e) => write!(f, "FinalizeError({e})"),
-            DeserializerError::BadBool => f.write_str("BadBool"),
-            DeserializerError::BadVarint => f.write_str("BadVarint"),
-            DeserializerError::BadChar => f.write_str("BadChar"),
-            DeserializerError::BadUtf8 => f.write_str("BadUtf8"),
-            DeserializerError::BadOption => f.write_str("BadOption"),
+            DeserializerError::Decode(e) => e.fmt(f),
+            DeserializerError::FinalizeError(_) => f.write_str("FinalizeError"),
             DeserializerError::UnsupportedDeserAny => f.write_str("UnsupportedDeserAny"),
             DeserializerError::UnsupportedDeserIdent => f.write_str("UnsupportedDeserIdent"),
             DeserializerError::UnsupportedDeserIgnoredAny => {
@@ -130,9 +126,27 @@ where
 
 impl<PopErr, FinErr> core::error::Error for DeserializerError<PopErr, FinErr>
 where
-    PopErr: core::fmt::Debug + core::fmt::Display,
-    FinErr: core::fmt::Debug + core::fmt::Display,
+    PopErr: core::error::Error + 'static,
+    FinErr: core::error::Error + 'static,
 {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            // `Decode` is transparent, report the `DecodeError`'s source
+            DeserializerError::Decode(e) => core::error::Error::source(e),
+            DeserializerError::FinalizeError(e) => Some(e),
+            DeserializerError::UnsupportedDeserAny
+            | DeserializerError::UnsupportedDeserIdent
+            | DeserializerError::UnsupportedDeserIgnoredAny
+            | DeserializerError::Custom(_) => None,
+        }
+    }
+}
+
+impl<PopErr, FinErr> From<DecodeError<PopErr>> for DeserializerError<PopErr, FinErr> {
+    #[inline]
+    fn from(e: DecodeError<PopErr>) -> Self {
+        DeserializerError::Decode(e)
+    }
 }
 
 /// A `serde` compatible deserializer, generic over “Flavors” of deserializing plugins.
@@ -146,7 +160,7 @@ pub struct Deserializer<'de, F: Flavor<'de>> {
 
 impl<'de, F> Deserializer<'de, F>
 where
-    F: Flavor<'de> + 'de,
+    F: Flavor<'de>,
 {
     /// Obtain a Deserializer from a slice of bytes
     pub fn from_flavor(flavor: F) -> Self {
@@ -278,11 +292,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let val = match pcde::try_take_bool(&mut self.flavor) {
-            Ok(Some(b)) => b,
-            Ok(None) => return Err(DeserializerError::BadBool),
-            Err(e) => return Err(DeserializerError::PopError(e)),
-        };
+        let val = pcde::try_take_bool(&mut self.flavor)?;
         visitor.visit_bool(val)
     }
 
@@ -294,7 +304,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        visitor.visit_i8(self.flavor.pop().map_err(DeserializerError::PopError)? as i8)
+        visitor.visit_i8(pcde::try_take_i8(&mut self.flavor)?)
     }
 
     #[inline]
@@ -305,8 +315,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_i16(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_i16(&mut self.flavor)?;
         visitor.visit_i16(v)
     }
 
@@ -318,8 +327,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_i32(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_i32(&mut self.flavor)?;
         visitor.visit_i32(v)
     }
 
@@ -331,8 +339,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_i64(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_i64(&mut self.flavor)?;
         visitor.visit_i64(v)
     }
 
@@ -344,8 +351,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_i128(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_i128(&mut self.flavor)?;
         visitor.visit_i128(v)
     }
 
@@ -357,7 +363,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_u8(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let v = pcde::try_take_u8(&mut self.flavor)?;
         visitor.visit_u8(v)
     }
 
@@ -369,8 +375,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_u16(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_u16(&mut self.flavor)?;
         visitor.visit_u16(v)
     }
 
@@ -382,8 +387,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_u32(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_u32(&mut self.flavor)?;
         visitor.visit_u32(v)
     }
 
@@ -395,8 +399,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_u64(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_u64(&mut self.flavor)?;
         visitor.visit_u64(v)
     }
 
@@ -408,8 +411,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let v = pcde::try_take_u128(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let v = v.ok_or(DeserializerError::BadVarint)?;
+        let v = pcde::try_take_u128(&mut self.flavor)?;
         visitor.visit_u128(v)
     }
 
@@ -421,7 +423,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let f = pcde::try_take_f32(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let f = pcde::try_take_f32(&mut self.flavor)?;
         visitor.visit_f32(f)
     }
 
@@ -433,7 +435,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let f = pcde::try_take_f64(&mut self.flavor).map_err(DeserializerError::PopError)?;
+        let f = pcde::try_take_f64(&mut self.flavor)?;
         visitor.visit_f64(f)
     }
 
@@ -445,8 +447,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let ch = pcde::try_take_char(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let ch = ch.ok_or(DeserializerError::BadUtf8)?;
+        let ch = pcde::try_take_char(&mut self.flavor)?;
         visitor.visit_char(ch)
     }
 
@@ -458,8 +459,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let str_sl = pcde::try_take_str(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let str_sl = str_sl.ok_or(DeserializerError::BadUtf8)?;
+        let str_sl = pcde::try_take_str(&mut self.flavor)?;
         visitor.visit_borrowed_str(str_sl)
     }
 
@@ -471,9 +471,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let str_sl =
-            pcde::try_take_str_temp(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let str_sl = str_sl.ok_or(DeserializerError::BadUtf8)?;
+        let str_sl = pcde::try_take_str_temp(&mut self.flavor)?;
         visitor.visit_str(str_sl)
     }
 
@@ -485,8 +483,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = pcde::try_take_bytes(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let bytes = bytes.ok_or(DeserializerError::BadVarint)?;
+        let bytes = pcde::try_take_bytes(&mut self.flavor)?;
         visitor.visit_borrowed_bytes(bytes)
     }
 
@@ -498,9 +495,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes =
-            pcde::try_take_bytes_temp(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let bytes = bytes.ok_or(DeserializerError::BadVarint)?;
+        let bytes = pcde::try_take_bytes_temp(&mut self.flavor)?;
         visitor.visit_bytes(bytes)
     }
 
@@ -512,11 +507,10 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        match pcde::try_take_option_discrim(&mut self.flavor) {
-            Ok(Some(false)) => visitor.visit_none(),
-            Ok(Some(true)) => visitor.visit_some(self),
-            Ok(None) => Err(DeserializerError::BadOption),
-            Err(e) => Err(DeserializerError::PopError(e)),
+        if pcde::try_take_option_discrim(&mut self.flavor)? {
+            visitor.visit_some(self)
+        } else {
+            visitor.visit_none()
         }
     }
 
@@ -567,8 +561,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let len = pcde::try_take_length(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let len = len.ok_or(DeserializerError::BadVarint)?;
+        let len = pcde::try_take_length(&mut self.flavor)?;
 
         visitor.visit_seq(SeqAccess {
             deserializer: self,
@@ -612,8 +605,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let len = pcde::try_take_length(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let len = len.ok_or(DeserializerError::BadVarint)?;
+        let len = pcde::try_take_length(&mut self.flavor)?;
 
         visitor.visit_map(MapAccess {
             deserializer: self,
@@ -717,10 +709,9 @@ impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<
         self,
         seed: V,
     ) -> Result<(V::Value, Self), DeserializerError<F::PopError, F::FinalizeError>> {
-        let varint =
-            pcde::try_take_discriminant(&mut self.flavor).map_err(DeserializerError::PopError)?;
-        let varint = varint.ok_or(DeserializerError::BadVarint)?;
-        let v = DeserializeSeed::deserialize(seed, varint.into_deserializer())?;
+        let varint = pcde::try_take_discriminant(&mut self.flavor)?;
+        let de: serde_core::de::value::U32Deserializer<Self::Error> = varint.into_deserializer();
+        let v = DeserializeSeed::deserialize(seed, de)?;
         Ok((v, self))
     }
 }

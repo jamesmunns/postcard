@@ -120,7 +120,7 @@ features = ["serde", "clock"]
 
 [features]
 default = []
-use-std = ["serde/std"]
+std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["postcard-derive-ng"]
 

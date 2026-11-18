@@ -6,9 +6,6 @@ use serde_core::Serialize;
 use serializer::SerializerError;
 
 #[cfg(any(feature = "alloc", feature = "std"))]
-use crate::ser::flavors::AllocVec;
-
-#[cfg(any(feature = "alloc", feature = "std"))]
 extern crate alloc;
 
 use crate::ser::serializer::Serializer;
@@ -72,7 +69,7 @@ pub fn to_vec<T>(value: &T) -> Result<alloc::vec::Vec<u8>, SerializerError<Infal
 where
     T: Serialize + ?Sized,
 {
-    serialize_with_flavor::<T, AllocVec>(value, AllocVec::new())
+    serialize_with_flavor::<T, alloc::vec::Vec<u8>>(value, alloc::vec::Vec::new())
 }
 
 /// Serialize a `T` to a [`core::iter::Extend`],

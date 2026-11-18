@@ -20,7 +20,7 @@
 //! versions of the Data Model types. These owned types implement `From` for their borrowed
 //! counterpoint, so if you need to deserialize something, you probably want the Owned variant!
 
-#[cfg(any(feature = "use-std", feature = "alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod fmt;
 
 use serde::Serialize;
@@ -319,5 +319,5 @@ pub struct Variant {
     pub data: Data,
 }
 
-#[cfg(any(feature = "use-std", feature = "alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub mod owned;

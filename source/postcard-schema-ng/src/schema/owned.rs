@@ -5,13 +5,13 @@ use crate::schema::size_as_varint_usize;
 use super::{Data, DataModelType, NamedField, Variant};
 use serde::{Deserialize, Serialize};
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashSet, string::String};
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{boxed::Box, string::String};
 
 // ---
@@ -25,7 +25,7 @@ impl OwnedDataModelType {
     }
 
     /// Collect all types used recursively by this type
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     pub fn all_used_types(&self) -> HashSet<Self> {
         let mut buf = HashSet::new();
         super::fmt::discover_tys(self, &mut buf);

@@ -1,4 +1,4 @@
-#![cfg_attr(not(any(test, feature = "use-std")), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! # Postcard Schema
@@ -9,7 +9,7 @@ pub mod schema;
 
 /// Types with a fixed upper bound
 pub mod max_len {
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     pub use crate::impls::builtins_maxlen::std::{MaxLenBytes, MaxLenString};
     pub use crate::impls::builtins_maxlen::{MaxLenByteSlice, MaxLenStr, TooLong};
 }

@@ -135,6 +135,10 @@
 //! [`Tagged Union`]: https://postcard.jamesmunns.com/wire-format#tagged-unions
 
 #![cfg_attr(not(test), no_std)]
+#![warn(missing_docs)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 pub mod de;
 pub mod ser;

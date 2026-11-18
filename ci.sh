@@ -29,16 +29,31 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-v0_33,heapless-v0_8,heapless-v0_9,embedded-io-v0_7
+cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-v0_33,heapless-v0_8,heapless-v0_9,embedded-io-v0_7,defmt-v1,postcard-schema-ng/std
 
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn --exclude postcard-dyn-ng
-cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
+cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive,defmt-v1 --exclude postcard-dyn --exclude postcard-dyn-ng
 
 # CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
 # on non-atomic systems
 cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
+
+# Check MSRV of each crate that declares a `rust-version`
+for manifest in source/*/Cargo.toml; do
+  msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' "$manifest")
+  [ -n "$msrv" ] || continue
+  pkg=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -n 1)
+  ensure_toolchain "$msrv"
+  rustup target add --toolchain "$msrv" thumbv7em-none-eabi
+  cargo +"$msrv" check -p "$pkg" --all-targets
+  cargo +"$msrv" test -p "$pkg"
+  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  cargo +"$msrv" check -p "$pkg" --all-targets --all-features
+  cargo +"$msrv" test -p "$pkg" --all-features
+  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features
+done
 
 cargo fmt --all -- --check
 

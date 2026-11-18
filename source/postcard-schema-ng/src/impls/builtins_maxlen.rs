@@ -225,7 +225,7 @@ impl<'a, const N: usize> Schema for MaxLenByteSlice<'a, N> {
     };
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub(crate) mod std {
     //
     // STRING

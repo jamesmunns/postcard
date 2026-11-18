@@ -325,7 +325,7 @@ pub mod fnv1a64 {
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 pub mod fnv1a64_owned {
     //! Heapful helpers and versions of hashing for use on `std` targets
 

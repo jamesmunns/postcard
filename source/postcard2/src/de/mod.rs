@@ -39,7 +39,7 @@ pub fn from_io<'a, T, R>(
 ) -> Result<(T, (R, &'a mut [u8])), DeserializerError<UnexpectedEnd, Infallible>>
 where
     T: Deserialize<'a>,
-    R: std::io::Read + 'a,
+    R: std::io::Read,
 {
     let flavor = flavors::io::io::IOReader::new(val.0, val.1);
     let mut deserializer = Deserializer::from_flavor(flavor);
@@ -83,8 +83,8 @@ mod test_alloc {
         // run on devices with larger amounts of memory, but it can't hurt.
         assert_eq!(
             from_bytes::<Vec<u8>>(&[(1 << 7) | 8, 255, 255, 255, 0, 0, 0, 0, 0]),
-            Err(crate::de::deserializer::DeserializerError::PopError(
-                crate::de_flavors::UnexpectedEnd
+            Err(crate::de::deserializer::DeserializerError::Decode(
+                crate::DecodeError::Pop(crate::de_flavors::UnexpectedEnd)
             ))
         );
     }

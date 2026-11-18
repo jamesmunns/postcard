@@ -22,6 +22,7 @@ where
 
 /// The serialization error type
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum SerializerError<PushErr, FinErr> {
     /// A Flavor-specific error occurred while inserting data
@@ -39,15 +40,11 @@ pub enum SerializerError<PushErr, FinErr> {
     Custom(SerdeCustomError),
 }
 
-impl<PushErr, FinErr> core::fmt::Display for SerializerError<PushErr, FinErr>
-where
-    PushErr: core::fmt::Display,
-    FinErr: core::fmt::Display,
-{
+impl<PushErr, FinErr> core::fmt::Display for SerializerError<PushErr, FinErr> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            SerializerError::PushError(e) => write!(f, "PushError({})", e),
-            SerializerError::FinalizeError(e) => write!(f, "FinalizeError({})", e),
+            SerializerError::PushError(_) => f.write_str("PushError"),
+            SerializerError::FinalizeError(_) => f.write_str("FinalizeError"),
             SerializerError::SeqLengthUnknown => f.write_str("SeqLengthUnknown"),
             SerializerError::Custom(serde_custom_error) => serde_custom_error.fmt(f),
         }
@@ -56,9 +53,16 @@ where
 
 impl<PushErr, FinErr> core::error::Error for SerializerError<PushErr, FinErr>
 where
-    PushErr: core::fmt::Debug + core::fmt::Display,
-    FinErr: core::fmt::Debug + core::fmt::Display,
+    PushErr: core::error::Error + 'static,
+    FinErr: core::error::Error + 'static,
 {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            SerializerError::PushError(e) => Some(e),
+            SerializerError::FinalizeError(e) => Some(e),
+            SerializerError::SeqLengthUnknown | SerializerError::Custom(_) => None,
+        }
+    }
 }
 
 #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -75,10 +79,17 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError(...)")
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
     where
-        PopErr: core::fmt::Debug + core::fmt::Display,
-        FinErr: core::fmt::Debug + core::fmt::Display,
+        PopErr: core::error::Error + 'static,
+        FinErr: core::error::Error + 'static,
     {
         #[inline]
         fn custom<T>(_msg: T) -> Self
@@ -106,10 +117,17 @@ mod custom {
         }
     }
 
+    #[cfg(feature = "defmt-v1")]
+    impl defmt::Format for SerdeCustomError {
+        fn format(&self, f: defmt::Formatter<'_>) {
+            defmt::write!(f, "SerdeCustomError({=str})", self.inner.as_str())
+        }
+    }
+
     impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
     where
-        PopErr: core::fmt::Debug + core::fmt::Display,
-        FinErr: core::fmt::Debug + core::fmt::Display,
+        PopErr: core::error::Error + 'static,
+        FinErr: core::error::Error + 'static,
     {
         #[inline]
         fn custom<T>(msg: T) -> Self
