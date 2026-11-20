@@ -1,151 +1,14 @@
 //! Deserializing tools
 
+mod api;
 pub mod flavors;
 
+pub use api::{DecodeError, Flavor, UnexpectedEnd};
+
 use crate::varint::{
-    de_zig_zag_i16, de_zig_zag_i32, de_zig_zag_i64, de_zig_zag_i128, max_of_last_byte, varint_max,
+    VarintUnsigned, de_zig_zag_i16, de_zig_zag_i32, de_zig_zag_i64, de_zig_zag_i128,
+    max_of_last_byte, varint_max,
 };
-
-/// Unexpectedly reached the end of the deserialization buffer
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
-pub struct UnexpectedEnd;
-
-impl core::fmt::Display for UnexpectedEnd {
-    #[inline]
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("UnexpectedEnd")
-    }
-}
-
-impl core::error::Error for UnexpectedEnd {}
-
-/// An error while decoding a postcard item
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
-#[non_exhaustive]
-pub enum DecodeError<E> {
-    /// Error popping bytes, likely we have run out of input
-    Pop(E),
-    /// The decoded varint exceeded the capacity or maximum encoded length of the
-    /// requested type
-    BadVarint,
-    /// Observed a [bool] that was neither `0` nor `1`
-    BadBool,
-    /// Observed an [`Option`] discriminant that was neither `0` (`None`) nor `1` (`Some`)
-    BadOption,
-    /// Observed a string that was not valid UTF-8
-    BadUtf8,
-    /// Observed a [char] that was not exactly one UTF-8 encoded character
-    BadChar,
-}
-
-impl<E> core::fmt::Display for DecodeError<E> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            DecodeError::Pop(_) => f.write_str("Pop"),
-            DecodeError::BadVarint => f.write_str("BadVarint"),
-            DecodeError::BadBool => f.write_str("BadBool"),
-            DecodeError::BadOption => f.write_str("BadOption"),
-            DecodeError::BadUtf8 => f.write_str("BadUtf8"),
-            DecodeError::BadChar => f.write_str("BadChar"),
-        }
-    }
-}
-
-impl<E: core::error::Error + 'static> core::error::Error for DecodeError<E> {
-    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
-        match self {
-            DecodeError::Pop(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-/// The deserialization Flavor trait
-///
-/// This is used as the primary way to decode serialized data from some kind of buffer,
-/// or modify that data in a middleware style pattern.
-///
-/// See the module level docs for an example of how flavors are used.
-pub trait Flavor<'de> {
-    /// The remaining data of this flavor after deserializing has completed.
-    ///
-    /// Typically, this includes the remaining buffer that was not used for
-    /// deserialization, and in cases of more complex flavors, any additional
-    /// information that was decoded or otherwise calculated during
-    /// the deserialization process.
-    type Remainder;
-
-    /// The error type specific to pushing methods.
-    ///
-    /// This includes [`Self::pop`], [`Self::try_take_n`], and [`Self::try_take_n_temp`].
-    ///
-    /// If the only error is "no more data", consider using [`UnexpectedEnd`].
-    type PopError: core::error::Error + 'static;
-
-    /// The error type specific to [`Self::finalize`].
-    ///
-    /// If this type cannot error when pushing, e.g. for storage flavors that don't
-    /// perform any meaningful finalization actions, consider using
-    /// [`Infallible`](core::convert::Infallible).
-    type FinalizeError: core::error::Error + 'static;
-
-    /// Obtain the next byte for deserialization
-    fn pop(&mut self) -> Result<u8, Self::PopError>;
-
-    /// Returns the number of bytes remaining in the message, if known.
-    ///
-    /// # Implementation notes
-    ///
-    /// It is not enforced that this number is exactly correct.
-    /// A flavor may yield less or more bytes than the what is hinted at by
-    /// this function.
-    ///
-    /// `size_hint()` is primarily intended to be used for optimizations such as
-    /// reserving space for deserialized items, but must not be trusted to
-    /// e.g., omit bounds checks in unsafe code. An incorrect implementation of
-    /// `size_hint()` should not lead to memory safety violations.
-    ///
-    /// That said, the implementation should provide a correct estimation,
-    /// because otherwise it would be a violation of the trait’s protocol.
-    ///
-    /// The default implementation returns `None` which is correct for any flavor.
-    fn size_hint(&self) -> Option<usize> {
-        None
-    }
-
-    /// Attempt to take the next `ct` bytes from the serialized message.
-    ///
-    /// This variant borrows the data from the input for zero-copy deserialization. If zero-copy
-    /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
-    fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError>;
-
-    /// Attempt to take the next `ct` bytes from the serialized message.
-    ///
-    /// This variant does not guarantee that the returned value is borrowed from the input, so it
-    /// cannot be used for zero-copy deserialization, but it also avoids needing to potentially
-    /// allocate a data in a temporary buffer.
-    ///
-    /// This variant should be used instead of `try_take_n`
-    /// if zero-copy deserialization is not necessary.
-    ///
-    /// It is only necessary to implement this method if the flavor requires storing data in a
-    /// temporary buffer in order to implement the borrow semantics, e.g. the `std::io::Read`
-    /// flavor.
-    fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], Self::PopError>
-    where
-        'de: 'a,
-    {
-        self.try_take_n(ct)
-    }
-
-    /// Complete the deserialization process.
-    ///
-    /// This is typically called separately, after the `serde` deserialization
-    /// has completed.
-    fn finalize(self) -> Result<Self::Remainder, Self::FinalizeError>;
-}
 
 /// Attempt to take a [bool]
 ///
@@ -167,19 +30,17 @@ pub fn try_take_u8<'de, F: Flavor<'de>>(f: &mut F) -> Result<u8, DecodeError<F::
     f.pop().map_err(DecodeError::Pop)
 }
 
-/// Attempt to take a [u16]
-///
-/// [u16]: https://postcard.jamesmunns.com/wire-format#8---u16
 #[inline]
-pub fn try_take_u16<'de, F: Flavor<'de>>(f: &mut F) -> Result<u16, DecodeError<F::PopError>> {
-    let mut out = 0;
-    for i in 0..varint_max::<u16>() {
+fn try_take_varint<'de, T: VarintUnsigned, F: Flavor<'de>>(
+    f: &mut F,
+) -> Result<T, DecodeError<F::PopError>> {
+    let mut out = T::ZERO;
+    for i in 0..varint_max::<T>() {
         let val = f.pop().map_err(DecodeError::Pop)?;
-        let carry = (val & 0x7F) as u16;
-        out |= carry << (7 * i);
+        out = out.insert_right_7(val, 7 * i);
 
         if (val & 0x80) == 0 {
-            if i == varint_max::<u16>() - 1 && val > max_of_last_byte::<u16>() {
+            if i == varint_max::<T>() - 1 && val > max_of_last_byte::<T>() {
                 break;
             } else {
                 return Ok(out);
@@ -187,6 +48,14 @@ pub fn try_take_u16<'de, F: Flavor<'de>>(f: &mut F) -> Result<u16, DecodeError<F
         }
     }
     Err(DecodeError::BadVarint)
+}
+
+/// Attempt to take a [u16]
+///
+/// [u16]: https://postcard.jamesmunns.com/wire-format#8---u16
+#[inline]
+pub fn try_take_u16<'de, F: Flavor<'de>>(f: &mut F) -> Result<u16, DecodeError<F::PopError>> {
+    try_take_varint(f)
 }
 
 /// Attempt to take a [u32]
@@ -194,21 +63,7 @@ pub fn try_take_u16<'de, F: Flavor<'de>>(f: &mut F) -> Result<u16, DecodeError<F
 /// [u32]: https://postcard.jamesmunns.com/wire-format#9---u32
 #[inline]
 pub fn try_take_u32<'de, F: Flavor<'de>>(f: &mut F) -> Result<u32, DecodeError<F::PopError>> {
-    let mut out = 0;
-    for i in 0..varint_max::<u32>() {
-        let val = f.pop().map_err(DecodeError::Pop)?;
-        let carry = (val & 0x7F) as u32;
-        out |= carry << (7 * i);
-
-        if (val & 0x80) == 0 {
-            if i == varint_max::<u32>() - 1 && val > max_of_last_byte::<u32>() {
-                break;
-            } else {
-                return Ok(out);
-            }
-        }
-    }
-    Err(DecodeError::BadVarint)
+    try_take_varint(f)
 }
 
 /// Attempt to take a [u64]
@@ -216,21 +71,7 @@ pub fn try_take_u32<'de, F: Flavor<'de>>(f: &mut F) -> Result<u32, DecodeError<F
 /// [u64]: https://postcard.jamesmunns.com/wire-format#10---u64
 #[inline]
 pub fn try_take_u64<'de, F: Flavor<'de>>(f: &mut F) -> Result<u64, DecodeError<F::PopError>> {
-    let mut out = 0;
-    for i in 0..varint_max::<u64>() {
-        let val = f.pop().map_err(DecodeError::Pop)?;
-        let carry = (val & 0x7F) as u64;
-        out |= carry << (7 * i);
-
-        if (val & 0x80) == 0 {
-            if i == varint_max::<u64>() - 1 && val > max_of_last_byte::<u64>() {
-                break;
-            } else {
-                return Ok(out);
-            }
-        }
-    }
-    Err(DecodeError::BadVarint)
+    try_take_varint(f)
 }
 
 /// Attempt to take a [u128]
@@ -238,21 +79,7 @@ pub fn try_take_u64<'de, F: Flavor<'de>>(f: &mut F) -> Result<u64, DecodeError<F
 /// [u128]: https://postcard.jamesmunns.com/wire-format#11---u128
 #[inline]
 pub fn try_take_u128<'de, F: Flavor<'de>>(f: &mut F) -> Result<u128, DecodeError<F::PopError>> {
-    let mut out = 0;
-    for i in 0..varint_max::<u128>() {
-        let val = f.pop().map_err(DecodeError::Pop)?;
-        let carry = (val & 0x7F) as u128;
-        out |= carry << (7 * i);
-
-        if (val & 0x80) == 0 {
-            if i == varint_max::<u128>() - 1 && val > max_of_last_byte::<u128>() {
-                break;
-            } else {
-                return Ok(out);
-            }
-        }
-    }
-    Err(DecodeError::BadVarint)
+    try_take_varint(f)
 }
 
 /// Attempt to take a [usize]

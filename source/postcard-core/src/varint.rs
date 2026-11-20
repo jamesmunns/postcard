@@ -42,89 +42,100 @@ pub(crate) const fn max_of_last_byte<T: Sized>() -> u8 {
     (1 << extra_bits) - 1
 }
 
-/// Encode a `varint(usize)`
+/// The unsigned integer operations needed to encode and decode varints
+///
+/// This exists to paper over the fact there is no generic way to interact with
+/// integers.
+pub(crate) trait VarintUnsigned: Copy + PartialEq {
+    const ZERO: Self;
+    /// Get the current least significant byte of an integer
+    fn least_significant_byte(self) -> u8;
+    /// Right-shift the integer 7 bits, e.g. `self >> 7`
+    fn shift_right_7(self) -> Self;
+    /// Is this a terminal byte, e.g. `self < 128`?
+    fn is_last_byte(self) -> bool;
+    /// Shift self by `shift` and or with the 7 lsb of `byte`
+    fn insert_right_7(self, byte: u8, shift: usize) -> Self;
+}
+
+macro_rules! impl_varint_unsigned {
+    ($($t:ty),*) => {
+        $(
+            impl VarintUnsigned for $t {
+                const ZERO: Self = 0;
+
+                #[inline(always)]
+                fn least_significant_byte(self) -> u8 {
+                    self.to_le_bytes()[0]
+                }
+
+                #[inline(always)]
+                fn shift_right_7(self) -> Self {
+                    self >> 7
+                }
+
+                #[inline(always)]
+                fn is_last_byte(self) -> bool {
+                    self < 128
+                }
+
+                #[inline(always)]
+                fn insert_right_7(self, byte: u8, shift: usize) -> Self {
+                    self | (((byte & 0x7F) as $t) << shift)
+                }
+            }
+        )*
+    };
+}
+
+impl_varint_unsigned!(u16, u32, u64, u128, usize);
+
+/// Encode `n` as a varint into `out`, which must be `varint_max::<T>()` bytes long.
 #[inline]
-pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
+fn encode_varint<T: VarintUnsigned>(n: T, out: &mut [u8]) -> &mut [u8] {
+    debug_assert_eq!(out.len(), varint_max::<T>());
     let mut value = n;
-    for i in 0..varint_max::<usize>() {
-        out[i] = value.to_le_bytes()[0];
-        if value < 128 {
+    for i in 0..out.len() {
+        out[i] = value.least_significant_byte();
+        if value.is_last_byte() {
             return &mut out[..=i];
         }
 
         out[i] |= 0x80;
-        value >>= 7;
+        value = value.shift_right_7();
     }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
+    debug_assert!(value == T::ZERO);
+    out
+}
+
+/// Encode a `varint(usize)`
+#[inline]
+pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
+    encode_varint(n, out)
 }
 
 /// Encode a `varint(u16)`
 #[inline]
 pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
-    let mut value = n;
-    for i in 0..varint_max::<u16>() {
-        out[i] = value.to_le_bytes()[0];
-        if value < 128 {
-            return &mut out[..=i];
-        }
-
-        out[i] |= 0x80;
-        value >>= 7;
-    }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
+    encode_varint(n, out)
 }
 
 /// Encode a `varint(u32)`
 #[inline]
 pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
-    let mut value = n;
-    for i in 0..varint_max::<u32>() {
-        out[i] = value.to_le_bytes()[0];
-        if value < 128 {
-            return &mut out[..=i];
-        }
-
-        out[i] |= 0x80;
-        value >>= 7;
-    }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
+    encode_varint(n, out)
 }
 
 /// Encode a `varint(u64)`
 #[inline]
 pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
-    let mut value = n;
-    for i in 0..varint_max::<u64>() {
-        out[i] = value.to_le_bytes()[0];
-        if value < 128 {
-            return &mut out[..=i];
-        }
-
-        out[i] |= 0x80;
-        value >>= 7;
-    }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
+    encode_varint(n, out)
 }
 
 /// Encode a `varint(u128)`
 #[inline]
 pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
-    let mut value = n;
-    for i in 0..varint_max::<u128>() {
-        out[i] = value.to_le_bytes()[0];
-        if value < 128 {
-            return &mut out[..=i];
-        }
-
-        out[i] |= 0x80;
-        value >>= 7;
-    }
-    debug_assert_eq!(value, 0);
-    &mut out[..]
+    encode_varint(n, out)
 }
 
 /// Convert an `i16` into its zig-zag encoded `u16` counterpart
