@@ -422,11 +422,14 @@ where
         // There are potentially other ways to do this, such as:
         //
         // * Reserving a fixed max size, such as 5 bytes, for the length field, and
-        //     leaving non-canonical trailing zeroes at the end. This would work up
-        //     to some reasonable length, but might have some portability vs max size
-        //     tradeoffs, e.g. 64KiB if we pick 3 bytes, or 4GiB if we pick 5 bytes
+        //   leaving non-canonical trailing zeroes at the end. This would work up
+        //   to some reasonable length, but might have some portability vs max size
+        //   tradeoffs, e.g. 64KiB if we pick 3 bytes, or 4GiB if we pick 5 bytes.
+        //   This approach would also likely violate the "always produce
+        //   canonical output" requirement of the postcard wire format, though
+        //   we ALSO require decoders to accept non-canonical data.
         // * Expose some kind of "memmove" capability to flavors, to allow us to
-        //     format into the buffer, then "scoot over" that many times.
+        //   format into the buffer, then "scoot over" that many times.
         //
         // Despite the current approaches downside in speed, it is likely flexible
         // enough for the rare-ish case where formatting a Debug impl is necessary.
@@ -457,6 +460,7 @@ where
         {
             output: &'a mut IF,
             err: Option<IF::PushError>,
+            ct: usize,
         }
         impl<IF> Write for FmtWriter<'_, IF>
         where
@@ -464,7 +468,10 @@ where
         {
             fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
                 match self.output.try_extend(s.as_bytes()) {
-                    Ok(_) => Ok(()),
+                    Ok(_) => {
+                        self.ct += s.len();
+                        Ok(())
+                    }
                     Err(e) => {
                         self.err = Some(e);
                         Err(core::fmt::Error)
@@ -477,11 +484,18 @@ where
         let mut fw = FmtWriter {
             output: &mut self.output,
             err: None,
+            ct: 0,
         };
         let _ = write!(&mut fw, "{value}");
 
         if let Some(e) = fw.err {
             Err(SerializerError::PushError(e))
+        } else if fw.ct != len {
+            // Failed sanity check: the two passes produced a different count
+            // of values.
+            Err(serde_core::ser::Error::custom(
+                "collect_str: value formatted differently on each pass",
+            ))
         } else {
             Ok(())
         }

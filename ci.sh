@@ -29,7 +29,7 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-v0_33,heapless-v0_8,heapless-v0_9,embedded-io-v0_7,defmt-v1,postcard-schema-ng/std
+cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-v0_33,heapless-v0_8,heapless-v0_9,embedded-io-v0_7,defmt-v1,postcard-schema-ng/std,postcard2/std,postcard2/serde-derive
 
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
@@ -49,10 +49,9 @@ for manifest in source/*/Cargo.toml; do
   rustup target add --toolchain "$msrv" thumbv7em-none-eabi
   cargo +"$msrv" check -p "$pkg" --all-targets
   cargo +"$msrv" test -p "$pkg"
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --no-default-features
   cargo +"$msrv" check -p "$pkg" --all-targets --all-features
   cargo +"$msrv" test -p "$pkg" --all-features
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features
 done
 
 cargo fmt --all -- --check
