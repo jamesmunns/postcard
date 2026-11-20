@@ -51,7 +51,7 @@ Specifically, the following types are encoded as `varint`s in postcard:
 
 As `u8` and `i8` types always fit into a single byte, they are encoded as-is rather than encoded using a `varint`.
 
-Additionally the following two types are not part of the Serde Data Model, but are used within the context of postcard:
+Additionally the following two types are not part of the Serde Data Model, but are considered defined within the context of postcard:
 
 | Type      | Varint Type       |
 | :---      | :---              |
@@ -163,12 +163,13 @@ For example in the following `u16` encoded data:
 
 ## `isize` and `usize`
 
-The Serde Data Model does not address platform-specific sized integers, and instead supports them by mapping to an integer type matching
-the platform's bit width.
+The Serde Data Model does not include platform-specific sized integers. Serde serializes the Rust `usize` and `isize` types as a `u64` and an `i64` on every platform, so a Rust `usize` is encoded as a `varint(u64)`, and an `isize` as a `varint(i64)`, regardless of the platform's pointer width.
 
-For example, on a platform with 32-bit pointers, `usize` will map to `u32`, and `isize` will map to `i32`. On a platform with 64-bit pointers, `usize` will map to `u64`, and `isize` will map to `i64`.
+When deserializing, serde decodes a `usize` or `isize` first as a `u64` or `i64`, and then rejects a value that does not fit in the platform's `usize` or `isize`. For example, `0x1_0000_0000usize`, sent from a 64-bit target, fails to decode on a 32-bit platform.
 
-As these types are all `varint` encoded on the wire, two platforms of dissimilar pointer-widths will be able to interoperate without compatibility problems, as long as the value encoded in these types do not exceed the maximum encodable value of the smaller platform. If this occurs, for example sending `0x1_0000_0000usize` from a 64-bit target (as a `u64`), when decoding on a 32-bit platform, the value will fail to decode, as it exceeds the maximum value of a `usize` (as a `u32`).
+Postcard uses `varint(usize)` for the lengths of [Variable Quantities], which matches the platform's pointer width: `varint(u32)` on a platform with 32-bit pointers, and `varint(u64)` on a platform with 64-bit pointers. A length that does not fit in the decoding platform's `usize` fails to decode.
+
+[Variable Quantities]: #variable-quantities
 
 ## Variable Quantities
 
@@ -257,6 +258,8 @@ For example, the float value `-32.005859375f64` would be bitwise represented as 
 ### 14 - `char`
 
 A `char` will be encoded in UTF-8 form, and encoded as a `string`.
+
+The `string` must contain exactly one Unicode scalar value. A decoder rejects a `char` whose `string` is empty, is not valid UTF-8, or contains more than one `char`.
 
 ### 15 - `string`
 
