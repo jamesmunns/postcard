@@ -1,0 +1,40 @@
+specs (
+  {
+    name postcard
+    include (
+      spec/src/01-intro.md
+      spec/src/02-atoms.md
+      spec/src/03-composites.md
+      spec/src/04-schemas.md
+      spec/src/05-serde.md
+      spec/src/06-implementation-considerations.md
+      spec/src/07-glossary.md
+    )
+    impls (
+      {
+        name postcard-core
+        include (
+          source/postcard-core/src/lib.rs
+          source/postcard-core/src/de.rs
+          source/postcard-core/src/de/api.rs
+          source/postcard-core/src/de/flavors.rs
+          source/postcard-core/src/ser.rs
+          source/postcard-core/src/varint.rs
+        )
+        test_include (source/postcard-core/tests/wire.rs)
+      }
+      {
+        name postcard
+        include (
+          source/postcard2/src/de/deserializer.rs
+          source/postcard2/src/ser/serializer.rs
+        )
+        test_include (
+          source/postcard2/tests/composites.rs
+          source/postcard2/tests/schemas.rs
+          source/postcard2/tests/serde_mapping.rs
+        )
+      }
+    )
+  }
+)
