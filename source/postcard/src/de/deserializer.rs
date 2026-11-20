@@ -361,7 +361,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
             .map_err(|_| Error::DeserializeBadChar)?
             .chars();
         let character = chars.next().ok_or(Error::DeserializeBadChar)?;
-        
+
         // The bytes must hold exactly one char, so any char after the first
         // is an error rather than being ignored.
         if chars.next().is_some() {
