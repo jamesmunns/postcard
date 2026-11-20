@@ -205,6 +205,8 @@ impl Schema for core::net::SocketAddrV4 {
     };
 }
 
+/// As serde writes it for a binary format such as postcard: the IP and the
+/// port. serde leaves out the flow info and the scope id.
 #[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::SocketAddrV6 {
     const SCHEMA: &'static DataModelType = &DataModelType::Struct {
@@ -217,14 +219,6 @@ impl Schema for core::net::SocketAddrV6 {
             &NamedField {
                 name: "port",
                 ty: u16::SCHEMA,
-            },
-            &NamedField {
-                name: "flowinfo",
-                ty: u32::SCHEMA,
-            },
-            &NamedField {
-                name: "scope_id",
-                ty: u32::SCHEMA,
             },
         ]),
     };
