@@ -10,9 +10,18 @@ use crate::varint::{
     max_of_last_byte, varint_max,
 };
 
-/// Attempt to take a [bool]
+/// Attempt to take a `()`
 ///
-/// [bool]: https://postcard.jamesmunns.com/wire-format#1---bool
+/// Unsurprisingly, as this takes nothing from `F`, it always succeeds.
+// postcard[impl atom.unit.decode.empty]
+#[inline]
+pub fn try_take_unit<'de, F: Flavor<'de>>(_f: &mut F) -> Result<(), DecodeError<F::PopError>> {
+    Ok(())
+}
+
+/// Attempt to take a [bool]
+// postcard[impl atom.bool.encoding]
+// postcard[impl atom.bool.decode.invalid]
 #[inline]
 pub fn try_take_bool<'de, F: Flavor<'de>>(f: &mut F) -> Result<bool, DecodeError<F::PopError>> {
     match f.pop().map_err(DecodeError::Pop)? {
@@ -23,13 +32,18 @@ pub fn try_take_bool<'de, F: Flavor<'de>>(f: &mut F) -> Result<bool, DecodeError
 }
 
 /// Attempt to take a [u8]
-///
-/// [u8]: https://postcard.jamesmunns.com/wire-format#7---u8
+// postcard[impl atom.u8.encoding]
+// postcard[impl atom.u8.decode.any]
 #[inline]
 pub fn try_take_u8<'de, F: Flavor<'de>>(f: &mut F) -> Result<u8, DecodeError<F::PopError>> {
     f.pop().map_err(DecodeError::Pop)
 }
 
+// postcard[impl atom.varint.encoding.continuation]
+// postcard[impl atom.varint.encoding.little-endian]
+// postcard[impl atom.varint.decode.non-canonical]
+// postcard[impl atom.varint.decode.max-len]
+// postcard[impl atom.varint.decode.max-value]
 #[inline]
 fn try_take_varint<'de, T: VarintUnsigned, F: Flavor<'de>>(
     f: &mut F,
@@ -51,40 +65,35 @@ fn try_take_varint<'de, T: VarintUnsigned, F: Flavor<'de>>(
 }
 
 /// Attempt to take a [u16]
-///
-/// [u16]: https://postcard.jamesmunns.com/wire-format#8---u16
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_u16<'de, F: Flavor<'de>>(f: &mut F) -> Result<u16, DecodeError<F::PopError>> {
     try_take_varint(f)
 }
 
 /// Attempt to take a [u32]
-///
-/// [u32]: https://postcard.jamesmunns.com/wire-format#9---u32
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_u32<'de, F: Flavor<'de>>(f: &mut F) -> Result<u32, DecodeError<F::PopError>> {
     try_take_varint(f)
 }
 
 /// Attempt to take a [u64]
-///
-/// [u64]: https://postcard.jamesmunns.com/wire-format#10---u64
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_u64<'de, F: Flavor<'de>>(f: &mut F) -> Result<u64, DecodeError<F::PopError>> {
     try_take_varint(f)
 }
 
 /// Attempt to take a [u128]
-///
-/// [u128]: https://postcard.jamesmunns.com/wire-format#11---u128
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_u128<'de, F: Flavor<'de>>(f: &mut F) -> Result<u128, DecodeError<F::PopError>> {
     try_take_varint(f)
 }
 
 /// Attempt to take a [usize]
-///
-/// [usize]: https://postcard.jamesmunns.com/wire-format#isize-and-usize
+// postcard[impl atom.usize.encoding]
 #[inline]
 pub fn try_take_usize<'de, F: Flavor<'de>>(f: &mut F) -> Result<usize, DecodeError<F::PopError>> {
     #[cfg(target_pointer_width = "16")]
@@ -100,8 +109,8 @@ pub fn try_take_usize<'de, F: Flavor<'de>>(f: &mut F) -> Result<usize, DecodeErr
 }
 
 /// Attempt to take a [i8]
-///
-/// [i8]: https://postcard.jamesmunns.com/wire-format#2---i8
+// postcard[impl atom.i8.encoding]
+// postcard[impl atom.i8.decode.any]
 #[inline]
 pub fn try_take_i8<'de, F: Flavor<'de>>(f: &mut F) -> Result<i8, DecodeError<F::PopError>> {
     let u = try_take_u8(f)?;
@@ -109,40 +118,35 @@ pub fn try_take_i8<'de, F: Flavor<'de>>(f: &mut F) -> Result<i8, DecodeError<F::
 }
 
 /// Attempt to take a [i16]
-///
-/// [i16]: https://postcard.jamesmunns.com/wire-format#3---i16
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_i16<'de, F: Flavor<'de>>(f: &mut F) -> Result<i16, DecodeError<F::PopError>> {
     try_take_u16(f).map(de_zig_zag_i16)
 }
 
 /// Attempt to take a [i32]
-///
-/// [i32]: https://postcard.jamesmunns.com/wire-format#4---i32
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_i32<'de, F: Flavor<'de>>(f: &mut F) -> Result<i32, DecodeError<F::PopError>> {
     try_take_u32(f).map(de_zig_zag_i32)
 }
 
 /// Attempt to take a [i64]
-///
-/// [i64]: https://postcard.jamesmunns.com/wire-format#5---i64
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_i64<'de, F: Flavor<'de>>(f: &mut F) -> Result<i64, DecodeError<F::PopError>> {
     try_take_u64(f).map(de_zig_zag_i64)
 }
 
 /// Attempt to take a [i128]
-///
-/// [i128]: https://postcard.jamesmunns.com/wire-format#6---i128
+// postcard[impl atom.varint.types]
 #[inline]
 pub fn try_take_i128<'de, F: Flavor<'de>>(f: &mut F) -> Result<i128, DecodeError<F::PopError>> {
     try_take_u128(f).map(de_zig_zag_i128)
 }
 
 /// Attempt to take an [isize]
-///
-/// [isize]: https://postcard.jamesmunns.com/wire-format#isize-and-usize
+// postcard[impl atom.isize.encoding]
 #[inline]
 pub fn try_take_isize<'de, F: Flavor<'de>>(f: &mut F) -> Result<isize, DecodeError<F::PopError>> {
     #[cfg(target_pointer_width = "16")]
@@ -160,8 +164,9 @@ pub fn try_take_isize<'de, F: Flavor<'de>>(f: &mut F) -> Result<isize, DecodeErr
 }
 
 /// Attempt to take an [f32]
-///
-/// [f32]: https://postcard.jamesmunns.com/wire-format#12---f32
+// postcard[impl atom.f32.encoding]
+// postcard[impl atom.f32.decode.any]
+// postcard[impl atom.f32.decode.nan]
 #[inline]
 pub fn try_take_f32<'de, F: Flavor<'de>>(f: &mut F) -> Result<f32, DecodeError<F::PopError>> {
     let bytes = f.try_take_n_temp(4).map_err(DecodeError::Pop)?;
@@ -171,8 +176,9 @@ pub fn try_take_f32<'de, F: Flavor<'de>>(f: &mut F) -> Result<f32, DecodeError<F
 }
 
 /// Attempt to take an [f64]
-///
-/// [f64]: https://postcard.jamesmunns.com/wire-format#13---f64
+// postcard[impl atom.f64.encoding]
+// postcard[impl atom.f64.decode.any]
+// postcard[impl atom.f64.decode.nan]
 #[inline]
 pub fn try_take_f64<'de, F: Flavor<'de>>(f: &mut F) -> Result<f64, DecodeError<F::PopError>> {
     let bytes = f.try_take_n_temp(8).map_err(DecodeError::Pop)?;
@@ -181,9 +187,8 @@ pub fn try_take_f64<'de, F: Flavor<'de>>(f: &mut F) -> Result<f64, DecodeError<F
     Ok(f64::from_bits(u64::from_le_bytes(buf)))
 }
 
-/// Attempt to take a [byte array]
-///
-/// [byte array]: https://postcard.jamesmunns.com/wire-format#16---byte-array
+/// Attempt to take a `bytes` value, borrowed for the source's `'de` lifetime.
+// postcard[impl atom.bytes.encoding]
 #[inline]
 pub fn try_take_bytes<'de, F: Flavor<'de>>(
     f: &mut F,
@@ -192,11 +197,10 @@ pub fn try_take_bytes<'de, F: Flavor<'de>>(
     f.try_take_n(len).map_err(DecodeError::Pop)
 }
 
-/// Attempt to take a [byte array]
+/// Attempt to take a `bytes` value
 ///
-/// NOTE: This is used for items that are not required to retain a borrow their data from the source.
-///
-/// [byte array]: https://postcard.jamesmunns.com/wire-format#16---byte-array
+/// This is used for items that are not required to retain a borrow their data from the source.
+// postcard[impl atom.bytes.encoding]
 #[inline]
 pub fn try_take_bytes_temp<'a, 'de: 'a, F: Flavor<'de>>(
     f: &'a mut F,
@@ -205,20 +209,20 @@ pub fn try_take_bytes_temp<'a, 'de: 'a, F: Flavor<'de>>(
     f.try_take_n_temp(len).map_err(DecodeError::Pop)
 }
 
-/// Attempt to take a [string]
-///
-/// [string]: https://postcard.jamesmunns.com/wire-format#15---string
+/// Attempt to take a `string`
+// postcard[impl atom.string.encoding]
+// postcard[impl atom.string.decode.utf8]
 #[inline]
 pub fn try_take_str<'de, F: Flavor<'de>>(f: &mut F) -> Result<&'de str, DecodeError<F::PopError>> {
     let sli = try_take_bytes(f)?;
     core::str::from_utf8(sli).map_err(|_| DecodeError::BadUtf8)
 }
 
-/// Attempt to take a [string]
+/// Attempt to take a `string`
 ///
 /// NOTE: This is used for items that are not required to retain a borrow their data from the source.
-///
-/// [string]: https://postcard.jamesmunns.com/wire-format#15---string
+// postcard[impl atom.string.encoding]
+// postcard[impl atom.string.decode.utf8]
 #[inline]
 pub fn try_take_str_temp<'a, 'de: 'a, F: Flavor<'de>>(
     f: &'a mut F,
@@ -228,11 +232,11 @@ pub fn try_take_str_temp<'a, 'de: 'a, F: Flavor<'de>>(
 }
 
 /// Attempt to take a [char]
-///
-/// [char]: https://postcard.jamesmunns.com/wire-format#14---char
+// postcard[impl atom.char.encoding]
+// postcard[impl atom.char.decode.one-scalar]
 #[inline]
 pub fn try_take_char<'de, F: Flavor<'de>>(f: &mut F) -> Result<char, DecodeError<F::PopError>> {
-    let sz = try_take_usize(f)?;
+    let sz = try_take_length(f)?;
     if sz > 4 {
         return Err(DecodeError::BadChar);
     }
@@ -252,33 +256,25 @@ pub fn try_take_char<'de, F: Flavor<'de>>(f: &mut F) -> Result<char, DecodeError
     }
 }
 
-/// Attempt to take an [option] discriminant
+/// Attempt to take the discriminant header of an option.
 ///
-/// [option]: https://postcard.jamesmunns.com/wire-format#17---option
+/// `true` indicates that a value follows the `bool`.
+// postcard[related atom.bool.encoding]
 #[inline]
 pub fn try_take_option_discrim<'de, F: Flavor<'de>>(
     f: &mut F,
 ) -> Result<bool, DecodeError<F::PopError>> {
-    match f.pop().map_err(DecodeError::Pop)? {
-        0 => Ok(false),
-        1 => Ok(true),
-        _ => Err(DecodeError::BadOption),
-    }
+    try_take_bool(f).map_err(|e| match e {
+        DecodeError::BadBool => DecodeError::BadOption,
+        e => e,
+    })
 }
 
-/// Attempt to take a discriminant
+/// Attempt to take a discriminant.
 ///
-/// Used for:
-///
-/// * [unit variant]
-/// * [newtype variant]
-/// * [tuple variant]
-/// * [struct variant]
-///
-/// [unit variant]: https://postcard.jamesmunns.com/wire-format#20---unit_variant
-/// [newtype variant]: https://postcard.jamesmunns.com/wire-format#22---newtype_variant
-/// [tuple variant]: https://postcard.jamesmunns.com/wire-format#26---tuple_variant
-/// [struct variant]: https://postcard.jamesmunns.com/wire-format#29---struct_variant
+/// A discriminant is the header of a tagged union, which identifies which
+/// variant's value follows the discriminant.
+// postcard[impl atom.discriminant.encoding]
 #[inline]
 pub fn try_take_discriminant<'de, F: Flavor<'de>>(
     f: &mut F,
@@ -286,19 +282,10 @@ pub fn try_take_discriminant<'de, F: Flavor<'de>>(
     try_take_u32(f)
 }
 
-/// Attempt to take a length
+/// Attempt to take a length.
 ///
-/// Used for:
-///
-/// * [seq]
-/// * [map]
-/// * [byte array]
-/// * [string]
-///
-/// [seq]: https://postcard.jamesmunns.com/wire-format#23---seq
-/// [map]: https://postcard.jamesmunns.com/wire-format#27---map
-/// [byte array]: https://postcard.jamesmunns.com/wire-format#16---byte-array
-/// [string]: https://postcard.jamesmunns.com/wire-format#15---string
+/// The length is the header of a sequence, `bytes`, or `string` value.
+// postcard[impl atom.length.encoding]
 #[inline]
 pub fn try_take_length<'de, F: Flavor<'de>>(f: &mut F) -> Result<usize, DecodeError<F::PopError>> {
     try_take_usize(f)

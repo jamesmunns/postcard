@@ -30,6 +30,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
     type PopError = UnexpectedEnd;
     type FinalizeError = core::convert::Infallible;
 
+    // postcard[impl conformance.decode.truncated]
     #[inline]
     fn pop(&mut self) -> Result<u8, Self::PopError> {
         if self.cursor == self.end {
@@ -50,6 +51,7 @@ impl<'de> Flavor<'de> for Slice<'de> {
         Some((self.end as usize) - (self.cursor as usize))
     }
 
+    // postcard[impl conformance.decode.truncated]
     #[inline]
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError> {
         let remain = (self.end as usize) - (self.cursor as usize);

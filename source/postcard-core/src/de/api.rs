@@ -15,6 +15,7 @@ impl core::fmt::Display for UnexpectedEnd {
 impl core::error::Error for UnexpectedEnd {}
 
 /// An error while decoding a postcard item
+// postcard[impl conformance.decode.reject]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
@@ -136,7 +137,6 @@ pub trait Flavor<'de> {
 
     /// Complete the deserialization process.
     ///
-    /// This is typically called separately, after the `serde` deserialization
-    /// has completed.
+    /// This should be called at the end of decoding.
     fn finalize(self) -> Result<Self::Remainder, Self::FinalizeError>;
 }
