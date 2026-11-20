@@ -380,6 +380,25 @@ mod test {
         Zeta { a: u8, b: bool },
     }
 
+    /// Socket addresses, as serde writes them for postcard: by schema, they
+    /// read and write back to the same bytes.
+    #[test]
+    fn socket_addrs() {
+        use core::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+        let addrs = [
+            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 7700)),
+            // serde writes neither the flow info nor the scope id.
+            SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 7700, 0, 0)),
+        ];
+        for addr in addrs {
+            let bytes = postcard::to_vec(&addr).unwrap();
+            let value = from_slice_dyn(&SocketAddr::SCHEMA.into(), &bytes).unwrap();
+            let again = to_stdvec_dyn(&SocketAddr::SCHEMA.into(), &value).unwrap();
+            assert_eq!(bytes, again, "{addr}");
+        }
+    }
+
     #[test]
     fn smoke() {
         let bye = serde_json::to_value(Enum1::Alpha).unwrap();
