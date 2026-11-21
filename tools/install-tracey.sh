@@ -4,8 +4,23 @@
 set -euo pipefail
 
 version=v1.4.0
-sha256=41d1360015f670b5d985b296aa7e727e3dcdb7ca04fc7834eb35d969a82ca9e5
-target=x86_64-unknown-linux-gnu
+# Pick the prebuilt for this machine.
+#
+# GHA uses x86_64, the deploy server uses aarch64.
+case "$(uname -m)" in
+  x86_64)
+    target=x86_64-unknown-linux-gnu
+    sha256=41d1360015f670b5d985b296aa7e727e3dcdb7ca04fc7834eb35d969a82ca9e5
+    ;;
+  aarch64)
+    target=aarch64-unknown-linux-gnu
+    sha256=c0cebdcd76c1255b0251075c6828755bb142e41012d0d7d868b32237a027a8dd
+    ;;
+  *)
+    echo "install-tracey: unsupported architecture $(uname -m)" >&2
+    exit 1
+    ;;
+esac
 archive="tracey-${target}.tar.xz"
 
 dest="${1:-${RUNNER_TEMP:?}/bin}"
