@@ -1,7 +1,9 @@
 use core::fmt::Debug;
-use core::fmt::Write;
-use core::ops::Deref;
 
+#[cfg(feature = "heapless")]
+use core::fmt::Write;
+#[cfg(feature = "heapless")]
+use core::ops::Deref;
 #[cfg(feature = "heapless")]
 use heapless::{FnvIndexMap, String, Vec};
 
@@ -50,7 +52,6 @@ struct NewTypeStruct(u32);
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct TupleStruct((u8, u16));
 
-#[cfg(feature = "heapless")]
 #[test]
 fn loopback() {
     // Basic types
@@ -122,23 +123,26 @@ fn loopback() {
     test_one(NewTypeStruct(5), &[0x05]);
     test_one(TupleStruct((0xA0, 0x1234)), &[0xA0, 0xB4, 0x24]);
 
-    let mut input: Vec<u8, 4> = Vec::new();
-    input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
-    test_one(input, &[0x04, 0x01, 0x02, 0x03, 0x04]);
+    #[cfg(feature = "heapless")]
+    {
+        let mut input: Vec<u8, 4> = Vec::new();
+        input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
+        test_one(input, &[0x04, 0x01, 0x02, 0x03, 0x04]);
 
-    let mut input: String<8> = String::new();
-    write!(&mut input, "helLO!").unwrap();
-    test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
+        let mut input: String<8> = String::new();
+        write!(&mut input, "helLO!").unwrap();
+        test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
 
-    let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
-    input.insert(0x01, 0x05).unwrap();
-    input.insert(0x02, 0x06).unwrap();
-    input.insert(0x03, 0x07).unwrap();
-    input.insert(0x04, 0x08).unwrap();
-    test_one(
-        input,
-        &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
-    );
+        let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
+        input.insert(0x01, 0x05).unwrap();
+        input.insert(0x02, 0x06).unwrap();
+        input.insert(0x03, 0x07).unwrap();
+        input.insert(0x04, 0x08).unwrap();
+        test_one(
+            input,
+            &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
+        );
+    }
 
     // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
     #[cfg(feature = "use-std")]
@@ -148,9 +152,24 @@ fn loopback() {
     );
 }
 
-#[cfg(feature = "heapless")]
 #[track_caller]
 fn test_one<T>(data: T, ser_rep: &[u8])
+where
+    T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
+{
+    let mut buf = [0u8; 2048];
+    let used = postcard::to_slice(&data, &mut buf).unwrap();
+    assert_eq!(used, ser_rep);
+    let deserialized: T = from_bytes(used).unwrap();
+    assert_eq!(data, deserialized);
+
+    #[cfg(feature = "heapless")]
+    test_one_heapless(data, ser_rep);
+}
+
+#[cfg(feature = "heapless")]
+#[track_caller]
+fn test_one_heapless<T>(data: T, ser_rep: &[u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
 {

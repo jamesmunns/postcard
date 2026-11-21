@@ -10,6 +10,9 @@ mod eio;
 
 mod error;
 pub mod fixint;
+#[cfg(feature = "heapless-v0_9")]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
+pub mod heapless_v0_9;
 mod ser;
 #[cfg(feature = "bench_private")]
 #[doc(hidden)]
@@ -18,7 +21,7 @@ pub mod varint;
 mod varint;
 
 // Still experimental! Don't make pub pub.
-#[cfg(feature = "experimental-derive")]
+#[cfg(any(all(test, feature = "heapless"), feature = "experimental-derive"))]
 pub(crate) mod max_size;
 
 /// # Experimental Postcard Features

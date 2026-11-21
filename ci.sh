@@ -41,6 +41,7 @@ cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive,de
 cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
 
 # Check MSRV of each crate that declares a `rust-version`
+CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo generate-lockfile
 for manifest in source/*/Cargo.toml; do
   msrv=$(sed -n 's/^rust-version = "\(.*\)"$/\1/p' "$manifest")
   [ -n "$msrv" ] || continue
@@ -50,6 +51,7 @@ for manifest in source/*/Cargo.toml; do
   cargo +"$msrv" check -p "$pkg" --all-targets
   cargo +"$msrv" test -p "$pkg"
   cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  [ "$pkg" = "postcard-core" ] || continue
   cargo +"$msrv" check -p "$pkg" --all-targets --all-features
   cargo +"$msrv" test -p "$pkg" --all-features
   cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features

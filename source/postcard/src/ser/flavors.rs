@@ -377,6 +377,22 @@ mod heapless_vec {
 
     /// The `HVec` flavor is a wrapper type around a `heapless::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
+    ///
+    /// This flavor uses `heapless` v0.7, which is affected by [RUSTSEC-2026-0575] and
+    /// will not be fixed. Prefer [`heapless_v0_9::ser::HVec`], enabled by the `heapless-v0_9` feature:
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "heapless-v0_9")] {
+    /// use postcard::heapless_v0_9::{heapless::Vec, ser::HVec};
+    /// use postcard::serialize_with_flavor;
+    ///
+    /// let ser: Vec<u8, 32> = serialize_with_flavor(&true, HVec::<32>::new()).unwrap();
+    /// assert_eq!(&ser[..], &[0x01]);
+    /// # }
+    /// ```
+    ///
+    /// [RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
+    /// [`heapless_v0_9::ser::HVec`]: crate::heapless_v0_9::ser::HVec
     #[derive(Default)]
     pub struct HVec<const B: usize> {
         /// the contained data buffer
@@ -655,6 +671,27 @@ pub mod crc {
 
             /// Serialize a `T` to a `heapless::Vec<u8>`, with the `Vec` containing
             /// data followed by a CRC. The CRC bytes are included in the output `Vec`.
+            ///
+            /// This function uses `heapless` v0.7, which is affected by [RUSTSEC-2026-0575] and
+            /// will not be fixed. Prefer wrapping [`heapless_v0_9::ser::HVec`] in a [`CrcModifier`],
+            /// enabled by the `heapless-v0_9` feature:
+            ///
+            /// ```rust
+            /// # #[cfg(all(feature = "heapless-v0_9", feature = "use-crc"))] {
+            /// use crc::{Crc, CRC_32_ISCSI};
+            /// use postcard::heapless_v0_9::{heapless::Vec, ser::HVec};
+            /// use postcard::{serialize_with_flavor, ser_flavors::crc::CrcModifier};
+            ///
+            /// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+            /// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+            /// let flavor = CrcModifier::new(HVec::<32>::new(), crc.digest());
+            /// let ser: Vec<u8, 32> = serialize_with_flavor(data, flavor).unwrap();
+            /// assert_eq!(&ser[..], &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+            /// # }
+            /// ```
+            ///
+            /// [RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
+            /// [`heapless_v0_9::ser::HVec`]: crate::heapless_v0_9::ser::HVec
             #[cfg(feature = "heapless")]
             #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
             pub fn $to_vec<T, const B: usize>(
