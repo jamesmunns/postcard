@@ -24,7 +24,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 
 [dependencies.postcard-core]
-version = "0.1.0"
+version = "0.2.0"
 path = "../postcard-core"
 
 [dependencies.serde]
