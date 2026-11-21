@@ -21,12 +21,6 @@ pub use ser::{
     to_extend, to_slice,
 };
 
-#[cfg(feature = "std")]
-pub use ser::to_io;
-
-#[cfg(feature = "std")]
-pub use de::from_io;
-
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub use ser::to_vec;
 
