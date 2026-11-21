@@ -503,7 +503,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let str_sl = pcde::try_take_str_temp(&mut self.flavor)?;
+        let str_sl = pcde::try_take_str(&mut self.flavor)?;
         visitor.visit_str(str_sl)
     }
 
@@ -529,7 +529,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     where
         V: Visitor<'de>,
     {
-        let bytes = pcde::try_take_bytes_temp(&mut self.flavor)?;
+        let bytes = pcde::try_take_bytes(&mut self.flavor)?;
         visitor.visit_bytes(bytes)
     }
 

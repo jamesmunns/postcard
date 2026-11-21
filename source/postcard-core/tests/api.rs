@@ -29,7 +29,7 @@ fn de_slice() {
     assert_eq!(fl.try_take_n(2), Ok([2, 3].as_slice()));
     assert_eq!(fl.size_hint(), Some(2));
     assert_eq!(fl.try_take_n(3), Err(de::UnexpectedEnd));
-    assert_eq!(fl.try_take_n_temp(1), Ok([4].as_slice()));
+    assert_eq!(fl.try_take_n(1), Ok([4].as_slice()));
     assert_eq!(fl.finalize(), Ok([5].as_slice()));
 
     let mut fl = slice(&[]);
@@ -247,13 +247,6 @@ mod by_ref {
             self.0.try_take_n(ct)
         }
 
-        fn try_take_n_temp<'b>(&'b mut self, ct: usize) -> Result<&'b [u8], Self::PopError>
-        where
-            'de: 'b,
-        {
-            self.0.try_take_n_temp(ct)
-        }
-
         fn finalize(self) -> Result<(), Self::FinalizeError> {
             Ok(())
         }
@@ -302,7 +295,7 @@ fn decode_error_kinds() {
         Err(DecodeError::Pop(de::UnexpectedEnd))
     );
     assert_eq!(
-        de::try_take_str_temp(&mut slice(&[0x01, 0xFF])),
+        de::try_take_str(&mut slice(&[0x01, 0xFF])),
         Err(DecodeError::BadUtf8)
     );
     assert_eq!(

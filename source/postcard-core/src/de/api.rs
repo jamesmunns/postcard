@@ -74,7 +74,7 @@ pub trait Flavor<'de> {
 
     /// The error type specific to pushing methods.
     ///
-    /// This includes [`Self::pop`], [`Self::try_take_n`], and [`Self::try_take_n_temp`].
+    /// This includes [`Self::pop`] and [`Self::try_take_n`].
     ///
     /// If the only error is "no more data", consider using [`UnexpectedEnd`].
     type PopError: core::error::Error + 'static;
@@ -112,28 +112,8 @@ pub trait Flavor<'de> {
 
     /// Attempt to take the next `ct` bytes from the serialized message.
     ///
-    /// This variant borrows the data from the input for zero-copy deserialization. If zero-copy
-    /// deserialization is not necessary, prefer to use `try_take_n_temp` instead.
+    /// This borrows the data from the input for zero-copy deserialization.
     fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], Self::PopError>;
-
-    /// Attempt to take the next `ct` bytes from the serialized message.
-    ///
-    /// This variant does not guarantee that the returned value is borrowed from the input, so it
-    /// cannot be used for zero-copy deserialization, but it also avoids needing to potentially
-    /// allocate a data in a temporary buffer.
-    ///
-    /// This variant should be used instead of `try_take_n`
-    /// if zero-copy deserialization is not necessary.
-    ///
-    /// It is only necessary to implement this method if the flavor requires storing data in a
-    /// temporary buffer in order to implement the borrow semantics, e.g. the `std::io::Read`
-    /// flavor.
-    fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], Self::PopError>
-    where
-        'de: 'a,
-    {
-        self.try_take_n(ct)
-    }
 
     /// Complete the deserialization process.
     ///

@@ -423,12 +423,6 @@ fn bytes_encoding() {
     );
     assert_eq!(&b[..2], &[0xC8, 0x01]);
     assert_eq!(&b[2..], long.as_slice());
-
-    // The `_temp` variant decodes the same
-    assert_eq!(
-        de::try_take_bytes_temp(&mut slice(&[0x02, 0x01, 0x02])),
-        Ok([1, 2].as_slice())
-    );
 }
 
 // postcard[verify atom.string.encoding]
@@ -447,12 +441,6 @@ fn string_encoding() {
     );
     assert_eq!(&b[..2], &[0xC8, 0x01]);
     assert_eq!(&b[2..], long.as_bytes());
-
-    // The `_temp` variant decodes the same
-    assert_eq!(
-        de::try_take_str_temp(&mut slice(&[0x02, b'h', b'i'])),
-        Ok("hi")
-    );
 }
 
 // postcard[verify atom.string.decode.utf8]
@@ -465,7 +453,7 @@ fn string_rejects_invalid_utf8() {
     );
     assert_eq!(
         // 0xFF never appears in UTF-8
-        de::try_take_str_temp(&mut slice(&[0x01, 0xFF])),
+        de::try_take_str(&mut slice(&[0x01, 0xFF])),
         Err(DecodeError::BadUtf8)
     );
 }
@@ -758,12 +746,7 @@ fn decode_truncated() {
         de::try_take_bytes(&mut slice(&[0x03, 0x01, 0x02])),
         Err(END)
     );
-    assert_eq!(
-        de::try_take_bytes_temp(&mut slice(&[0x03, 0x01, 0x02])),
-        Err(END)
-    );
     assert_eq!(de::try_take_str(&mut slice(&[0x02, b'a'])), Err(END));
-    assert_eq!(de::try_take_str_temp(&mut slice(&[0x02, b'a'])), Err(END));
     assert_eq!(de::try_take_char(&mut slice(&[0x02, 0xC3])), Err(END));
 
     // Headers: a varint cut short
