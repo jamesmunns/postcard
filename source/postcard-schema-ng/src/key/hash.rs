@@ -551,7 +551,7 @@ pub mod fnv1a64_owned {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "derive", feature = "std"))]
 mod test {
     use crate::{
         key::hash::{fnv1a64::hasher, HashItem, HashOptions},

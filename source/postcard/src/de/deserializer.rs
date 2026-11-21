@@ -357,11 +357,16 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         // this handles transforming the array of code units to a
         // codepoint. we can't use char::from_u32() because it expects
         // an already-processed codepoint.
-        let character = core::str::from_utf8(bytes)
+        let mut chars = core::str::from_utf8(bytes)
             .map_err(|_| Error::DeserializeBadChar)?
-            .chars()
-            .next()
-            .ok_or(Error::DeserializeBadChar)?;
+            .chars();
+        let character = chars.next().ok_or(Error::DeserializeBadChar)?;
+
+        // The bytes must hold exactly one char, so any char after the first
+        // is an error rather than being ignored.
+        if chars.next().is_some() {
+            return Err(Error::DeserializeBadChar);
+        }
         visitor.visit_char(character)
     }
 

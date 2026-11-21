@@ -1,6 +1,6 @@
 [package]
 name = "postcard-dyn-ng"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["James Munns <me@jamesmunns.com>"]
 edition = "2021"
 repository = "https://github.com/jamesmunns/postcard"
@@ -23,6 +23,7 @@ serde_json = "1.0.117"
 
 [dependencies.postcard]
 version = "1.0.10"
+default-features = false
 features = ["use-std"]
 path = "../postcard"
 

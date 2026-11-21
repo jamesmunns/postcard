@@ -86,7 +86,7 @@ pub trait Schema {
     const SCHEMA: &'static schema::DataModelType;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "derive"))]
 mod tests {
     use super::*;
 
