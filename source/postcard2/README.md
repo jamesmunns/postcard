@@ -35,13 +35,13 @@ For more information, see the varint requirements of the wire specification, sta
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
 
-Using the default `heapless` feature to serialize to a `heapless::Vec<u8>`:
+Using the `postcard2-heapless` crate, with its `heapless-v0_9` feature, to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
-use postcard2::{from_bytes, to_vec};
-use heapless::Vec;
+use postcard2::from_bytes;
+use postcard2_heapless::v0_9::{heapless::Vec, to_vec};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct RefStruct<'a> {
@@ -75,7 +75,7 @@ Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
-use postcard2::{from_bytes, to_allocvec};
+use postcard2::{from_bytes, to_vec};
 extern crate alloc;
 use alloc::vec::Vec;
 
@@ -86,7 +86,7 @@ struct RefStruct<'a> {
 }
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
-let output: Vec<u8> = to_allocvec(&RefStruct {
+let output: Vec<u8> = to_vec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
