@@ -36,11 +36,6 @@ default-features = false
 version = "1"
 optional = true
 
-[dependencies.postcard-derive-ng]
-version = "0.3.0"
-optional = true
-path = "../postcard-derive-ng"
-
 [dependencies.serde_derive]
 version = "1.0.228"
 optional = true
@@ -60,14 +55,4 @@ std = ["postcard-core/alloc"]
 alloc = ["postcard-core/alloc"]
 
 defmt-v1 = ["dep:defmt", "postcard-core/defmt-v1"]
-serde-derive = ["serde_derive", "serde"]
-
-# Experimental features!
-#
-# NOT subject to SemVer guarantees!
-
-# TODO: do we still need these in the main crate?
-# We almost certainly shouldn't until there is a 1.0 version of these deps.
-
-# experimental-derive = ["postcard-derive-ng"]
-# postcard-derive-ng = ["dep:postcard-derive-ng"]
+serde-derive = ["dep:serde_derive", "dep:serde"]

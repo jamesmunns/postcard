@@ -33,7 +33,7 @@ default-features = false
 features = ["serde"]
 
 [features]
-heapless-v0_9 = ["heapless_v0_9"]
+heapless-v0_9 = ["dep:heapless_v0_9"]
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }

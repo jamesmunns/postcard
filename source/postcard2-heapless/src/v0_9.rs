@@ -2,6 +2,9 @@ use core::convert::Infallible;
 use postcard2::{BufferFull, SerializerError, serialize_with_flavor};
 use serde_core::Serialize;
 
+/// Re-export of the `heapless` v0.9 crate used by this module.
+pub use heapless_v0_9 as heapless;
+
 /// Serialize a `T` to a `heapless_v0_9::Vec<u8>`, with the `Vec` containing
 /// data in a serialized format.
 ///
@@ -9,7 +12,7 @@ use serde_core::Serialize;
 ///
 /// ```rust
 /// use postcard2_heapless::v0_9::to_vec;
-/// use heapless_v0_9::Vec;
+/// use postcard2_heapless::v0_9::heapless::Vec;
 /// use core::ops::Deref;
 ///
 /// let ser: Vec<u8, 32> = to_vec(&true).unwrap();
@@ -38,7 +41,7 @@ where
 
 pub mod ser {
     use core::convert::Infallible;
-    use heapless_v0_9::Vec;
+    use heapless_v0_9::{LenType, Vec};
     use postcard2::{
         BufferFull,
         ser_flavors::{Flavor, Patch},
@@ -50,22 +53,29 @@ pub mod ser {
 
     /// The `HVec` flavor is a wrapper type around a `heapless_v0_9::Vec`. This is a stack
     /// allocated data structure, with a fixed maximum size and variable amount of contents.
-    #[derive(Default)]
-    pub struct HVec<const B: usize> {
+    ///
+    /// `LenT` is the `Vec`'s length type, and defaults to `usize` like `heapless_v0_9::Vec`.
+    pub struct HVec<const B: usize, LenT: LenType = usize> {
         /// the contained data buffer
-        vec: Vec<u8, B>,
+        vec: Vec<u8, B, LenT>,
     }
 
-    impl<const B: usize> HVec<B> {
+    impl<const B: usize, LenT: LenType> HVec<B, LenT> {
         /// Create a new, currently empty, [`heapless_v0_9::Vec`] to be used for storing serialized
         /// output data.
         pub fn new() -> Self {
-            Self::default()
+            Self { vec: Vec::new() }
         }
     }
 
-    impl<const B: usize> Flavor for HVec<B> {
-        type Output = Vec<u8, B>;
+    impl<const B: usize, LenT: LenType> Default for HVec<B, LenT> {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl<const B: usize, LenT: LenType> Flavor for HVec<B, LenT> {
+        type Output = Vec<u8, B, LenT>;
         type PushError = BufferFull;
         type FinalizeError = Infallible;
 
@@ -79,12 +89,12 @@ pub mod ser {
             self.vec.push(data).map_err(|_| BufferFull)
         }
 
-        fn finalize(self) -> Result<Vec<u8, B>, Infallible> {
+        fn finalize(self) -> Result<Vec<u8, B, LenT>, Infallible> {
             Ok(self.vec)
         }
     }
 
-    impl<const B: usize> Patch for HVec<B> {
+    impl<const B: usize, LenT: LenType> Patch for HVec<B, LenT> {
         #[inline]
         fn written_mut(&mut self) -> &mut [u8] {
             &mut self.vec
@@ -102,6 +112,16 @@ pub mod ser {
             fl.try_extend(&[1, 2, 3]).unwrap();
             fl.written_mut()[0] = 9;
             assert_eq!(fl.finalize().unwrap(), [9, 2, 3]);
+        }
+
+        #[test]
+        fn u8_len() {
+            let mut fl = HVec::<4, u8>::new();
+            fl.try_extend(&[1, 2, 3]).unwrap();
+            fl.try_push(4).unwrap();
+            assert_eq!(fl.try_push(5), Err(BufferFull));
+            let out: Vec<u8, 4, u8> = fl.finalize().unwrap();
+            assert_eq!(out, [1, 2, 3, 4]);
         }
     }
 }

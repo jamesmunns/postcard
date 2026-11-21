@@ -34,5 +34,5 @@ version = "1"
 optional = true
 
 [features]
-embedded-io-v0_7 = ["embedded_io_v0_7"]
+embedded-io-v0_7 = ["dep:embedded_io_v0_7"]
 defmt-v1 = ["dep:defmt", "postcard2/defmt-v1", "embedded_io_v0_7?/defmt"]
