@@ -19,7 +19,7 @@ allowing for flexibility to customize behavior as needed.
 
 As of v1.0.0, `postcard` has a documented and stable wire format. More information about this
 wire format can be found in the `spec/` folder of the Postcard repository, or viewed online
-at <https://postcard.jamesmunns.com>.
+at <https://postcard.rs>.
 
 Work towards the Postcard Specification and portions of the Postcard 1.0 Release
 were sponsored by Mozilla Corporation.
@@ -31,7 +31,7 @@ This includes the length of array slices, as well as the discriminant of `enums`
 
 For more information, see the [Varint] chapter of the wire specification.
 
-[Varint]: https://postcard.jamesmunns.com/wire-format.html#varint-encoded-integers
+[Varint]: https://postcard.rs/1.1/postcard/postcard/spec.html#atoms--varint-encoded-integers
 
 ## Example - Serialization/Deserialization
 
