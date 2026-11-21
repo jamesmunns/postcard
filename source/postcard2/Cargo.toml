@@ -3,6 +3,7 @@ name = "postcard2"
 version = "0.2.1"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
+rust-version = "1.85"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std + serde compatible message library for Rust"
@@ -51,7 +52,7 @@ default-features = false
 optional = true
 
 [dev-dependencies]
-serde = "1.0.228"
+serde = { version = "1.0.228", features = ["derive"] }
 
 [features]
 default = []

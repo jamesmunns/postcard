@@ -74,6 +74,7 @@ pub use postcard_core::de::{Flavor, UnexpectedEnd};
 /// Support for [`std::io`]
 #[cfg(feature = "std")]
 pub mod io {
+    use super::Flavor;
     use crate::de_flavors::UnexpectedEnd;
     use core::marker::PhantomData;
 
@@ -130,106 +131,97 @@ pub mod io {
         }
     }
 
-    /// Support for [`std::io`] traits
-    #[allow(clippy::module_inception)]
-    #[cfg(feature = "std")]
-    pub mod io {
-        use super::super::Flavor;
-        use super::SlidingBuffer;
-        use crate::de_flavors::UnexpectedEnd;
+    /// Wrapper over a [`std::io::Read`] and a sliding buffer to implement the [Flavor] trait
+    pub struct IOReader<'de, T>
+    where
+        T: std::io::Read,
+    {
+        reader: T,
+        buff: SlidingBuffer<'de>,
+    }
 
-        /// Wrapper over a [`std::io::Read`] and a sliding buffer to implement the [Flavor] trait
-        pub struct IOReader<'de, T>
-        where
-            T: std::io::Read,
-        {
-            reader: T,
-            buff: SlidingBuffer<'de>,
-        }
-
-        impl<'de, T> IOReader<'de, T>
-        where
-            T: std::io::Read,
-        {
-            /// Create a new [`IOReader`] from a reader and a buffer.
-            ///
-            /// `buff` must have enough space to hold all data read during the deserialisation.
-            pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
-                Self {
-                    reader,
-                    buff: SlidingBuffer::new(buff),
-                }
+    impl<'de, T> IOReader<'de, T>
+    where
+        T: std::io::Read,
+    {
+        /// Create a new [`IOReader`] from a reader and a buffer.
+        ///
+        /// `buff` must have enough space to hold all data read during the deserialisation.
+        pub fn new(reader: T, buff: &'de mut [u8]) -> Self {
+            Self {
+                reader,
+                buff: SlidingBuffer::new(buff),
             }
         }
+    }
 
-        impl<'de, T> Flavor<'de> for IOReader<'de, T>
-        where
-            T: std::io::Read,
-        {
-            type Remainder = (T, &'de mut [u8]);
-            type PopError = UnexpectedEnd;
-            type FinalizeError = core::convert::Infallible;
+    impl<'de, T> Flavor<'de> for IOReader<'de, T>
+    where
+        T: std::io::Read,
+    {
+        type Remainder = (T, &'de mut [u8]);
+        type PopError = UnexpectedEnd;
+        type FinalizeError = core::convert::Infallible;
 
-            #[inline]
-            fn pop(&mut self) -> Result<u8, UnexpectedEnd> {
-                let mut val = [0; 1];
-                self.reader
-                    .read_exact(&mut val)
-                    .map_err(|_| UnexpectedEnd)?;
-                Ok(val[0])
-            }
-
-            #[inline]
-            fn size_hint(&self) -> Option<usize> {
-                None
-            }
-
-            #[inline]
-            fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], UnexpectedEnd> {
-                let buff = self.buff.take_n(ct)?;
-                self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            #[inline]
-            fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], UnexpectedEnd>
-            where
-                'de: 'a,
-            {
-                let buff = self.buff.take_n_temp(ct)?;
-                self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
-                Ok(buff)
-            }
-
-            /// Return the remaining (unused) bytes in the Deserializer
-            fn finalize(self) -> Result<(T, &'de mut [u8]), core::convert::Infallible> {
-                Ok((self.reader, self.buff.complete()))
-            }
+        #[inline]
+        fn pop(&mut self) -> Result<u8, UnexpectedEnd> {
+            let mut val = [0; 1];
+            self.reader
+                .read_exact(&mut val)
+                .map_err(|_| UnexpectedEnd)?;
+            Ok(val[0])
         }
 
-        #[cfg(test)]
-        mod tests {
-            use super::*;
+        #[inline]
+        fn size_hint(&self) -> Option<usize> {
+            None
+        }
 
-            #[test]
-            fn test_pop() {
-                let mut reader = IOReader::new(&[0xAA, 0xBB, 0xCC][..], &mut []);
+        #[inline]
+        fn try_take_n(&mut self, ct: usize) -> Result<&'de [u8], UnexpectedEnd> {
+            let buff = self.buff.take_n(ct)?;
+            self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
+            Ok(buff)
+        }
 
-                assert_eq!(reader.pop(), Ok(0xAA));
-                assert_eq!(reader.pop(), Ok(0xBB));
-                assert_eq!(reader.pop(), Ok(0xCC));
-                assert_eq!(reader.pop(), Err(Error::DeserializeUnexpectedEnd));
-            }
+        #[inline]
+        fn try_take_n_temp<'a>(&'a mut self, ct: usize) -> Result<&'a [u8], UnexpectedEnd>
+        where
+            'de: 'a,
+        {
+            let buff = self.buff.take_n_temp(ct)?;
+            self.reader.read_exact(buff).map_err(|_| UnexpectedEnd)?;
+            Ok(buff)
+        }
 
-            #[test]
-            fn test_try_take_n() {
-                let mut buf = [0; 8];
-                let mut reader = IOReader::new(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE][..], &mut buf);
+        /// Return the remaining (unused) bytes in the Deserializer
+        fn finalize(self) -> Result<(T, &'de mut [u8]), core::convert::Infallible> {
+            Ok((self.reader, self.buff.complete()))
+        }
+    }
 
-                assert_eq!(reader.try_take_n(2), Ok(&[0xAA, 0xBB][..]));
-                assert_eq!(reader.try_take_n(2), Ok(&[0xCC, 0xDD][..]));
-                assert_eq!(reader.try_take_n(2), Err(Error::DeserializeUnexpectedEnd));
-            }
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_pop() {
+            let mut reader = IOReader::new(&[0xAA, 0xBB, 0xCC][..], &mut []);
+
+            assert_eq!(reader.pop(), Ok(0xAA));
+            assert_eq!(reader.pop(), Ok(0xBB));
+            assert_eq!(reader.pop(), Ok(0xCC));
+            assert_eq!(reader.pop(), Err(UnexpectedEnd));
+        }
+
+        #[test]
+        fn test_try_take_n() {
+            let mut buf = [0; 8];
+            let mut reader = IOReader::new(&[0xAA, 0xBB, 0xCC, 0xDD, 0xEE][..], &mut buf);
+
+            assert_eq!(reader.try_take_n(2), Ok(&[0xAA, 0xBB][..]));
+            assert_eq!(reader.try_take_n(2), Ok(&[0xCC, 0xDD][..]));
+            assert_eq!(reader.try_take_n(2), Err(UnexpectedEnd));
         }
     }
 }

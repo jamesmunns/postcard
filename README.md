@@ -28,12 +28,11 @@ were sponsored by Mozilla Corporation.
 
 ## Variable Length Data
 
-All signed and unsigned integers larger than eight bits are encoded using a [Varint].
+All signed and unsigned integers larger than eight bits are encoded using a `varint`.
 This includes the length of array slices, as well as the discriminant of `enums`.
 
-For more information, see the [Varint] chapter of the wire specification.
-
-[Varint]: https://postcard.jamesmunns.com/wire-format.html#varint-encoded-integers
+For more information, see the varint requirements of the wire specification,
+starting at `postcard[atom.varint.encoding.continuation]`.
 
 ## Example - Serialization/Deserialization
 
@@ -158,16 +157,10 @@ process should be tested extensively as multiple attributes can cause problems.
 
 > See the [tracking issue](https://github.com/jamesmunns/postcard/issues/125)
 
-Some serde attributes break serialization/deserialization like:
+The [Serde Attributes] section of the serde specification lists the attributes believed
+to cause issues with postcard, and those believed not to.
 
-- `serde(flatten)`
-- `serde(skip_serializing_if($COND))`
-
-Some attributes can cause silent issues:
-
-- `serde(skip)` Can break deserialization. If used for enum variants, make sure that
-the skipped fields are the last variants, otherwise `postcard` will attempt to deserialize
-based on an offsetted discriminant, causing failure, or silent mismatch on C-like enums.
+[Serde Attributes]: https://github.com/jamesmunns/postcard/blob/main/spec/tracey/src/05-serde.md#serde-attributes
 
 ## License
 

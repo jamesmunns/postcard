@@ -26,12 +26,10 @@ were sponsored by Mozilla Corporation.
 
 ## Variable Length Data
 
-All signed and unsigned integers larger than eight bits are encoded using a [Varint].
+All signed and unsigned integers larger than eight bits are encoded using a `varint`.
 This includes the length of array slices, as well as the discriminant of `enums`.
 
-For more information, see the [Varint] chapter of the wire specification.
-
-[Varint]: https://postcard.jamesmunns.com/wire-format.html#varint-encoded-integers
+For more information, see the varint requirements of the wire specification, starting at `postcard[atom.varint.encoding.continuation]`.
 
 ## Example - Serialization/Deserialization
 

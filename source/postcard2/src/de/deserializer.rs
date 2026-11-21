@@ -199,6 +199,13 @@ struct SeqAccess<'a, 'b, F: Flavor<'b>> {
 impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
+    // This yields at most `self.len` elements.
+    //
+    // A visitor that stops early leaves the rest to be decoded as the values that follow.
+    // Derived `Deserialize` impls always take every element.
+    //
+    // TODO: Check all elements consumed in "strict" mode?
+    // postcard[impl comp.sequence.decode.count]
     #[inline]
     fn next_element_seed<V: DeserializeSeed<'b>>(
         &mut self,
@@ -232,6 +239,12 @@ struct MapAccess<'a, 'b, F: Flavor<'b>> {
 impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
+    // This yields at most `self.len` elements.
+    //
+    // As with `SeqAccess`, the visitor is trusted to take all `len` entries.
+    //
+    // TODO: Check all elements consumed in "strict" mode?
+    // postcard[impl comp.sequence.decode.count]
     #[inline]
     fn next_key_seed<K: DeserializeSeed<'b>>(
         &mut self,
@@ -262,15 +275,18 @@ impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::MapAccess<'b> for MapAccess<'a, 
     }
 }
 
+// postcard[impl schema.decode.types]
 impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
+    // postcard[impl serde.human-readable]
     #[inline]
     fn is_human_readable(&self) -> bool {
         false
     }
 
     // Postcard does not support structures not known at compile time
+    // postcard[impl serde.decode.any.unsupported]
     #[inline]
     fn deserialize_any<V>(
         self,
@@ -284,6 +300,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     }
 
     // Take a boolean encoded as a u8
+    // postcard[impl serde.type.bool]
     #[inline]
     fn deserialize_bool<V>(
         self,
@@ -296,6 +313,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_bool(val)
     }
 
+    // postcard[impl serde.type.i8]
     #[inline]
     fn deserialize_i8<V>(
         self,
@@ -307,6 +325,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_i8(pcde::try_take_i8(&mut self.flavor)?)
     }
 
+    // postcard[impl serde.type.i16]
     #[inline]
     fn deserialize_i16<V>(
         self,
@@ -319,6 +338,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_i16(v)
     }
 
+    // postcard[impl serde.type.i32]
     #[inline]
     fn deserialize_i32<V>(
         self,
@@ -331,6 +351,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_i32(v)
     }
 
+    // postcard[impl serde.type.i64]
     #[inline]
     fn deserialize_i64<V>(
         self,
@@ -343,6 +364,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_i64(v)
     }
 
+    // postcard[impl serde.type.i128]
     #[inline]
     fn deserialize_i128<V>(
         self,
@@ -355,6 +377,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_i128(v)
     }
 
+    // postcard[impl serde.type.u8]
     #[inline]
     fn deserialize_u8<V>(
         self,
@@ -367,6 +390,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_u8(v)
     }
 
+    // postcard[impl serde.type.u16]
     #[inline]
     fn deserialize_u16<V>(
         self,
@@ -379,6 +403,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_u16(v)
     }
 
+    // postcard[impl serde.type.u32]
     #[inline]
     fn deserialize_u32<V>(
         self,
@@ -391,6 +416,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_u32(v)
     }
 
+    // postcard[impl serde.type.u64]
     #[inline]
     fn deserialize_u64<V>(
         self,
@@ -403,6 +429,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_u64(v)
     }
 
+    // postcard[impl serde.type.u128]
     #[inline]
     fn deserialize_u128<V>(
         self,
@@ -415,6 +442,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_u128(v)
     }
 
+    // postcard[impl serde.type.f32]
     #[inline]
     fn deserialize_f32<V>(
         self,
@@ -427,6 +455,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_f32(f)
     }
 
+    // postcard[impl serde.type.f64]
     #[inline]
     fn deserialize_f64<V>(
         self,
@@ -439,6 +468,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_f64(f)
     }
 
+    // postcard[impl serde.type.char]
     #[inline]
     fn deserialize_char<V>(
         self,
@@ -451,6 +481,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_char(ch)
     }
 
+    // postcard[impl serde.type.string]
     #[inline]
     fn deserialize_str<V>(
         self,
@@ -463,6 +494,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_borrowed_str(str_sl)
     }
 
+    // postcard[impl serde.type.string]
     #[inline]
     fn deserialize_string<V>(
         self,
@@ -475,6 +507,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_str(str_sl)
     }
 
+    // postcard[impl serde.type.byte-array]
     #[inline]
     fn deserialize_bytes<V>(
         self,
@@ -487,6 +520,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_borrowed_bytes(bytes)
     }
 
+    // postcard[impl serde.type.byte-array]
     #[inline]
     fn deserialize_byte_buf<V>(
         self,
@@ -499,6 +533,8 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_bytes(bytes)
     }
 
+    // postcard[impl serde.type.option]
+    // postcard[impl comp.option.encoding]
     #[inline]
     fn deserialize_option<V>(
         self,
@@ -516,6 +552,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
 
     // In Serde, unit means an anonymous value containing no data.
     // Unit is not actually encoded in Postcard.
+    // postcard[impl serde.type.unit]
     #[inline]
     fn deserialize_unit<V>(
         self,
@@ -529,6 +566,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
 
     // Unit struct means a named value containing no data.
     // Unit structs are not actually encoded in Postcard.
+    // postcard[impl serde.type.unit-struct]
     #[inline]
     fn deserialize_unit_struct<V>(
         self,
@@ -541,6 +579,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         self.deserialize_unit(visitor)
     }
 
+    // postcard[impl serde.type.newtype-struct]
     #[inline]
     fn deserialize_newtype_struct<V>(
         self,
@@ -553,6 +592,8 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         visitor.visit_newtype_struct(self)
     }
 
+    // postcard[impl serde.type.seq]
+    // postcard[impl comp.sequence.encoding]
     #[inline]
     fn deserialize_seq<V>(
         self,
@@ -569,6 +610,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         })
     }
 
+    // postcard[impl serde.type.tuple]
+    // postcard[impl comp.aggregate.encoding]
+    // postcard[impl schema.aggregate.decode.count]
     #[inline]
     fn deserialize_tuple<V>(
         self,
@@ -584,6 +628,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         })
     }
 
+    // postcard[impl serde.type.tuple-struct]
     #[inline]
     fn deserialize_tuple_struct<V>(
         self,
@@ -597,6 +642,8 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         self.deserialize_tuple(len, visitor)
     }
 
+    // postcard[impl serde.type.map]
+    // postcard[impl comp.sequence.encoding]
     #[inline]
     fn deserialize_map<V>(
         self,
@@ -613,6 +660,9 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         })
     }
 
+    // postcard[impl serde.type.struct]
+    // postcard[impl serde.decode.struct.seq]
+    // postcard[impl schema.aggregate.decode.count]
     #[inline]
     fn deserialize_struct<V>(
         self,
@@ -640,6 +690,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     }
 
     // As a binary format, Postcard does not encode identifiers
+    // postcard[impl serde.decode.identifier.unsupported]
     #[inline]
     fn deserialize_identifier<V>(
         self,
@@ -652,6 +703,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
         Err(DeserializerError::UnsupportedDeserIdent)
     }
 
+    // postcard[impl serde.decode.ignored-any.unsupported]
     #[inline]
     fn deserialize_ignored_any<V>(
         self,
@@ -668,11 +720,13 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
 impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
+    // postcard[impl serde.type.unit-variant]
     #[inline]
     fn unit_variant(self) -> Result<(), DeserializerError<F::PopError, F::FinalizeError>> {
         Ok(())
     }
 
+    // postcard[impl serde.type.newtype-variant]
     #[inline]
     fn newtype_variant_seed<V: DeserializeSeed<'de>>(
         self,
@@ -681,6 +735,8 @@ impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializ
         DeserializeSeed::deserialize(seed, self)
     }
 
+    // postcard[impl serde.type.tuple-variant]
+    // postcard[impl schema.aggregate.decode.count]
     #[inline]
     fn tuple_variant<V: Visitor<'de>>(
         self,
@@ -690,6 +746,9 @@ impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializ
         serde_core::de::Deserializer::deserialize_tuple(self, len, visitor)
     }
 
+    // postcard[impl serde.type.struct-variant]
+    // postcard[impl serde.decode.struct.seq]
+    // postcard[impl schema.aggregate.decode.count]
     #[inline]
     fn struct_variant<V: Visitor<'de>>(
         self,
@@ -704,6 +763,13 @@ impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
     type Variant = Self;
 
+    // NOTE: Derived `Deserialize` impls ensure that unknown discriminants are
+    // rejected in the derived `seed`, for the purposes of
+    // `tagged-union.decode.unknown-discriminant`.
+    //
+    // postcard[impl comp.tagged-union.encoding]
+    // postcard[impl schema.tagged-union.decode.unknown-discriminant]
+    // postcard[impl serde.variant.discriminant]
     #[inline]
     fn variant_seed<V: DeserializeSeed<'de>>(
         self,

@@ -1,0 +1,35 @@
+specs (
+  {
+    name postcard
+    include (
+      spec/tracey/src/01-intro.md
+      spec/tracey/src/02-atoms.md
+      spec/tracey/src/03-composites.md
+      spec/tracey/src/04-schemas.md
+      spec/tracey/src/05-serde.md
+      spec/tracey/src/06-implementation-considerations.md
+      spec/tracey/src/07-glossary.md
+    )
+    impls (
+      {
+        name postcard
+        include (
+          source/postcard-core/src/lib.rs
+          source/postcard-core/src/de.rs
+          source/postcard-core/src/de/api.rs
+          source/postcard-core/src/de/flavors.rs
+          source/postcard-core/src/ser.rs
+          source/postcard-core/src/varint.rs
+          source/postcard2/src/de/deserializer.rs
+          source/postcard2/src/ser/serializer.rs
+        )
+        test_include (
+          source/postcard-core/tests/wire.rs
+          source/postcard2/tests/composites.rs
+          source/postcard2/tests/schemas.rs
+          source/postcard2/tests/serde_mapping.rs
+        )
+      }
+    )
+  }
+)

@@ -164,11 +164,13 @@ where
     type SerializeStruct = Self;
     type SerializeStructVariant = Self;
 
+    // postcard[impl serde.human-readable]
     #[inline]
     fn is_human_readable(&self) -> bool {
         false
     }
 
+    // postcard[impl serde.type.bool]
     #[inline]
     fn serialize_bool(
         self,
@@ -177,26 +179,31 @@ where
         pcser::try_push_bool(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.i8]
     #[inline]
     fn serialize_i8(self, v: i8) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_i8(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.i16]
     #[inline]
     fn serialize_i16(self, v: i16) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_i16(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.i32]
     #[inline]
     fn serialize_i32(self, v: i32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_i32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.i64]
     #[inline]
     fn serialize_i64(self, v: i64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_i64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.i128]
     #[inline]
     fn serialize_i128(
         self,
@@ -205,26 +212,31 @@ where
         pcser::try_push_i128(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.u8]
     #[inline]
     fn serialize_u8(self, v: u8) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_u8(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.u16]
     #[inline]
     fn serialize_u16(self, v: u16) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_u16(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.u32]
     #[inline]
     fn serialize_u32(self, v: u32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_u32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.u64]
     #[inline]
     fn serialize_u64(self, v: u64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_u64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.u128]
     #[inline]
     fn serialize_u128(
         self,
@@ -233,16 +245,19 @@ where
         pcser::try_push_u128(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.f32]
     #[inline]
     fn serialize_f32(self, v: f32) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_f32(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.f64]
     #[inline]
     fn serialize_f64(self, v: f64) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_f64(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.char]
     #[inline]
     fn serialize_char(
         self,
@@ -251,11 +266,13 @@ where
         pcser::try_push_char(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.string]
     #[inline]
     fn serialize_str(self, v: &str) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_str(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.byte-array]
     #[inline]
     fn serialize_bytes(
         self,
@@ -264,11 +281,15 @@ where
         pcser::try_push_bytes(&mut self.output, v).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.option]
+    // postcard[impl comp.option.encoding]
     #[inline]
     fn serialize_none(self) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         pcser::try_push_option_none(&mut self.output).map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.option]
+    // postcard[impl comp.option.encoding]
     #[inline]
     fn serialize_some<T>(
         self,
@@ -281,11 +302,13 @@ where
         value.serialize(self)
     }
 
+    // postcard[impl serde.type.unit]
     #[inline]
     fn serialize_unit(self) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
         Ok(())
     }
 
+    // postcard[impl serde.type.unit-struct]
     #[inline]
     fn serialize_unit_struct(
         self,
@@ -294,6 +317,9 @@ where
         Ok(())
     }
 
+    // postcard[impl serde.variant.discriminant]
+    // postcard[impl serde.type.unit-variant]
+    // postcard[impl comp.tagged-union.encoding]
     #[inline]
     fn serialize_unit_variant(
         self,
@@ -301,9 +327,11 @@ where
         variant_index: u32,
         _variant: &'static str,
     ) -> Result<(), SerializerError<F::PushError, F::FinalizeError>> {
-        pcser::try_push_u32(&mut self.output, variant_index).map_err(SerializerError::PushError)
+        pcser::try_push_discriminant(&mut self.output, variant_index)
+            .map_err(SerializerError::PushError)
     }
 
+    // postcard[impl serde.type.newtype-struct]
     #[inline]
     fn serialize_newtype_struct<T>(
         self,
@@ -316,6 +344,9 @@ where
         value.serialize(self)
     }
 
+    // postcard[impl serde.variant.discriminant]
+    // postcard[impl serde.type.newtype-variant]
+    // postcard[impl comp.tagged-union.encoding]
     #[inline]
     fn serialize_newtype_variant<T>(
         self,
@@ -332,6 +363,9 @@ where
         value.serialize(self)
     }
 
+    // postcard[impl serde.type.seq]
+    // postcard[impl serde.encode.length-required]
+    // postcard[impl comp.sequence.encoding]
     #[inline]
     fn serialize_seq(
         self,
@@ -342,6 +376,8 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.type.tuple]
+    // postcard[impl comp.aggregate.encoding]
     #[inline]
     fn serialize_tuple(
         self,
@@ -350,6 +386,8 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.type.tuple-struct]
+    // postcard[impl comp.aggregate.encoding]
     #[inline]
     fn serialize_tuple_struct(
         self,
@@ -359,6 +397,10 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.variant.discriminant]
+    // postcard[impl serde.type.tuple-variant]
+    // postcard[impl comp.tagged-union.encoding]
+    // postcard[impl comp.aggregate.encoding]
     #[inline]
     fn serialize_tuple_variant(
         self,
@@ -372,6 +414,9 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.type.map]
+    // postcard[impl serde.encode.length-required]
+    // postcard[impl comp.sequence.encoding]
     #[inline]
     fn serialize_map(
         self,
@@ -382,6 +427,8 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.type.struct]
+    // postcard[impl comp.aggregate.encoding]
     #[inline]
     fn serialize_struct(
         self,
@@ -391,6 +438,10 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.variant.discriminant]
+    // postcard[impl serde.type.struct-variant]
+    // postcard[impl comp.tagged-union.encoding]
+    // postcard[impl comp.aggregate.encoding]
     #[inline]
     fn serialize_struct_variant(
         self,
@@ -404,6 +455,7 @@ where
         Ok(self)
     }
 
+    // postcard[impl serde.type.string]
     #[inline]
     fn collect_str<T>(
         self,
@@ -422,11 +474,14 @@ where
         // There are potentially other ways to do this, such as:
         //
         // * Reserving a fixed max size, such as 5 bytes, for the length field, and
-        //     leaving non-canonical trailing zeroes at the end. This would work up
-        //     to some reasonable length, but might have some portability vs max size
-        //     tradeoffs, e.g. 64KiB if we pick 3 bytes, or 4GiB if we pick 5 bytes
+        //   leaving non-canonical trailing zeroes at the end. This would work up
+        //   to some reasonable length, but might have some portability vs max size
+        //   tradeoffs, e.g. 64KiB if we pick 3 bytes, or 4GiB if we pick 5 bytes.
+        //   This approach would also likely violate the "always produce
+        //   canonical output" requirement of the postcard wire format, though
+        //   we ALSO require decoders to accept non-canonical data.
         // * Expose some kind of "memmove" capability to flavors, to allow us to
-        //     format into the buffer, then "scoot over" that many times.
+        //   format into the buffer, then "scoot over" that many times.
         //
         // Despite the current approaches downside in speed, it is likely flexible
         // enough for the rare-ish case where formatting a Debug impl is necessary.
@@ -457,6 +512,7 @@ where
         {
             output: &'a mut IF,
             err: Option<IF::PushError>,
+            ct: usize,
         }
         impl<IF> Write for FmtWriter<'_, IF>
         where
@@ -464,7 +520,10 @@ where
         {
             fn write_str(&mut self, s: &str) -> core::result::Result<(), core::fmt::Error> {
                 match self.output.try_extend(s.as_bytes()) {
-                    Ok(_) => Ok(()),
+                    Ok(_) => {
+                        self.ct += s.len();
+                        Ok(())
+                    }
                     Err(e) => {
                         self.err = Some(e);
                         Err(core::fmt::Error)
@@ -477,11 +536,18 @@ where
         let mut fw = FmtWriter {
             output: &mut self.output,
             err: None,
+            ct: 0,
         };
         let _ = write!(&mut fw, "{value}");
 
         if let Some(e) = fw.err {
             Err(SerializerError::PushError(e))
+        } else if fw.ct != len {
+            // Failed sanity check: the two passes produced a different count
+            // of values.
+            Err(serde_core::ser::Error::custom(
+                "collect_str: value formatted differently on each pass",
+            ))
         } else {
             Ok(())
         }
