@@ -37,13 +37,13 @@ mod test {
     fn chrono_longest_check() {
         let dt = longest_rfc3339();
         let mut buf = [0u8; 64];
-        let used = postcard::to_slice(&dt, &mut buf).unwrap();
+        let used = postcard2::to_slice(&dt, &mut buf).unwrap();
         assert_eq!(
             used.len(),
             DateTime::<FixedOffset>::SCHEMA.max_size().unwrap()
         );
         assert_eq!(
-            postcard::from_bytes::<DateTime<FixedOffset>>(used).unwrap(),
+            postcard2::from_bytes::<DateTime<FixedOffset>>(used).unwrap(),
             dt
         );
     }
@@ -52,8 +52,8 @@ mod test {
     fn chrono_basic_check() {
         let dt = Utc::now();
         let mut buf = [0u8; 64];
-        let used = postcard::to_slice(&dt, &mut buf).unwrap();
+        let used = postcard2::to_slice(&dt, &mut buf).unwrap();
         assert!(used.len() <= DateTime::<FixedOffset>::SCHEMA.max_size().unwrap());
-        assert_eq!(postcard::from_bytes::<DateTime<Utc>>(used).unwrap(), dt);
+        assert_eq!(postcard2::from_bytes::<DateTime<Utc>>(used).unwrap(), dt);
     }
 }
