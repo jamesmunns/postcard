@@ -169,7 +169,7 @@ pub fn try_take_isize<'de, F: Flavor<'de>>(f: &mut F) -> Result<isize, DecodeErr
 // postcard[impl atom.f32.decode.nan]
 #[inline]
 pub fn try_take_f32<'de, F: Flavor<'de>>(f: &mut F) -> Result<f32, DecodeError<F::PopError>> {
-    let bytes = f.try_take_n_temp(4).map_err(DecodeError::Pop)?;
+    let bytes = f.try_take_n(4).map_err(DecodeError::Pop)?;
     let mut buf = [0u8; 4];
     buf.copy_from_slice(bytes);
     Ok(f32::from_bits(u32::from_le_bytes(buf)))
@@ -181,7 +181,7 @@ pub fn try_take_f32<'de, F: Flavor<'de>>(f: &mut F) -> Result<f32, DecodeError<F
 // postcard[impl atom.f64.decode.nan]
 #[inline]
 pub fn try_take_f64<'de, F: Flavor<'de>>(f: &mut F) -> Result<f64, DecodeError<F::PopError>> {
-    let bytes = f.try_take_n_temp(8).map_err(DecodeError::Pop)?;
+    let bytes = f.try_take_n(8).map_err(DecodeError::Pop)?;
     let mut buf = [0u8; 8];
     buf.copy_from_slice(bytes);
     Ok(f64::from_bits(u64::from_le_bytes(buf)))
@@ -197,37 +197,12 @@ pub fn try_take_bytes<'de, F: Flavor<'de>>(
     f.try_take_n(len).map_err(DecodeError::Pop)
 }
 
-/// Attempt to take a `bytes` value
-///
-/// This is used for items that are not required to retain a borrow their data from the source.
-// postcard[impl atom.bytes.encoding]
-#[inline]
-pub fn try_take_bytes_temp<'a, 'de: 'a, F: Flavor<'de>>(
-    f: &'a mut F,
-) -> Result<&'a [u8], DecodeError<F::PopError>> {
-    let len = try_take_length(f)?;
-    f.try_take_n_temp(len).map_err(DecodeError::Pop)
-}
-
 /// Attempt to take a `string`
 // postcard[impl atom.string.encoding]
 // postcard[impl atom.string.decode.utf8]
 #[inline]
 pub fn try_take_str<'de, F: Flavor<'de>>(f: &mut F) -> Result<&'de str, DecodeError<F::PopError>> {
     let sli = try_take_bytes(f)?;
-    core::str::from_utf8(sli).map_err(|_| DecodeError::BadUtf8)
-}
-
-/// Attempt to take a `string`
-///
-/// NOTE: This is used for items that are not required to retain a borrow their data from the source.
-// postcard[impl atom.string.encoding]
-// postcard[impl atom.string.decode.utf8]
-#[inline]
-pub fn try_take_str_temp<'a, 'de: 'a, F: Flavor<'de>>(
-    f: &'a mut F,
-) -> Result<&'a str, DecodeError<F::PopError>> {
-    let sli = try_take_bytes_temp(f)?;
     core::str::from_utf8(sli).map_err(|_| DecodeError::BadUtf8)
 }
 
@@ -240,7 +215,7 @@ pub fn try_take_char<'de, F: Flavor<'de>>(f: &mut F) -> Result<char, DecodeError
     if sz > 4 {
         return Err(DecodeError::BadChar);
     }
-    let bytes: &[u8] = f.try_take_n_temp(sz).map_err(DecodeError::Pop)?;
+    let bytes: &[u8] = f.try_take_n(sz).map_err(DecodeError::Pop)?;
 
     // we pass the character through string conversion because
     // this handles transforming the array of code units to a

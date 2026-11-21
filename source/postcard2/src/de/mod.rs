@@ -32,22 +32,6 @@ where
     Ok((t, deserializer.finalize()?))
 }
 
-/// Deserialize a message of type `T` from a [`std::io::Read`].
-#[cfg(feature = "std")]
-#[allow(clippy::type_complexity)]
-pub fn from_io<'a, T, R>(
-    val: (R, &'a mut [u8]),
-) -> Result<(T, (R, &'a mut [u8])), DeserializerError<UnexpectedEnd, Infallible>>
-where
-    T: Deserialize<'a>,
-    R: std::io::Read,
-{
-    let flavor = flavors::io::IOReader::new(val.0, val.1);
-    let mut deserializer = Deserializer::from_flavor(flavor);
-    let t = T::deserialize(&mut deserializer)?;
-    Ok((t, deserializer.finalize()?))
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(any(feature = "alloc", feature = "std"))]

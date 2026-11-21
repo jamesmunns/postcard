@@ -41,16 +41,6 @@
 //! | `string` | [`ser::try_push_str()`]   | [`de::try_take_str()`]   | `postcard[atom.string.*]`                           |
 //! | `char`   | [`ser::try_push_char()`]  | [`de::try_take_char()`]  | `postcard[atom.char.*]`                             |
 //!
-//! `bytes` and `string` values can also be decoded with [`de::try_take_bytes_temp()`] and
-//! [`de::try_take_str_temp()`], which yield borrowed data that is not required to live for the
-//! entire lifetime of the Flavor's buffer. This is useful when the yielded data is immediately
-//! going to be converted into owned data, e.g. a `Vec<u8>` or `String`.
-//!
-//! This is an implementation detail only: there is no difference in what is decoded, but it
-//! may influence the Flavor interactions. See [`de::Flavor::try_take_n()`] and
-//! [`de::Flavor::try_take_n_temp()`] for more details. The non-temp functions provide *borrowed*
-//! views of the decoded data.
-//!
 //! ## Headers
 //!
 //! Headers are atoms whose value determines the number or type of the values that follow

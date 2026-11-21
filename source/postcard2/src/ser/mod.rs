@@ -91,30 +91,6 @@ where
     serialize_with_flavor::<T, _>(value, flavors::ExtendFlavor::new(writer))
 }
 
-/// Serialize a `T` to a [`std::io::Write`],
-/// ## Example
-///
-/// ```rust
-/// use postcard2::to_io;
-/// let mut buf: [u8; 32] = [0; 32];
-/// let mut writer: &mut [u8] = &mut buf;
-///
-/// let ser = to_io(&true, &mut writer).unwrap();
-/// to_io("Hi!", ser).unwrap();
-/// assert_eq!(&buf[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
-/// ```
-#[cfg(feature = "std")]
-pub fn to_io<T, W>(
-    value: &T,
-    writer: W,
-) -> Result<W, SerializerError<std::io::Error, std::io::Error>>
-where
-    T: Serialize + ?Sized,
-    W: std::io::Write,
-{
-    serialize_with_flavor::<T, _>(value, flavors::io::WriteFlavor::new(writer))
-}
-
 /// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
 ///
 /// * `T`: This is the type that is being serialized
