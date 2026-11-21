@@ -2,13 +2,13 @@ specs (
   {
     name postcard
     include (
-      spec/src/01-intro.md
-      spec/src/02-atoms.md
-      spec/src/03-composites.md
-      spec/src/04-schemas.md
-      spec/src/05-serde.md
-      spec/src/06-implementation-considerations.md
-      spec/src/07-glossary.md
+      spec/tracey/src/01-intro.md
+      spec/tracey/src/02-atoms.md
+      spec/tracey/src/03-composites.md
+      spec/tracey/src/04-schemas.md
+      spec/tracey/src/05-serde.md
+      spec/tracey/src/06-implementation-considerations.md
+      spec/tracey/src/07-glossary.md
     )
     impls (
       {

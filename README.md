@@ -160,7 +160,7 @@ process should be tested extensively as multiple attributes can cause problems.
 The [Serde Attributes] section of the serde specification lists the attributes believed
 to cause issues with postcard, and those believed not to.
 
-[Serde Attributes]: https://github.com/jamesmunns/postcard/blob/main/spec/src/05-serde.md#serde-attributes
+[Serde Attributes]: https://github.com/jamesmunns/postcard/blob/main/spec/tracey/src/05-serde.md#serde-attributes
 
 ## License
 

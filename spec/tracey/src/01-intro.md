@@ -140,7 +140,7 @@ for the decoder's schema, unless the message exceeds one of the decoder's
 The Postcard Wire Specification (this document) is licensed under the terms of
 the [CC-BY-SA 4.0 license].
 
-The full license text is in `spec/LICENSE-CC-BY-SA` in the
+The full license text is in `spec/tracey/LICENSE-CC-BY-SA` in the
 [postcard repository].
 
 Portions of the [Serde Data Model] are included under the terms of the
