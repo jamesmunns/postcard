@@ -1,0 +1,57 @@
+name: Spec (tracey)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "spec/tracey/**"
+      - "source/**"
+      - ".config/tracey/**"
+      - "tools/install-tracey.sh"
+      - "tools/tracey-*.sh"
+      - ".github/workflows/spec-tracey.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "spec/tracey/**"
+      - "source/**"
+      - ".config/tracey/**"
+      - "tools/install-tracey.sh"
+      - "tools/tracey-*.sh"
+      - ".github/workflows/spec-tracey.yml"
+  workflow_dispatch:
+
+# Cancel old workflows for PRs (only the most recent workflow can run).
+concurrency:
+  group: spec-tracey-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Avoid workflow-level permissions, instead use job-level permissions.
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The version bump check diffs against the base commit.
+          fetch-depth: 0
+      - name: Install tracey
+        run: tools/install-tracey.sh
+      - name: Validate references
+        run: tracey query validate
+      - name: Check coverage
+        run: tools/tracey-coverage.sh
+      - name: Export site
+        run: tracey export "$RUNNER_TEMP/tracey-site"
+      # Runs last, because it moves HEAD to the base commit.
+      - name: Check requirement version bumps
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: tools/tracey-version-bumps.sh "$BASE"

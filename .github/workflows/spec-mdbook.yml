@@ -1,0 +1,38 @@
+name: Spec (mdbook)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "spec/mdbook/**"
+      - "tools/install-mdbook.sh"
+      - ".github/workflows/spec-mdbook.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "spec/mdbook/**"
+      - "tools/install-mdbook.sh"
+      - ".github/workflows/spec-mdbook.yml"
+  workflow_dispatch:
+
+# Cancel old workflows for PRs (only the most recent workflow can run).
+concurrency:
+  group: spec-mdbook-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Avoid workflow-level permissions, instead use job-level permissions.
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mdbook
+        run: tools/install-mdbook.sh
+      - name: Build
+        run: mdbook build spec/mdbook
