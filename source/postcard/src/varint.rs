@@ -106,3 +106,51 @@ pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     out[i] = value as u8;
     &mut out[..=i]
 }
+
+/// Returns the number of bytes it takes to encode the given `val` using a postcard varint
+pub fn bytes_to_encode(val: impl Into<u128>) -> usize {
+    let val: u128 = val.into();
+    let mut buf = [0; varint_max::<u128>()];
+
+    varint_u128(val, &mut buf).len()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::varint::bytes_to_encode;
+
+    #[test]
+    fn encode_size_1() {
+        assert_eq!(bytes_to_encode(1_u32), 1)
+    }
+
+    #[test]
+    fn encode_size_127() {
+        assert_eq!(bytes_to_encode(127_u32), 1)
+    }
+
+    #[test]
+    fn encode_size_128() {
+        assert_eq!(bytes_to_encode(128_u32), 2)
+    }
+
+    #[test]
+    fn encode_size_16383() {
+        assert_eq!(bytes_to_encode(16383_u32), 2)
+    }
+
+    #[test]
+    fn encode_size_16384() {
+        assert_eq!(bytes_to_encode(16384_u32), 3)
+    }
+
+    #[test]
+    fn encode_size_65535() {
+        assert_eq!(bytes_to_encode(65_535_u32), 3)
+    }
+
+    #[test]
+    fn encode_size_65536() {
+        assert_eq!(bytes_to_encode(65_536_u32), 3)
+    }
+}
