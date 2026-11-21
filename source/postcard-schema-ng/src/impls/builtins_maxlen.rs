@@ -475,7 +475,7 @@ pub(crate) mod std {
 
     #[cfg(test)]
     mod test {
-        use postcard::Error::SerdeDeCustom;
+        use postcard2::DeserializerError;
 
         use crate::max_len::{MaxLenByteSlice, MaxLenStr};
 
@@ -487,18 +487,18 @@ pub(crate) mod std {
             assert_eq!(MaxLenString::<128>::SCHEMA.max_size(), Some(130));
 
             let b: MaxLenString<5> = "hello".try_into().unwrap();
-            let x = postcard::to_stdvec(&b).unwrap();
-            let base = postcard::to_stdvec("hello").unwrap();
+            let x = postcard2::to_vec(&b).unwrap();
+            let base = postcard2::to_vec("hello").unwrap();
             assert_eq!(x, base);
             assert!(MaxLenString::<4>::try_from("hello").is_err());
 
-            let c = postcard::from_bytes::<MaxLenString<5>>(&x).unwrap();
+            let c = postcard2::from_bytes::<MaxLenString<5>>(&x).unwrap();
             assert_eq!(b, c);
-            let c2 = postcard::from_bytes::<MaxLenStr<'_, 5>>(&x).unwrap();
+            let c2 = postcard2::from_bytes::<MaxLenStr<'_, 5>>(&x).unwrap();
             assert_eq!(b.deref(), c2.deref());
 
-            let d = postcard::from_bytes::<MaxLenString<4>>(&x);
-            assert_eq!(d, Err(SerdeDeCustom));
+            let d = postcard2::from_bytes::<MaxLenString<4>>(&x);
+            assert!(matches!(d, Err(DeserializerError::Custom(_))));
 
             assert_eq!(
                 <MaxLenString<5>>::SCHEMA,
@@ -517,18 +517,18 @@ pub(crate) mod std {
             let _b: MaxLenBytes<6> = b"hello".try_into().unwrap();
             let b: MaxLenBytes<5> = b"hello".try_into().unwrap();
             assert_eq!(b.get(..3), Some(b"hel".as_slice()));
-            let x = postcard::to_stdvec(&b).unwrap();
-            let base = postcard::to_stdvec(b"hello".as_slice()).unwrap();
+            let x = postcard2::to_vec(&b).unwrap();
+            let base = postcard2::to_vec(b"hello".as_slice()).unwrap();
             assert_eq!(x, base);
             assert!(MaxLenBytes::<4>::try_from(b"hello").is_err());
 
-            let c = postcard::from_bytes::<MaxLenBytes<5>>(&x).unwrap();
+            let c = postcard2::from_bytes::<MaxLenBytes<5>>(&x).unwrap();
             assert_eq!(b, c);
-            let c2 = postcard::from_bytes::<MaxLenByteSlice<'_, 5>>(&x).unwrap();
+            let c2 = postcard2::from_bytes::<MaxLenByteSlice<'_, 5>>(&x).unwrap();
             assert_eq!(b.deref(), c2.deref());
 
-            let d = postcard::from_bytes::<MaxLenBytes<4>>(&x);
-            assert_eq!(d, Err(SerdeDeCustom));
+            let d = postcard2::from_bytes::<MaxLenBytes<4>>(&x);
+            assert!(matches!(d, Err(DeserializerError::Custom(_))));
 
             assert_eq!(
                 <MaxLenBytes<5>>::SCHEMA,
@@ -544,7 +544,7 @@ pub(crate) mod std {
 
 #[cfg(test)]
 mod test {
-    use postcard::Error::SerdeDeCustom;
+    use postcard2::DeserializerError;
 
     #[test]
     fn bounded_str() {
@@ -554,16 +554,16 @@ mod test {
         assert_eq!(MaxLenStr::<128>::SCHEMA.max_size(), Some(130));
 
         let b: MaxLenStr<'_, 5> = "hello".try_into().unwrap();
-        let x = postcard::to_stdvec(&b).unwrap();
-        let base = postcard::to_stdvec("hello").unwrap();
+        let x = postcard2::to_vec(&b).unwrap();
+        let base = postcard2::to_vec("hello").unwrap();
         assert_eq!(x, base);
         assert!(MaxLenStr::<4>::try_from("hello").is_err());
 
-        let c = postcard::from_bytes::<MaxLenStr<5>>(&x).unwrap();
+        let c = postcard2::from_bytes::<MaxLenStr<5>>(&x).unwrap();
         assert_eq!(b, c);
 
-        let d = postcard::from_bytes::<MaxLenStr<4>>(&x);
-        assert_eq!(d, Err(SerdeDeCustom));
+        let d = postcard2::from_bytes::<MaxLenStr<4>>(&x);
+        assert!(matches!(d, Err(DeserializerError::Custom(_))));
 
         assert_eq!(
             <MaxLenStr<'_, 5>>::SCHEMA,
@@ -581,16 +581,16 @@ mod test {
         let _b: MaxLenByteSlice<'_, 6> = b"hello".try_into().unwrap();
         let b: MaxLenByteSlice<'_, 5> = b"hello".try_into().unwrap();
         assert_eq!(b.get(..3), Some(b"hel".as_slice()));
-        let x = postcard::to_stdvec(&b).unwrap();
-        let base = postcard::to_stdvec(b"hello".as_slice()).unwrap();
+        let x = postcard2::to_vec(&b).unwrap();
+        let base = postcard2::to_vec(b"hello".as_slice()).unwrap();
         assert_eq!(x, base);
         assert!(MaxLenByteSlice::<4>::try_from(b"hello").is_err());
 
-        let c = postcard::from_bytes::<MaxLenByteSlice<5>>(&x).unwrap();
+        let c = postcard2::from_bytes::<MaxLenByteSlice<5>>(&x).unwrap();
         assert_eq!(b, c);
 
-        let d = postcard::from_bytes::<MaxLenByteSlice<4>>(&x);
-        assert_eq!(d, Err(SerdeDeCustom));
+        let d = postcard2::from_bytes::<MaxLenByteSlice<4>>(&x);
+        assert!(matches!(d, Err(DeserializerError::Custom(_))));
 
         assert_eq!(
             <MaxLenByteSlice<'_, 5>>::SCHEMA,

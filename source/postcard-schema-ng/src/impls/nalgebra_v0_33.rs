@@ -26,6 +26,14 @@ impl<T: Schema + nalgebra_v0_33::Scalar> Schema for nalgebra_v0_33::Quaternion<T
     const SCHEMA: &'static DataModelType = nalgebra_v0_33::Vector4::<T>::SCHEMA;
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
+impl<T, const D: usize> Schema for nalgebra_v0_33::Point<T, D>
+where
+    T: Schema + nalgebra_v0_33::Scalar,
+{
+    const SCHEMA: &'static DataModelType = nalgebra_v0_33::SVector::<T, D>::SCHEMA;
+}
+
 /// Const version of the const-unstable [`<[[T; N]]>::as_flattened()`]
 const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
     const {
@@ -47,6 +55,14 @@ fn flattened() {
 #[test]
 fn smoke() {
     let x = nalgebra_v0_33::SMatrix::<u8, 3, 3>::new(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    let y = postcard::to_stdvec(&x).unwrap();
+    let y = postcard2::to_vec(&x).unwrap();
     assert_eq!(&[1, 4, 7, 2, 5, 8, 3, 6, 9], y.as_slice());
+}
+
+#[test]
+fn point() {
+    type P = nalgebra_v0_33::Point3<u8>;
+    assert_eq!(P::SCHEMA, <[u8; 3]>::SCHEMA);
+    let y = postcard2::to_vec(&P::new(1, 2, 3)).unwrap();
+    assert_eq!(&[1, 2, 3], y.as_slice());
 }

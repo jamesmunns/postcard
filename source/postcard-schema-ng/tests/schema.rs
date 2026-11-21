@@ -202,8 +202,8 @@ fn owned_punning() {
     let owned_schema: OwnedDataModelType = borrowed_schema.into();
 
     // Check that they are the same on the wire when serialized
-    let ser_borrowed_schema = postcard::to_stdvec(borrowed_schema).unwrap();
-    let ser_owned_schema = postcard::to_stdvec(&owned_schema).unwrap();
+    let ser_borrowed_schema = postcard2::to_vec(borrowed_schema).unwrap();
+    let ser_owned_schema = postcard2::to_vec(&owned_schema).unwrap();
     assert_eq!(ser_borrowed_schema, ser_owned_schema);
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
@@ -212,8 +212,9 @@ fn owned_punning() {
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
-        postcard::from_bytes::<OwnedDataModelType>(&ser_borrowed_schema).unwrap();
-    let deser_owned_schema = postcard::from_bytes::<OwnedDataModelType>(&ser_owned_schema).unwrap();
+        postcard2::from_bytes::<OwnedDataModelType>(&ser_borrowed_schema).unwrap();
+    let deser_owned_schema =
+        postcard2::from_bytes::<OwnedDataModelType>(&ser_owned_schema).unwrap();
     assert_eq!(deser_borrowed_schema, deser_owned_schema);
     assert_eq!(deser_borrowed_schema, owned_schema);
     assert_eq!(deser_owned_schema, owned_schema);
