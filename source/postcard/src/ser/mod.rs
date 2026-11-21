@@ -115,6 +115,22 @@ where
 /// let ser: Vec<u8, 32> = to_vec_cobs(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x02, 0x01, 0x03, 0x20, 0x30, 0x00]);
 /// ```
+///
+/// This function uses `heapless` v0.7, which is affected by [RUSTSEC-2026-0575] and
+/// will not be fixed. Prefer [`heapless_v0_9::to_vec_cobs`], enabled by the
+/// `heapless-v0_9` feature:
+///
+/// ```rust
+/// # #[cfg(feature = "heapless-v0_9")] {
+/// use postcard::heapless_v0_9::{heapless::Vec, to_vec_cobs};
+///
+/// let ser: Vec<u8, 32> = to_vec_cobs("Hi!").unwrap();
+/// assert_eq!(&ser[..], &[0x05, 0x03, b'H', b'i', b'!', 0x00]);
+/// # }
+/// ```
+///
+/// [RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
+/// [`heapless_v0_9::to_vec_cobs`]: crate::heapless_v0_9::to_vec_cobs
 #[cfg(feature = "heapless")]
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 pub fn to_vec_cobs<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
@@ -149,6 +165,21 @@ where
 /// let ser: Vec<u8, 32> = to_vec(data).unwrap();
 /// assert_eq!(ser.deref(), &[0x01, 0x00, 0x20, 0x30]);
 /// ```
+///
+/// This function uses `heapless` v0.7, which is affected by [RUSTSEC-2026-0575] and
+/// will not be fixed. Prefer [`heapless_v0_9::to_vec`], enabled by the `heapless-v0_9` feature:
+///
+/// ```rust
+/// # #[cfg(feature = "heapless-v0_9")] {
+/// use postcard::heapless_v0_9::{heapless::Vec, to_vec};
+///
+/// let ser: Vec<u8, 32> = to_vec("Hi!").unwrap();
+/// assert_eq!(&ser[..], &[0x03, b'H', b'i', b'!']);
+/// # }
+/// ```
+///
+/// [RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
+/// [`heapless_v0_9::to_vec`]: crate::heapless_v0_9::to_vec
 #[cfg(feature = "heapless")]
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless")))]
 pub fn to_vec<T, const B: usize>(value: &T) -> Result<Vec<u8, B>>
@@ -372,6 +403,25 @@ where
 /// ```
 ///
 /// See the `ser_flavors::crc` module for the complete set of functions.
+///
+/// This function uses `heapless` v0.7, which is affected by [RUSTSEC-2026-0575] and
+/// will not be fixed. Prefer [`heapless_v0_9::to_vec_crc32`], enabled by the
+/// `heapless-v0_9` feature:
+///
+/// ```rust
+/// # #[cfg(all(feature = "heapless-v0_9", feature = "use-crc"))] {
+/// use crc::{Crc, CRC_32_ISCSI};
+/// use postcard::heapless_v0_9::{heapless::Vec, to_vec_crc32};
+///
+/// let data: &[u8] = &[0x01u8, 0x00, 0x20, 0x30];
+/// let crc = Crc::<u32>::new(&CRC_32_ISCSI);
+/// let ser: Vec<u8, 32> = to_vec_crc32(data, crc.digest()).unwrap();
+/// assert_eq!(&ser[..], &[0x04, 0x01, 0x00, 0x20, 0x30, 0x8E, 0xC8, 0x1A, 0x37]);
+/// # }
+/// ```
+///
+/// [RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
+/// [`heapless_v0_9::to_vec_crc32`]: crate::heapless_v0_9::to_vec_crc32
 #[cfg(all(feature = "use-crc", feature = "heapless"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "use-crc", feature = "heapless"))))]
 #[inline]

@@ -10,6 +10,9 @@ mod eio;
 
 mod error;
 pub mod fixint;
+#[cfg(feature = "heapless-v0_9")]
+#[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
+pub mod heapless_v0_9;
 mod ser;
 #[cfg(feature = "bench_private")]
 #[doc(hidden)]
