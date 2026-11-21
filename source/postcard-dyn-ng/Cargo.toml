@@ -23,6 +23,7 @@ serde_json = "1.0.117"
 
 [dependencies.postcard]
 version = "1.0.10"
+default-features = false
 features = ["use-std"]
 path = "../postcard"
 

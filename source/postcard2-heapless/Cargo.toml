@@ -3,6 +3,7 @@ name = "postcard2-heapless"
 version = "0.2.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
+rust-version = "1.88"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "postcard2 extension crate"
@@ -26,7 +27,7 @@ serde_core = { version = "1.0.228", default-features = false }
 
 [dependencies.heapless_v0_9]
 package = "heapless"
-version = "0.9.1"
+version = "0.9.4"
 optional = true
 default-features = false
 features = ["serde"]

@@ -3,6 +3,7 @@ name = "postcard-schema"
 version = "0.2.5"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
+rust-version = "1.88"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "Reflection-like schemas for postcard types"
@@ -54,7 +55,7 @@ optional = true
 
 [dependencies.heapless_v0_9]
 package = "heapless"
-version = "0.9"
+version = "0.9.4"
 default-features = false
 optional = true
 
@@ -106,6 +107,10 @@ package = "nalgebra"
 version = "0.34.1"
 default-features = false
 features = ["serde-serialize-no-std"]
+
+[[test]]
+name = "schema"
+required-features = ["derive", "use-std"]
 
 [features]
 default = []

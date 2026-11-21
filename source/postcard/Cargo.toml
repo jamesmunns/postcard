@@ -3,6 +3,7 @@ name = "postcard"
 version = "1.1.3"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2021"
+rust-version = "1.88"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std + serde compatible message library for Rust"
@@ -39,7 +40,7 @@ optional = true
 
 [dependencies.heapless-v0_9]
 package = "heapless"
-version = "0.9.1"
+version = "0.9.4"
 default-features = false
 features = ["serde"]
 optional = true
@@ -132,4 +133,5 @@ heapless = ["dep:heapless"]
 postcard-derive = ["dep:postcard-derive"]
 heapless-v0_8 = ["dep:heapless-v0_8"]
 heapless-v0_9 = ["dep:heapless-v0_9"]
+# requires msrv 1.95
 enum-map-v3_0 = ["dep:enum-map-v3_0"]

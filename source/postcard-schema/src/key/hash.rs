@@ -406,7 +406,7 @@ pub mod fnv1a64_owned {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "alloc", feature = "use-std")))]
 mod test {
     use super::fnv1a64::hash_ty_path;
 
