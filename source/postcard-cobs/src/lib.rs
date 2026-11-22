@@ -12,6 +12,8 @@
 
 mod accumulator;
 mod de;
+#[cfg(feature = "postcard-schema-v0_5")]
+mod schema;
 mod ser;
 
 pub use accumulator::{CobsAccumulator, FeedResult};
@@ -20,3 +22,6 @@ pub use ser::{Cobs, FinalizeError, max_frame_len, to_slice_cobs};
 
 #[cfg(feature = "alloc")]
 pub use ser::to_vec_cobs;
+
+#[cfg(feature = "postcard-schema-v0_5")]
+pub use schema::max_frame_len_of;

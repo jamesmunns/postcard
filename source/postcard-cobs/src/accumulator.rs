@@ -12,6 +12,17 @@ use crate::de::{DeserializeError, decode_frame};
 /// sentinel `0x00`.
 ///
 /// See [`max_frame_len`](crate::max_frame_len) for calculating "how big is big enough" for `N`.
+/// With the `postcard-schema-v0_5` feature, `N` can be calculated from the type:
+///
+#[cfg_attr(feature = "postcard-schema-v0_5", doc = "```rust")]
+#[cfg_attr(not(feature = "postcard-schema-v0_5"), doc = "```rust,ignore")]
+/// use postcard_cobs::{CobsAccumulator, max_frame_len_of};
+/// # use postcard_schema::Schema;
+/// # #[derive(Schema)]
+/// # struct Msg(u32);
+///
+/// static ACC: CobsAccumulator<{ max_frame_len_of::<Msg>() }> = CobsAccumulator::new();
+/// ```
 ///
 /// # Examples
 ///

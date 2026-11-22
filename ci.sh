@@ -29,7 +29,7 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-cargo_test --features=alloc,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema/std
+cargo_test --features=alloc,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema/std,postcard-cobs/postcard-schema-v0_5
 
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
