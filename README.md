@@ -152,6 +152,9 @@ Other features, such as `alloc`, `std`, or `defmt-v1`, can be added to the `feat
 list as needed. For `heapless` support, add the `postcard-heapless` crate with its
 `heapless-v0_9` feature.
 
+For COBS framing (`to_slice_cobs`, `from_bytes_cobs`, `CobsAccumulator`), add the
+`postcard-cobs` crate.
+
 Library crates should always set `default-features = false` on `postcard`, as Cargo unifies
 features across the dependency graph.
 
