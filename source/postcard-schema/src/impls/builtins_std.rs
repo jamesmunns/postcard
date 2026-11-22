@@ -1,78 +1,65 @@
 //! Implementations of the [`Schema`] trait for `std` types
 
-use crate::{
-    schema::{DataModelType, NamedType},
-    Schema,
-};
+use crate::{schema::DataModelType, Schema};
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for std::vec::Vec<T> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "Vec<T>",
-        ty: &DataModelType::Seq(T::SCHEMA),
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        element: T::SCHEMA,
+        max_len: None,
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl Schema for std::string::String {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "String",
-        ty: &DataModelType::String,
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: None };
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl Schema for std::path::PathBuf {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "PathBuf",
-        ty: &DataModelType::String,
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::String { max_len: None };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema, V: Schema> Schema for std::collections::HashMap<K, V> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "HashMap<K, V>",
-        ty: &DataModelType::Map {
-            key: K::SCHEMA,
-            val: V::SCHEMA,
-        },
+    const SCHEMA: &'static DataModelType = &DataModelType::Map {
+        key: K::SCHEMA,
+        val: V::SCHEMA,
+        max_len: None,
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema, V: Schema> Schema for std::collections::BTreeMap<K, V> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeMap<K, V>",
-        ty: &DataModelType::Map {
-            key: K::SCHEMA,
-            val: V::SCHEMA,
-        },
+    const SCHEMA: &'static DataModelType = &DataModelType::Map {
+        key: K::SCHEMA,
+        val: V::SCHEMA,
+        max_len: None,
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema> Schema for std::collections::HashSet<K> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "HashSet<K>",
-        ty: &DataModelType::Seq(K::SCHEMA),
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        element: K::SCHEMA,
+        max_len: None,
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<K: Schema> Schema for std::collections::BTreeSet<K> {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "BTreeSet<K>",
-        ty: &DataModelType::Seq(K::SCHEMA),
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        element: K::SCHEMA,
+        max_len: None,
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for std::boxed::Box<T> {
-    const SCHEMA: &'static NamedType = T::SCHEMA;
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "use-std"))))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: ?Sized + Schema + std::borrow::ToOwned> Schema for std::borrow::Cow<'_, T> {
-    const SCHEMA: &'static NamedType = T::SCHEMA;
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
 }

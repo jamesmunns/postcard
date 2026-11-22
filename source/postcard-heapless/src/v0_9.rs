@@ -11,8 +11,8 @@ pub use heapless_v0_9 as heapless;
 /// ## Example
 ///
 /// ```rust
-/// use postcard2_heapless::v0_9::to_vec;
-/// use postcard2_heapless::v0_9::heapless::Vec;
+/// use postcard_heapless::v0_9::to_vec;
+/// use postcard_heapless::v0_9::heapless::Vec;
 /// use core::ops::Deref;
 ///
 /// let ser: Vec<u8, 32> = to_vec(&true).unwrap();

@@ -44,7 +44,7 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     let postcard_schema = &generator.postcard_schema;
     let expanded = quote! {
         impl #impl_generics #postcard_schema::Schema for #name #ty_generics #where_clause {
-            const SCHEMA: &'static #postcard_schema::schema::NamedType = #ty;
+            const SCHEMA: &'static #postcard_schema::schema::DataModelType = #ty;
         }
     };
 
@@ -98,10 +98,18 @@ impl Generator {
         name: String,
     ) -> Result<TokenStream, syn::Error> {
         let postcard_schema = &self.postcard_schema;
-        let ty = match data {
-            Data::Struct(data) => self.generate_struct(&data.fields),
+        match data {
+            Data::Struct(data) => {
+                let data = self.generate_struct(&data.fields);
+                Ok(quote! {
+                    &#postcard_schema::schema::DataModelType::Struct{
+                        name: #name,
+                        data: #data,
+                    }
+                })
+            }
             Data::Enum(data) => {
-                let name = data.variants.iter().map(|v| {
+                let variants = data.variants.iter().map(|v| {
                     let mut rename = None;
                     for attr in &v.attrs {
                         if attr.path().is_ident("serde") {
@@ -115,33 +123,23 @@ impl Generator {
                             });
                         }
                     }
-                    rename.unwrap_or_else(|| v.ident.to_string())
+                    let name = rename.unwrap_or_else(|| v.ident.to_string());
+                    let data = self.generate_variants(&v.fields);
+                    quote! { #postcard_schema::schema::Variant { name: #name, data: #data } }
                 });
-                let ty = data
-                    .variants
-                    .iter()
-                    .map(|v| self.generate_variants(&v.fields));
 
-                quote! {
-                    &#postcard_schema::schema::DataModelType::Enum(&[
-                        #( &#postcard_schema::schema::NamedVariant { name: #name, ty: #ty } ),*
-                    ])
-                }
+                Ok(quote! {
+                    &#postcard_schema::schema::DataModelType::Enum {
+                        name: #name,
+                        variants: &[#(&#variants),*],
+                    }
+                })
             }
-            Data::Union(_) => {
-                return Err(syn::Error::new(
-                    span,
-                    "unions are not supported by `postcard::experimental::schema`",
-                ))
-            }
-        };
-
-        Ok(quote! {
-            &#postcard_schema::schema::NamedType {
-                name: #name,
-                ty: #ty,
-            }
-        })
+            Data::Union(_) => Err(syn::Error::new(
+                span,
+                "#[derive(Schema)] does not support unions",
+            )),
+        }
     }
 
     fn generate_struct(&self, fields: &Fields) -> TokenStream {
@@ -149,7 +147,7 @@ impl Generator {
         match fields {
             syn::Fields::Named(fields) => {
                 let fields = fields.named.iter().map(|f| self.generate_field(f));
-                quote! { &#postcard_schema::schema::DataModelType::Struct(&[
+                quote! { #postcard_schema::schema::Data::Struct(&[
                     #( #fields ),*
                 ]) }
             }
@@ -158,16 +156,16 @@ impl Generator {
                     let f = &fields.unnamed[0];
                     let inner = self.generate_field(f);
 
-                    quote! { &#postcard_schema::schema::DataModelType::NewtypeStruct(#inner) }
+                    quote! { #postcard_schema::schema::Data::Newtype(#inner) }
                 } else {
                     let fields = fields.unnamed.iter().map(|f| self.generate_field(f));
-                    quote! { &#postcard_schema::schema::DataModelType::TupleStruct(&[
+                    quote! { #postcard_schema::schema::Data::Tuple(&[
                         #( #fields ),*
                     ]) }
                 }
             }
             syn::Fields::Unit => {
-                quote! { &#postcard_schema::schema::DataModelType::UnitStruct }
+                quote! { #postcard_schema::schema::Data::Unit }
             }
         }
     }
@@ -177,7 +175,7 @@ impl Generator {
         match fields {
             syn::Fields::Named(fields) => {
                 let fields = fields.named.iter().map(|f| self.generate_field(f));
-                quote! { &#postcard_schema::schema::DataModelVariant::StructVariant(&[
+                quote! { #postcard_schema::schema::Data::Struct(&[
                     #( #fields ),*
                 ]) }
             }
@@ -186,16 +184,16 @@ impl Generator {
                     let f = &fields.unnamed[0];
                     let inner = self.generate_field(f);
 
-                    quote! { &#postcard_schema::schema::DataModelVariant::NewtypeVariant(#inner) }
+                    quote! { #postcard_schema::schema::Data::Newtype(#inner) }
                 } else {
                     let fields = fields.unnamed.iter().map(|f| self.generate_field(f));
-                    quote! { &#postcard_schema::schema::DataModelVariant::TupleVariant(&[
+                    quote! { #postcard_schema::schema::Data::Tuple(&[
                         #( #fields ),*
                     ]) }
                 }
             }
             syn::Fields::Unit => {
-                quote! { &#postcard_schema::schema::DataModelVariant::UnitVariant }
+                quote! { #postcard_schema::schema::Data::Unit }
             }
         }
     }
@@ -220,7 +218,7 @@ impl Generator {
                     }
                 }
                 let name = rename.unwrap_or_else(|| name.to_string());
-                quote_spanned!(field.span()=> &#postcard_schema::schema::NamedValue { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
+                quote_spanned!(field.span()=> &#postcard_schema::schema::NamedField { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
             }
         }
     }
