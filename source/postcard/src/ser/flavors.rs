@@ -11,7 +11,9 @@
 //! When flavors are combined, it is expected that the storage flavor (such as `Slice` or `HVec`) is the innermost flavor.
 //!
 //! Custom flavors may be defined by users of the `postcard` crate, however some commonly useful flavors have been provided in
-//! this module. If you think your custom flavor would be useful to others, PRs adding flavors are very welcome!
+//! this module. Flavors can also be defined in external crates.
+//!
+//! A flavor for COBS is in the `postcard-cobs` crate.
 //!
 //! ## Usability
 //!
@@ -20,8 +22,8 @@
 //! the user from having to specify generic parameters, setting correct initialization values, or handling the output of
 //! the flavor correctly. See `postcard::to_vec()` for an example of this.
 //!
-//! It is recommended to use the [`serialize_with_flavor()`](../fn.serialize_with_flavor.html) method for serialization. See it's documentation for information
-//! regarding usage and generic type parameters.
+//! It is recommended to use the [`serialize_with_flavor()`](../fn.serialize_with_flavor.html) method for serialization.
+//! See its documentation for information regarding usage and generic type parameters.
 //!
 //! ## When to use (multiple) flavors
 //!

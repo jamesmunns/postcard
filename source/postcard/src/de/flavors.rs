@@ -14,7 +14,7 @@
 //! When flavors are combined, it is expected that the storage flavor (such as [`Slice`]) is the innermost flavor.
 //!
 //! Custom flavors may be defined by users of the `postcard` crate, however some commonly useful flavors have been provided in
-//! this module. If you think your custom flavor would be useful to others, PRs adding flavors are very welcome!
+//! this module. Flavors can also be defined in external crates.
 //!
 //! ## Usability
 //!
@@ -22,6 +22,8 @@
 //! inner workings of the flavor behaves. It is typical to provide a convenience method for using a flavor, to prevent
 //! the user from having to specify generic parameters, setting correct initialization values, or handling the output of
 //! the flavor correctly. See `postcard::from_bytes()` for an example of this.
+//!
+//! For COBS, see the `postcard-cobs` crate, which decodes the whole frame before deserializing instead of using a flavor.
 //!
 //! ## When to use (multiple) flavors
 //!
