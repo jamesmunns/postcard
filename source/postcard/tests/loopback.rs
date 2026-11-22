@@ -141,3 +141,39 @@ where
         assert_eq!(data, deserialized);
     }
 }
+
+/// A map's length is only a size hint if that many bytes remain.
+#[test]
+fn map_size_hint() {
+    use serde::de::{Deserializer, MapAccess, Visitor};
+
+    /// The size hint of a map of `u8` to `u8`.
+    #[derive(Debug, PartialEq)]
+    struct Hint(Option<usize>);
+
+    impl<'de> Deserialize<'de> for Hint {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            struct HintVisitor;
+            impl<'de> Visitor<'de> for HintVisitor {
+                type Value = Hint;
+                fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                    f.write_str("a map")
+                }
+                fn visit_map<A: MapAccess<'de>>(self, map: A) -> Result<Hint, A::Error> {
+                    Ok(Hint(map.size_hint()))
+                }
+            }
+            deserializer.deserialize_map(HintVisitor)
+        }
+    }
+
+    assert_eq!(from_bytes(&[0]), Ok(Hint(Some(0))));
+    assert_eq!(from_bytes(&[2, 1, 2, 3, 4]), Ok(Hint(Some(2))));
+    // The length can't be checked exactly, as entries can be any size.
+    assert_eq!(from_bytes(&[2, 1, 2]), Ok(Hint(Some(2))));
+    assert_eq!(from_bytes(&[2, 1]), Ok(Hint(None)));
+
+    let mut buf = [0; 10];
+    let huge = to_slice(&usize::MAX, &mut buf).unwrap();
+    assert_eq!(from_bytes(huge), Ok(Hint(None)));
+}

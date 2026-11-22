@@ -146,7 +146,10 @@ const fn arr_max_size(data_model_types: &[&DataModelType]) -> Option<usize> {
         let Some(size) = data_model_types[idx].max_size() else {
             return None;
         };
-        sum += size;
+        let Some(total) = size.checked_add(sum) else {
+            return None;
+        };
+        sum = total;
         idx += 1;
     }
     Some(sum)
@@ -166,6 +169,8 @@ macro_rules! max_size_dmt {
     ($kind:ty) => {
         impl $kind {
             /// Max serialized size
+            ///
+            /// This is `None` if there is no maximum, or if it doesn't fit in a `usize`.
             pub const fn max_size(&self) -> Option<usize> {
                 use $kind::*;
                 match self {
@@ -187,14 +192,14 @@ macro_rules! max_size_dmt {
                     Char => Some(5),
                     String { max_len } | ByteArray { max_len } => {
                         if let Some(len) = max_len {
-                            Some(size_as_varint_usize(*len) + *len)
+                            len.checked_add(size_as_varint_usize(*len))
                         } else {
                             None
                         }
                     }
                     Option(data_model_type) => {
                         if let Some(len) = data_model_type.max_size() {
-                            Some(1 + len)
+                            len.checked_add(1)
                         } else {
                             None
                         }
@@ -207,8 +212,10 @@ macro_rules! max_size_dmt {
                         let Some(size) = element.max_size() else {
                             return None;
                         };
-                        let elements = (*len) * size;
-                        Some(size_as_varint_usize(*len) + elements)
+                        let Some(elements) = size.checked_mul(*len) else {
+                            return None;
+                        };
+                        elements.checked_add(size_as_varint_usize(*len))
                     }
                     Tuple(data_model_types) => arr_max_size(data_model_types),
                     Map { key, val, max_len } => {
@@ -221,9 +228,13 @@ macro_rules! max_size_dmt {
                         let Some(vsize) = val.max_size() else {
                             return None;
                         };
-                        let pair = ksize + vsize;
-                        let pairs = (*len) * pair;
-                        Some(size_as_varint_usize(*len) + pairs)
+                        let Some(pair) = ksize.checked_add(vsize) else {
+                            return None;
+                        };
+                        let Some(pairs) = pair.checked_mul(*len) else {
+                            return None;
+                        };
+                        pairs.checked_add(size_as_varint_usize(*len))
                     }
                     Struct { name: _, data } => data.max_size(),
                     Enum { name: _, variants } => {
@@ -248,7 +259,7 @@ macro_rules! max_size_dmt {
                             }
                             idx += 1;
                         }
-                        Some(disc + max)
+                        max.checked_add(disc)
                     }
                     // Schemas are unbounded
                     Schema => None,
@@ -277,6 +288,8 @@ pub enum Data {
 
 impl Data {
     /// Max serialized size
+    ///
+    /// This is `None` if there is no maximum, or if it doesn't fit in a `usize`.
     pub const fn max_size(&self) -> Option<usize> {
         match self {
             Data::Unit => Some(0),
@@ -289,7 +302,10 @@ impl Data {
                     let Some(size) = named_fields[idx].ty.max_size() else {
                         return None;
                     };
-                    sum += size;
+                    let Some(total) = size.checked_add(sum) else {
+                        return None;
+                    };
+                    sum = total;
                     idx += 1;
                 }
                 Some(sum)
