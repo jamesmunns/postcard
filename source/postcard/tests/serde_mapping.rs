@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use postcard2::{
+use postcard::{
     DecodeError, Deserializer, DeserializerError, SerializerError, from_bytes, to_slice,
 };
 use serde::de::IgnoredAny;
@@ -219,7 +219,7 @@ fn char() {
 fn string() {
     roundtrip(String::from("hi"), &[0x02, b'h', b'i']);
     // Borrowed from the input
-    let s: &str = postcard2::from_bytes(&[0x02, b'h', b'i']).unwrap();
+    let s: &str = postcard::from_bytes(&[0x02, b'h', b'i']).unwrap();
     assert_eq!(s, "hi");
     // 0xFF never appears in UTF-8
     let bad = [0x01, 0xFF];
@@ -243,7 +243,7 @@ impl Serialize for Bytes<'_> {
 fn byte_array() {
     assert_eq!(encode(&Bytes(&[0xAA, 0xBB])), [0x02, 0xAA, 0xBB]);
     // Borrowed from the input
-    let b: &[u8] = postcard2::from_bytes(&[0x02, 0xAA, 0xBB]).unwrap();
+    let b: &[u8] = postcard::from_bytes(&[0x02, 0xAA, 0xBB]).unwrap();
     assert_eq!(b, [0xAA, 0xBB]);
 }
 
@@ -468,7 +468,7 @@ impl<'de> Deserialize<'de> for HumanReadable {
 fn human_readable() {
     assert_eq!(encode(&HumanReadable(true)), [0x00]); // the serializer said `false`
     assert_eq!(
-        postcard2::from_bytes::<HumanReadable>(&[]).unwrap(),
+        postcard::from_bytes::<HumanReadable>(&[]).unwrap(),
         HumanReadable(false)
     );
 }
@@ -537,12 +537,12 @@ impl<'de> Deserialize<'de> for SeqVariant {
 #[test]
 fn struct_as_seq() {
     assert_eq!(
-        postcard2::from_bytes::<SeqStruct>(&[0x01, 0x02]).unwrap(),
+        postcard::from_bytes::<SeqStruct>(&[0x01, 0x02]).unwrap(),
         SeqStruct(1, 2)
     );
     assert_eq!(
         // discriminant, then the fields
-        postcard2::from_bytes::<SeqVariant>(&[0x00, 0x01, 0x02]).unwrap(),
+        postcard::from_bytes::<SeqVariant>(&[0x00, 0x01, 0x02]).unwrap(),
         SeqVariant(1, 2)
     );
 }

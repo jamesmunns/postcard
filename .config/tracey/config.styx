@@ -20,14 +20,14 @@ specs (
           source/postcard-core/src/de/flavors.rs
           source/postcard-core/src/ser.rs
           source/postcard-core/src/varint.rs
-          source/postcard2/src/de/deserializer.rs
-          source/postcard2/src/ser/serializer.rs
+          source/postcard/src/de/deserializer.rs
+          source/postcard/src/ser/serializer.rs
         )
         test_include (
           source/postcard-core/tests/wire.rs
-          source/postcard2/tests/composites.rs
-          source/postcard2/tests/schemas.rs
-          source/postcard2/tests/serde_mapping.rs
+          source/postcard/tests/composites.rs
+          source/postcard/tests/schemas.rs
+          source/postcard/tests/serde_mapping.rs
         )
       }
     )

@@ -102,9 +102,9 @@ version = "3.0.0"
 default-features = false
 optional = true
 
-[dev-dependencies.postcard2]
-path = "../postcard2"
-version = "0.2"
+[dev-dependencies.postcard]
+path = "../postcard"
+version = "2.0.0"
 features = ["alloc"]
 
 [dev-dependencies.nalgebra_v0_33]

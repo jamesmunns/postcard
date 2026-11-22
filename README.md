@@ -6,6 +6,14 @@
 
 Postcard is a `#![no_std]` focused serializer and deserializer for Serde.
 
+> [!CAUTION]
+> This readme is for the yet-unreleased v2.0.0 version of `postcard`!
+>
+> View the [`v1.x`](https://github.com/jamesmunns/postcard/tree/v1.x) branch
+> for the currently released `1.2.0` README.
+>
+> `v2.0.0` will be released Soon™️.
+
 Postcard aims to be convenient for developers in constrained environments, while
 allowing for flexibility to customize behavior as needed.
 
@@ -38,14 +46,13 @@ starting at `postcard[atom.varint.encoding.continuation]`.
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
 
-Using the `heapless-v0_9` feature to serialize to a `heapless::Vec<u8>`.
-Prefer this over the default `heapless` feature, which uses `heapless` v0.7, see [RUSTSEC-2026-0575].
+Using the `postcard2-heapless` crate, with its `heapless-v0_9` feature, to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
 use postcard::from_bytes;
-use postcard::heapless_v0_9::{heapless::Vec, to_vec};
+use postcard2_heapless::v0_9::{heapless::Vec, to_vec};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct RefStruct<'a> {
@@ -74,14 +81,12 @@ assert_eq!(
 );
 ```
 
-[RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
-
 Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
-use postcard::{from_bytes, to_allocvec};
+use postcard::{from_bytes, to_vec};
 extern crate alloc;
 use alloc::vec::Vec;
 
@@ -92,7 +97,7 @@ struct RefStruct<'a> {
 }
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
-let output: Vec<u8> = to_allocvec(&RefStruct {
+let output: Vec<u8> = to_vec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
@@ -129,8 +134,7 @@ Don't forget to disable default features on both, and enable only the features y
 
 ```toml
 [dependencies]
-# Using heapless v0.9, instead of the v0.7 used by default
-postcard = { version = "1.2", default-features = false, features = ["heapless-v0_9"] }
+postcard = { version = "2.0", default-features = false }
 
 # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
 # disabling default-features fixes this. Enable `derive`, or use `serde_derive` directly.
@@ -140,12 +144,13 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 Or, with `cargo add`:
 
 ```sh
-cargo add postcard --no-default-features --features heapless-v0_9
+cargo add postcard --no-default-features
 cargo add serde --no-default-features --features derive
 ```
 
-Other features, such as `alloc`, `use-std`, or `use-crc`, can be added to the `features`
-list as needed.
+Other features, such as `alloc`, `std`, or `defmt-v1`, can be added to the `features`
+list as needed. For `heapless` support, add the `postcard2-heapless` crate with its
+`heapless-v0_9` feature.
 
 Library crates should always set `default-features = false` on `postcard`, as Cargo unifies
 features across the dependency graph.

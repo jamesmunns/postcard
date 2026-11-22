@@ -92,7 +92,6 @@ version = "0.5.1"
 optional = true
 
 [dev-dependencies.postcard]
-path = "../postcard"
 version = "1.0"
 features = ["use-std"]
 

@@ -1,9 +1,9 @@
 [package]
 name = "postcard"
-version = "1.2.0"
+version = "2.0.0"
 authors = ["James Munns <james@onevariable.com>"]
-edition = "2021"
-rust-version = "1.88"
+edition = "2024"
+rust-version = "1.85"
 readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std + serde compatible message library for Rust"
@@ -14,8 +14,6 @@ categories = [
 ]
 keywords = [
     "serde",
-    "cobs",
-    "framing",
 ]
 documentation = "https://docs.rs/postcard/"
 
@@ -25,113 +23,36 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 
-[dependencies.heapless]
-version = "0.7.0"
-default-features = false
-features = ["serde"]
-optional = true
+[dependencies.postcard-core]
+version = "0.2.0"
+path = "../postcard-core"
 
-[dependencies.heapless-v0_8]
-package = "heapless"
-version = "0.8.0"
-default-features = false
-features = ["serde"]
-optional = true
-
-[dependencies.heapless-v0_9]
-package = "heapless"
-version = "0.9.4"
-default-features = false
-features = ["serde"]
-optional = true
-
-[dependencies.serde]
-version = "1.0.100"
-default-features = false
-
-[dependencies.cobs]
-version = "0.3.0"
+# todo: make this versioned, optional?
+[dependencies.serde_core]
+version = "1.0.228"
 default-features = false
 
 [dependencies.defmt]
 version = "1"
 optional = true
 
-[dependencies.embedded-io-04]
-package = "embedded-io"
-version = "0.4"
-optional = true
-
-[dependencies.embedded-io-06]
-package = "embedded-io"
-version = "0.6"
-optional = true
-
-[dependencies.postcard-derive]
-version = "0.2.0"
-optional = true
-
-[dependencies.crc]
-version = "3.0.1"
-optional = true
-
-[dependencies.nalgebra_v0_33]
-package = "nalgebra"
-version = "0.33.0"
+[dependencies.serde_derive]
+version = "1.0.228"
 optional = true
 default-features = false
 
-[dependencies.enum-map-v3_0]
-package = "enum-map"
-version = "3.0.0"
+[dependencies.serde]
+version = "1.0.228"
 default-features = false
 optional = true
 
-[dev-dependencies.serde]
-version = "1.0.100"
-default-features = false
-features = ["derive"]
-
-[dev-dependencies.criterion]
-version = "0.7"
-features = ["html_reports"]
-
-[[bench]]
-name = "varint_bench"
-harness = false
+[dev-dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
 
 [features]
-default = ["heapless-cas"]
+default = []
+std = ["postcard-core/alloc"]
+alloc = ["postcard-core/alloc"]
 
-# Enables support for `embedded-io` traits
-# This feature will track the latest `embedded-io` when major releases are made
-embedded-io = ["dep:embedded-io-04"]
-
-# Specific versions of `embedded-io` can be selected through the features below
-embedded-io-04 = ["dep:embedded-io-04"]
-embedded-io-06 = ["dep:embedded-io-06"]
-
-use-std = ["serde/std", "alloc"]
-heapless-cas = ["heapless", "dep:heapless", "heapless/cas"]
-alloc = ["serde/alloc", "embedded-io-04?/alloc", "embedded-io-06?/alloc"]
-use-defmt = ["defmt"]
-use-crc = ["crc"]
-bench_private = []
-
-# Does nothing, for compat only
-paste = []
-
-# Experimental features!
-#
-# NOT subject to SemVer guarantees!
-experimental-derive = ["postcard-derive"]
-core-num-saturating = []
-nalgebra-v0_33 = ["nalgebra_v0_33"]
-crc = ["dep:crc"]
-defmt = ["dep:defmt"]
-heapless = ["dep:heapless"]
-postcard-derive = ["dep:postcard-derive"]
-heapless-v0_8 = ["dep:heapless-v0_8"]
-heapless-v0_9 = ["dep:heapless-v0_9"]
-# requires msrv 1.95
-enum-map-v3_0 = ["dep:enum-map-v3_0"]
+defmt-v1 = ["dep:defmt", "postcard-core/defmt-v1"]
+serde-derive = ["dep:serde_derive", "dep:serde"]

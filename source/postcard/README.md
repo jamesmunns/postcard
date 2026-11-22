@@ -26,25 +26,22 @@ were sponsored by Mozilla Corporation.
 
 ## Variable Length Data
 
-All signed and unsigned integers larger than eight bits are encoded using a [Varint].
+All signed and unsigned integers larger than eight bits are encoded using a `varint`.
 This includes the length of array slices, as well as the discriminant of `enums`.
 
-For more information, see the [Varint] chapter of the wire specification.
-
-[Varint]: https://postcard.rs/1.1/postcard/postcard/spec.html#atoms--varint-encoded-integers
+For more information, see the varint requirements of the wire specification, starting at `postcard[atom.varint.encoding.continuation]`.
 
 ## Example - Serialization/Deserialization
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
 
-Using the `heapless-v0_9` feature to serialize to a `heapless::Vec<u8>`.
-Prefer this over the default `heapless` feature, which uses `heapless` v0.7, see [RUSTSEC-2026-0575].
+Using the `postcard2-heapless` crate, with its `heapless-v0_9` feature, to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
 use postcard::from_bytes;
-use postcard::heapless_v0_9::{heapless::Vec, to_vec};
+use postcard2_heapless::v0_9::{heapless::Vec, to_vec};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct RefStruct<'a> {
@@ -73,14 +70,12 @@ assert_eq!(
 );
 ```
 
-[RUSTSEC-2026-0575]: https://rustsec.org/advisories/RUSTSEC-2026-0575.html
-
 Or the optional `alloc` feature to serialize to an `alloc::vec::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
-use postcard::{from_bytes, to_allocvec};
+use postcard::{from_bytes, to_vec};
 extern crate alloc;
 use alloc::vec::Vec;
 
@@ -91,7 +86,7 @@ struct RefStruct<'a> {
 }
 let message = "hElLo";
 let bytes = [0x01, 0x10, 0x02, 0x20];
-let output: Vec<u8> = to_allocvec(&RefStruct {
+let output: Vec<u8> = to_vec(&RefStruct {
     bytes: &bytes,
     str_s: message,
 }).unwrap();
@@ -121,33 +116,16 @@ See the documentation of the `ser_flavors` or `de_flavors` modules for more info
 
 ## Setup - `Cargo.toml`
 
-Add `postcard` and [the `no-std` subset](https://serde.rs/no-std.html) of `serde` to the
-`[dependencies]` section of your `Cargo.toml`.
-
-Don't forget to disable default features on both, and enable only the features you use:
+Don't forget to add [the `no-std` subset](https://serde.rs/no-std.html) of `serde` along with `postcard` to the `[dependencies]` section of your `Cargo.toml`!
 
 ```toml
 [dependencies]
-# Using heapless v0.9, instead of the v0.7 used by default
-postcard = { version = "1.2", default-features = false, features = ["heapless-v0_9"] }
+postcard = "2.0"
 
 # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
-# disabling default-features fixes this. Enable `derive`, or use `serde_derive` directly.
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+# disabling default-features fixes this
+serde = { version = "1.0", default-features = false }
 ```
-
-Or, with `cargo add`:
-
-```sh
-cargo add postcard --no-default-features --features heapless-v0_9
-cargo add serde --no-default-features --features derive
-```
-
-Other features, such as `alloc`, `use-std`, or `use-crc`, can be added to the `features`
-list as needed.
-
-Library crates should always set `default-features = false` on `postcard`, as Cargo unifies
-features across the dependency graph.
 
 ## License
 

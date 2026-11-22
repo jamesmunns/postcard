@@ -4,13 +4,13 @@
 //! the postcard wire format. It is not coupled to any specific serialization or deserialization
 //! framework, and is intended to be usable when writing a custom postcard serializer or deserializer.
 //!
-//! For an example of usage of this crate, see the [`postcard2`] crate, which uses `postcard-core`
+//! For an example of usage of this crate, see the [`postcard`] crate, which uses `postcard-core`
 //! to implement a [`serde`] compatible serializer/deserializer.
 //!
 //! `postcard-core` implements the atoms of the [Postcard Wire Specification]: the types
 //! whose encoding the specification fully defines.
 //!
-//! Encoders/decoders for composites, such as [`postcard2`], build on top of
+//! Encoders/decoders for composites, such as [`postcard`], build on top of
 //! these functions. Each function refers to the requirements it implements with
 //! a [tracey] identifier, such as `postcard[atom.varint.encoding.zigzag]`.
 //!
@@ -73,7 +73,7 @@
 //! | :---     | :---         | :---         |
 //! | [schema] | TODO: Schema | TODO: Schema |
 //!
-//! [`postcard2`]: https://github.com/jamesmunns/postcard/tree/main/source/postcard2
+//! [`postcard`]: https://github.com/jamesmunns/postcard/tree/main/source/postcard
 //! [`serde`]: https://serde.rs
 //! [Postcard Wire Specification]: https://github.com/jamesmunns/postcard/tree/main/spec
 //! [tracey]: https://github.com/bearcove/tracey
