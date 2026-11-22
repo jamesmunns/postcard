@@ -6,6 +6,14 @@
 
 Postcard is a `#![no_std]` focused serializer and deserializer for Serde.
 
+> [!CAUTION]
+> This readme is for the yet-unreleased v2.0.0 version of `postcard`!
+>
+> View the [`v1.x`](https://github.com/jamesmunns/postcard/tree/v1.x) branch
+> for the currently released `1.2.0` README.
+>
+> `v2.0.0` will be released Soon™️.
+
 Postcard aims to be convenient for developers in constrained environments, while
 allowing for flexibility to customize behavior as needed.
 
