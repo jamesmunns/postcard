@@ -1,4 +1,4 @@
-#![cfg_attr(not(any(test, feature = "use-std")), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! # Postcard Schema
@@ -6,6 +6,13 @@
 pub mod impls;
 pub mod key;
 pub mod schema;
+
+/// Types with a fixed upper bound
+pub mod max_len {
+    #[cfg(feature = "std")]
+    pub use crate::impls::builtins_maxlen::std::{MaxLenBytes, MaxLenString};
+    pub use crate::impls::builtins_maxlen::{MaxLenByteSlice, MaxLenStr, TooLong};
+}
 
 /// Derive [`Schema`] for a struct or enum
 ///
@@ -76,7 +83,7 @@ pub use postcard_derive::Schema;
 pub trait Schema {
     /// A recursive data structure that describes the schema of the given
     /// type.
-    const SCHEMA: &'static schema::NamedType;
+    const SCHEMA: &'static schema::DataModelType;
 }
 
 #[cfg(all(test, feature = "derive"))]
@@ -95,14 +102,14 @@ mod tests {
 
         assert_eq!(
             Point::SCHEMA,
-            &schema::NamedType {
+            &schema::DataModelType::Struct {
                 name: "Point",
-                ty: &schema::DataModelType::Struct(&[
-                    &schema::NamedValue {
+                data: schema::Data::Struct(&[
+                    &schema::NamedField {
                         name: "x",
                         ty: i32::SCHEMA
                     },
-                    &schema::NamedValue {
+                    &schema::NamedField {
                         name: "y",
                         ty: i32::SCHEMA
                     },

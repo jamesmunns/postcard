@@ -2,24 +2,26 @@
 //!
 //! Each module requires the matching feature flag to be enabled.
 
-use crate::{
-    schema::{DataModelType, NamedType},
-    Schema,
-};
+use crate::{schema::DataModelType, Schema};
 
+pub(crate) mod builtins_maxlen;
 pub mod builtins_nostd;
 
-#[cfg(all(not(feature = "use-std"), feature = "alloc"))]
-#[cfg_attr(docsrs, doc(cfg(all(not(feature = "use-std"), feature = "alloc"))))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg_attr(docsrs, doc(cfg(all(not(feature = "std"), feature = "alloc"))))]
 pub mod builtins_alloc;
 
-#[cfg(feature = "use-std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "use-std")))]
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod builtins_std;
 
 #[cfg(feature = "chrono-v0_4")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono-v0_4")))]
 pub mod chrono_v0_4;
+
+#[cfg(feature = "enum-map-v3_0")]
+#[cfg_attr(docsrs, doc(cfg(feature = "enum-map-v3_0")))]
+pub mod enum_map_v3_0;
 
 #[cfg(feature = "fixed-v1_0")]
 #[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
@@ -53,9 +55,6 @@ pub mod serde_big_array_v0_5;
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid-v1_0")))]
 pub mod uuid_v1_0;
 
-impl Schema for NamedType {
-    const SCHEMA: &'static NamedType = &NamedType {
-        name: "NamedType",
-        ty: &DataModelType::Schema,
-    };
+impl Schema for DataModelType {
+    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
 }

@@ -6,15 +6,12 @@
 //! This key should NOT be relied on for memory safety purposes, validation
 //! of the data should still be performed, like that done by serde. It should
 //! be treated as misuse **resistant**, not misuse **proof**. It is possible
-//! for there to be hash collisions, and as a non-cryptograpic hash, it is
+//! for there to be hash collisions, and as a non-cryptographic hash, it is
 //! likely trivial to intentionally cause a collision.
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    schema::{DataModelType, NamedType},
-    Schema,
-};
+use crate::{schema::DataModelType, Schema};
 
 pub mod hash;
 
@@ -43,9 +40,9 @@ use defmt_v0_3 as defmt;
 pub struct Key([u8; 8]);
 
 impl Schema for Key {
-    const SCHEMA: &'static crate::schema::NamedType = &NamedType {
+    const SCHEMA: &'static crate::schema::DataModelType = &DataModelType::Struct {
         name: "Key",
-        ty: &DataModelType::NewtypeStruct(<[u8; 8] as Schema>::SCHEMA),
+        data: crate::schema::Data::Newtype(<[u8; 8] as Schema>::SCHEMA),
     };
 }
 
@@ -68,14 +65,13 @@ impl Key {
         Key(hash::fnv1a64::hash_ty_path::<T>(path))
     }
 
-    /// Unsafely create a key from a given 8-byte value
+    /// Create a key from a given 8-byte value
     ///
-    /// ## Safety
-    ///
-    /// This MUST only be used with pre-calculated values. Incorrectly
-    /// created keys could lead to the improper deserialization of
-    /// messages.
-    pub const unsafe fn from_bytes(bytes: [u8; 8]) -> Self {
+    /// NOTE: Since [`Key`]s should never be used to replace full type safety,
+    /// creating a "wrong" Key should not be unsafe. However, using a "wrong"
+    /// key (which doesn't match the type being deserialized) may cause confusion,
+    /// so manually creating keys should be avoided whenever possible.
+    pub const fn from_bytes(bytes: [u8; 8]) -> Self {
         Self(bytes)
     }
 
@@ -99,13 +95,13 @@ impl Key {
     }
 }
 
-#[cfg(feature = "use-std")]
+#[cfg(feature = "std")]
 mod key_owned {
     use super::*;
-    use crate::schema::owned::OwnedNamedType;
+    use crate::schema::owned::OwnedDataModelType;
     impl Key {
-        /// Calculate the Key for the given path and [`OwnedNamedType`]
-        pub fn for_owned_schema_path(path: &str, nt: &OwnedNamedType) -> Key {
+        /// Calculate the Key for the given path and [`OwnedDataModelType`]
+        pub fn for_owned_schema_path(path: &str, nt: &OwnedDataModelType) -> Key {
             Key(hash::fnv1a64_owned::hash_ty_path_owned(path, nt))
         }
     }
@@ -113,53 +109,22 @@ mod key_owned {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        key::Key,
-        schema::{DataModelType, NamedType},
-        Schema,
-    };
+    use crate::{key::Key, schema::DataModelType, Schema};
 
     #[test]
     fn matches_old_postcard_rpc_defn() {
-        let old = &NamedType {
+        let old = &DataModelType::Struct {
             name: "Key",
-            ty: &DataModelType::NewtypeStruct(&NamedType {
-                name: "[T; N]",
-                ty: &DataModelType::Tuple(&[
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                    &NamedType {
-                        name: "u8",
-                        ty: &DataModelType::U8,
-                    },
-                ]),
-            }),
+            data: crate::schema::Data::Newtype(&DataModelType::Tuple(&[
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+                &DataModelType::U8,
+            ])),
         };
 
         let new = <Key as Schema>::SCHEMA;

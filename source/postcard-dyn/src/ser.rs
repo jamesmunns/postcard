@@ -1,11 +1,13 @@
-use std::num::TryFromIntError;
+use std::{convert::Infallible, fmt::Display, num::TryFromIntError, ops::Deref};
 
-use postcard_schema::schema::owned::{OwnedDataModelType, OwnedDataModelVariant, OwnedNamedType};
-use serde_json::Value;
-use varint::{
-    varint_max, varint_u128, varint_u16, varint_u32, varint_u64, varint_usize, zig_zag_i128,
-    zig_zag_i16, zig_zag_i32, zig_zag_i64,
+use postcard_core::ser::{
+    try_push_bool, try_push_bytes, try_push_char, try_push_discriminant, try_push_f32,
+    try_push_f64, try_push_i128, try_push_i16, try_push_i32, try_push_i64, try_push_i8,
+    try_push_isize, try_push_length, try_push_option_none, try_push_option_some, try_push_str,
+    try_push_u128, try_push_u16, try_push_u32, try_push_u64, try_push_u8, try_push_usize,
 };
+use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
+use serde_json::Value;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -15,10 +17,28 @@ pub enum Error {
     Unsupported,
 }
 
-pub fn to_stdvec_dyn(schema: &OwnedNamedType, value: &Value) -> Result<Vec<u8>, Error> {
+impl Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::SchemaMismatch => write!(
+                f,
+                "provided schema did not match the shape of provided data"
+            ),
+            Error::ShouldSupportButDont => write!(
+                f,
+                "reached a limitation of using serde_json::Value as the encoding source"
+            ),
+            Error::Unsupported => write!(f, "reached unsupported item"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+pub fn to_stdvec_dyn(schema: &OwnedDataModelType, value: &Value) -> Result<Vec<u8>, Error> {
     let mut out = vec![];
 
-    ser_named_type(&schema.ty, value, &mut out)?;
+    ser_named_type(schema, value, &mut out)?;
 
     Ok(out)
 }
@@ -42,231 +62,169 @@ impl From<TryFromIntError> for Error {
     }
 }
 
+/// Pushing to a `Vec<u8>` can't fail.
+fn infallible(res: Result<(), Infallible>) {
+    let Ok(()) = res;
+}
+
 fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> Result<(), Error> {
     match ty {
         OwnedDataModelType::Bool => {
             let val = value.as_bool().right()?;
-            out.push(if val { 0x01 } else { 0x00 });
+            infallible(try_push_bool(out, val));
         }
         OwnedDataModelType::I8 => {
             let val = value.as_i64().right()?;
             let val = i8::try_from(val)?;
-            out.push(val as u8);
+            infallible(try_push_i8(out, val));
         }
         OwnedDataModelType::U8 => {
             let val = value.as_u64().right()?;
             let val = u8::try_from(val)?;
-            out.push(val);
+            infallible(try_push_u8(out, val));
         }
         OwnedDataModelType::I16 => {
             let val = value.as_i64().right()?;
             let val = i16::try_from(val)?;
-            let val = zig_zag_i16(val);
-            let mut buf = [0u8; varint_max::<i16>()];
-            let used = varint_u16(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_i16(out, val));
         }
         OwnedDataModelType::I32 => {
             let val = value.as_i64().right()?;
             let val = i32::try_from(val)?;
-            let val = zig_zag_i32(val);
-            let mut buf = [0u8; varint_max::<i32>()];
-            let used = varint_u32(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_i32(out, val));
         }
         OwnedDataModelType::I64 => {
             let val = value.as_i64().right()?;
-            let val = zig_zag_i64(val);
-            let mut buf = [0u8; varint_max::<i64>()];
-            let used = varint_u64(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_i64(out, val));
         }
         OwnedDataModelType::I128 => {
             let val = value.as_i64().right()?;
-            let val = i128::from(val);
-            let val = zig_zag_i128(val);
-            let mut buf = [0u8; varint_max::<i128>()];
-            let used = varint_u128(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_i128(out, i128::from(val)));
         }
         OwnedDataModelType::U16 => {
             let val = value.as_u64().right()?;
             let val = u16::try_from(val)?;
-            let mut buf = [0u8; varint_max::<u16>()];
-            let used = varint_u16(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_u16(out, val));
         }
         OwnedDataModelType::U32 => {
             let val = value.as_u64().right()?;
             let val = u32::try_from(val)?;
-            let mut buf = [0u8; varint_max::<u32>()];
-            let used = varint_u32(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_u32(out, val));
         }
         OwnedDataModelType::U64 => {
             let val = value.as_u64().right()?;
-            let mut buf = [0u8; varint_max::<u64>()];
-            let used = varint_u64(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_u64(out, val));
         }
         OwnedDataModelType::U128 => {
             let val = value.as_u64().right()?;
-            let val = u128::from(val);
-            let mut buf = [0u8; varint_max::<u128>()];
-            let used = varint_u128(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_u128(out, u128::from(val)));
         }
         OwnedDataModelType::Usize => {
             let val = value.as_u64().right()?;
             let val = usize::try_from(val)?;
-            let mut buf = [0u8; varint_max::<usize>()];
-            let used = varint_usize(val, &mut buf);
-            out.extend_from_slice(used);
+            infallible(try_push_usize(out, val));
         }
         OwnedDataModelType::Isize => {
             let val = value.as_i64().right()?;
-            let mut buf;
-            let used;
-
-            // hax
-            #[cfg(target_pointer_width = "16")]
-            {
-                let val = i16::try_from(val)?;
-                let val = zig_zag_i16(val);
-                buf = [0u8; varint_max::<i16>()];
-                used = varint_u16(val, &mut buf);
-            }
-            #[cfg(target_pointer_width = "32")]
-            {
-                let val = i32::try_from(val)?;
-                let val = zig_zag_i32(val);
-                buf = [0u8; varint_max::<i32>()];
-                used = varint_u32(val, &mut buf);
-            }
-            #[cfg(target_pointer_width = "64")]
-            {
-                let val = zig_zag_i64(val);
-                buf = [0u8; varint_max::<i64>()];
-                used = varint_u64(val, &mut buf);
-            }
-            out.extend_from_slice(used);
+            let val = isize::try_from(val)?;
+            infallible(try_push_isize(out, val));
         }
         OwnedDataModelType::F32 => {
             let val = value.as_f64().right()?;
             let val = val as f32; // todo
-            let val = val.to_le_bytes();
-            out.extend_from_slice(&val);
+            infallible(try_push_f32(out, val));
         }
         OwnedDataModelType::F64 => {
             let val = value.as_f64().right()?;
-            let val = val.to_le_bytes();
-            out.extend_from_slice(&val);
+            infallible(try_push_f64(out, val));
         }
-        OwnedDataModelType::String | OwnedDataModelType::Char => {
+        OwnedDataModelType::Char => {
             let val = value.as_str().right()?;
-
-            // First add len
-            let len = val.len();
-            let mut buf = [0u8; varint_max::<usize>()];
-            let used = varint_usize(len, &mut buf);
-            out.extend_from_slice(used);
-
-            // Then add payload
-            out.extend_from_slice(val.as_bytes());
+            // A char is a string holding exactly one char.
+            let mut chars = val.chars();
+            let (Some(c), None) = (chars.next(), chars.next()) else {
+                return Err(Error::SchemaMismatch);
+            };
+            infallible(try_push_char(out, c));
         }
-        OwnedDataModelType::ByteArray => {
+        OwnedDataModelType::String { .. } => {
+            let val = value.as_str().right()?;
+            infallible(try_push_str(out, val));
+        }
+        OwnedDataModelType::ByteArray { .. } => {
             let val = value.as_array().right()?;
-
-            // First add len
-            let len = val.len();
-            let mut buf = [0u8; varint_max::<usize>()];
-            let used = varint_usize(len, &mut buf);
-            out.extend_from_slice(used);
-
-            // Then add values
-            for b in val {
-                let val = b.as_u64().right()?;
-                let val = u8::try_from(val)?;
-                out.push(val);
-            }
+            let bytes = val
+                .iter()
+                .map(|b| Ok(u8::try_from(b.as_u64().right()?)?))
+                .collect::<Result<Vec<u8>, Error>>()?;
+            infallible(try_push_bytes(out, &bytes));
         }
-        OwnedDataModelType::Option(nt) => {
+        OwnedDataModelType::Option(ty) => {
             if value.is_null() {
-                out.push(0x00);
+                infallible(try_push_option_none(out));
             } else {
-                out.push(0x01);
-                ser_named_type(&nt.ty, value, out)?;
+                infallible(try_push_option_some(out));
+                ser_named_type(ty, value, out)?;
             }
         }
         OwnedDataModelType::Unit => {}
-        OwnedDataModelType::UnitStruct => {}
-        OwnedDataModelType::NewtypeStruct(nt) => {
-            ser_named_type(&nt.ty, value, out)?;
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Unit,
+        } => {}
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Newtype(ty),
+        } => {
+            ser_named_type(ty, value, out)?;
         }
-        OwnedDataModelType::Seq(nt) => {
+        OwnedDataModelType::Seq { element: ty, .. } => {
             let val = value.as_array().right()?;
-
             // First add len
-            let len = val.len();
-            let mut buf = [0u8; varint_max::<usize>()];
-            let used = varint_usize(len, &mut buf);
-            out.extend_from_slice(used);
-
+            infallible(try_push_length(out, val.len()));
             // Then add values
             for b in val {
-                ser_named_type(&nt.ty, b, out)?;
+                ser_named_type(ty, b, out)?;
             }
         }
-        OwnedDataModelType::Tuple(nts) | OwnedDataModelType::TupleStruct(nts) => {
+        OwnedDataModelType::Tuple(tys)
+        | OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Tuple(tys),
+        } => {
             // Tuples with arity of 1 are not arrays, but instead just a single object
-            if nts.len() == 1 {
-                return ser_named_type(&nts[0].ty, value, out);
+            if tys.len() == 1 {
+                return ser_named_type(&tys[0], value, out);
             }
-
             let val = value.as_array().right()?;
-
-            if val.len() != nts.len() {
+            if val.len() != tys.len() {
                 return Err(Error::SchemaMismatch);
             }
-
-            for (nt, val) in nts.iter().zip(val.iter()) {
-                ser_named_type(&nt.ty, val, out)?;
+            for (ty, val) in tys.iter().zip(val.iter()) {
+                ser_named_type(ty, val, out)?;
             }
         }
-        OwnedDataModelType::Map { key, val } => {
-            // TODO: impling blind because we can't test this, oops
-            //
+        OwnedDataModelType::Map { key, val, .. } => {
             // TODO: There's also a mismatch here because serde_json::Value requires
             // keys to be strings, when postcard doesn't.
-            if key.ty != OwnedDataModelType::String {
+            if !matches!(key.deref(), OwnedDataModelType::String { max_len: _ }) {
                 return Err(Error::ShouldSupportButDont);
             }
-
             let obj = value.as_object().right()?;
-
             // First add len
-            let len = obj.len();
-            let mut buf = [0u8; varint_max::<usize>()];
-            let used = varint_usize(len, &mut buf);
-            out.extend_from_slice(used);
-
+            infallible(try_push_length(out, obj.len()));
             // Then for each pair, serialize key then val
             for (k, v) in obj.iter() {
                 // KEY
-                //
-                // First add len
-                let len = k.len();
-                let used = varint_usize(len, &mut buf);
-                out.extend_from_slice(used);
-
-                // Then add payload
-                out.extend_from_slice(k.as_bytes());
-
+                infallible(try_push_str(out, k));
                 // VALUE
-                ser_named_type(&val.ty, v, out)?;
+                ser_named_type(val, v, out)?;
             }
         }
-        OwnedDataModelType::Struct(nvs) => {
+        OwnedDataModelType::Struct {
+            name: _,
+            data: OwnedData::Struct(nvs),
+        } => {
             let val = value.as_object().right()?;
 
             if val.len() != nvs.len() {
@@ -274,11 +232,14 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             }
 
             for field in nvs.iter() {
-                let v = val.get(&field.name).right()?;
-                ser_named_type(&field.ty.ty, v, out)?;
+                let v = val.get(field.name.as_ref()).right()?;
+                ser_named_type(&field.ty, v, out)?;
             }
         }
-        OwnedDataModelType::Enum(nvars) => {
+        OwnedDataModelType::Enum {
+            name: _,
+            variants: nvars,
+        } => {
             // This is a bit serde_json::Value specific, if we make our own value
             // type we might be able to handle this "better"
 
@@ -288,16 +249,15 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 let (idx, evar) = nvars
                     .iter()
                     .enumerate()
-                    .find(|(_i, v)| v.name == s)
+                    .find(|(_i, v)| *v.name == *s)
                     .right()?;
-                if evar.ty != OwnedDataModelVariant::UnitVariant {
+                if evar.data != OwnedData::Unit {
                     return Err(Error::SchemaMismatch);
                 }
 
-                // cool, we found it, serialize as a varint usize
-                let mut buf = [0u8; varint_max::<usize>()];
-                let used = varint_usize(idx, &mut buf);
-                out.extend_from_slice(used);
+                // Found it; push its index as the discriminant.
+                let idx = u32::try_from(idx)?;
+                infallible(try_push_discriminant(out, idx));
             } else if let Some(o) = value.as_object() {
                 // This should be an object with exactly one key
                 if o.len() != 1 {
@@ -307,39 +267,38 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 let (idx, evar) = nvars
                     .iter()
                     .enumerate()
-                    .find(|(_i, v)| &v.name == k)
+                    .find(|(_i, v)| *v.name == *k)
                     .right()?;
 
-                // cool, we found it, serialize as a varint usize
-                let mut buf = [0u8; varint_max::<usize>()];
-                let used = varint_usize(idx, &mut buf);
-                out.extend_from_slice(used);
+                // Found it; push its index as the discriminant.
+                let idx = u32::try_from(idx)?;
+                infallible(try_push_discriminant(out, idx));
 
                 // then serialize the value
-                match &evar.ty {
-                    OwnedDataModelVariant::UnitVariant => {
+                match &evar.data {
+                    OwnedData::Unit => {
                         // Nothing to do
                     }
-                    OwnedDataModelVariant::NewtypeVariant(owned_named_type) => {
-                        ser_named_type(&owned_named_type.ty, v, out)?;
+                    OwnedData::Newtype(ty) => {
+                        ser_named_type(ty, v, out)?;
                     }
-                    OwnedDataModelVariant::TupleVariant(nts) => {
+                    OwnedData::Tuple(tys) => {
                         // Tuples with arity of 1 are not arrays, but instead just a single object
-                        if nts.len() == 1 {
-                            return ser_named_type(&nts[0].ty, v, out);
+                        if tys.len() == 1 {
+                            return ser_named_type(&tys[0], v, out);
                         }
 
                         let val = v.as_array().right()?;
 
-                        if val.len() != nts.len() {
+                        if val.len() != tys.len() {
                             return Err(Error::SchemaMismatch);
                         }
 
-                        for (nt, val) in nts.iter().zip(val.iter()) {
-                            ser_named_type(&nt.ty, val, out)?;
+                        for (ty, val) in tys.iter().zip(val.iter()) {
+                            ser_named_type(ty, val, out)?;
                         }
                     }
-                    OwnedDataModelVariant::StructVariant(nvs) => {
+                    OwnedData::Struct(nvs) => {
                         let val = v.as_object().right()?;
 
                         if val.len() != nvs.len() {
@@ -347,8 +306,8 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                         }
 
                         for field in nvs.iter() {
-                            let v = val.get(&field.name).right()?;
-                            ser_named_type(&field.ty.ty, v, out)?;
+                            let v = val.get(field.name.as_ref()).right()?;
+                            ser_named_type(&field.ty, v, out)?;
                         }
                     }
                 }
@@ -356,126 +315,9 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 return Err(Error::SchemaMismatch);
             }
         }
-        OwnedDataModelType::Schema => todo!(),
+        OwnedDataModelType::Schema => return Err(Error::Unsupported),
     }
     Ok(())
-}
-
-pub(crate) mod varint {
-    // copy and paste from postcard
-
-    /// Returns the maximum number of bytes required to encode T.
-    pub const fn varint_max<T: Sized>() -> usize {
-        const BITS_PER_BYTE: usize = 8;
-        const BITS_PER_VARINT_BYTE: usize = 7;
-
-        // How many data bits do we need for this type?
-        let bits = core::mem::size_of::<T>() * BITS_PER_BYTE;
-
-        // We add (BITS_PER_VARINT_BYTE - 1), to ensure any integer divisions
-        // with a remainder will always add exactly one full byte, but
-        // an evenly divided number of bits will be the same
-        let roundup_bits = bits + (BITS_PER_VARINT_BYTE - 1);
-
-        // Apply division, using normal "round down" integer division
-        roundup_bits / BITS_PER_VARINT_BYTE
-    }
-
-    #[inline]
-    pub fn varint_usize(n: usize, out: &mut [u8; varint_max::<usize>()]) -> &mut [u8] {
-        let mut value = n;
-        for i in 0..varint_max::<usize>() {
-            out[i] = value.to_le_bytes()[0];
-            if value < 128 {
-                return &mut out[..=i];
-            }
-
-            out[i] |= 0x80;
-            value >>= 7;
-        }
-        debug_assert_eq!(value, 0);
-        &mut out[..]
-    }
-
-    #[inline]
-    pub fn varint_u16(n: u16, out: &mut [u8; varint_max::<u16>()]) -> &mut [u8] {
-        let mut value = n;
-        for i in 0..varint_max::<u16>() {
-            out[i] = value.to_le_bytes()[0];
-            if value < 128 {
-                return &mut out[..=i];
-            }
-
-            out[i] |= 0x80;
-            value >>= 7;
-        }
-        debug_assert_eq!(value, 0);
-        &mut out[..]
-    }
-
-    #[inline]
-    pub fn varint_u32(n: u32, out: &mut [u8; varint_max::<u32>()]) -> &mut [u8] {
-        let mut value = n;
-        for i in 0..varint_max::<u32>() {
-            out[i] = value.to_le_bytes()[0];
-            if value < 128 {
-                return &mut out[..=i];
-            }
-
-            out[i] |= 0x80;
-            value >>= 7;
-        }
-        debug_assert_eq!(value, 0);
-        &mut out[..]
-    }
-
-    #[inline]
-    pub fn varint_u64(n: u64, out: &mut [u8; varint_max::<u64>()]) -> &mut [u8] {
-        let mut value = n;
-        for i in 0..varint_max::<u64>() {
-            out[i] = value.to_le_bytes()[0];
-            if value < 128 {
-                return &mut out[..=i];
-            }
-
-            out[i] |= 0x80;
-            value >>= 7;
-        }
-        debug_assert_eq!(value, 0);
-        &mut out[..]
-    }
-
-    #[inline]
-    pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
-        let mut value = n;
-        for i in 0..varint_max::<u128>() {
-            out[i] = value.to_le_bytes()[0];
-            if value < 128 {
-                return &mut out[..=i];
-            }
-
-            out[i] |= 0x80;
-            value >>= 7;
-        }
-        debug_assert_eq!(value, 0);
-        &mut out[..]
-    }
-
-    pub fn zig_zag_i16(n: i16) -> u16 {
-        ((n << 1) ^ (n >> 15)) as u16
-    }
-
-    pub fn zig_zag_i32(n: i32) -> u32 {
-        ((n << 1) ^ (n >> 31)) as u32
-    }
-
-    pub fn zig_zag_i64(n: i64) -> u64 {
-        ((n << 1) ^ (n >> 63)) as u64
-    }
-
-    pub fn zig_zag_i128(n: i128) -> u128 {
-        ((n << 1) ^ (n >> 127)) as u128
-    }
 }
 
 #[cfg(test)]
@@ -511,9 +353,7 @@ mod test {
         Gamma(Vec<u8>),
         Delta(Struct1),
         Epsilon(u8, bool),
-        // TODO: struct variants are broken in the Schema derive in
-        // stable postcard, tho it is fixed on the main branch.
-        // Zeta { a: u8, b: bool },
+        Zeta { a: u8, b: bool },
     }
 
     #[test]
@@ -583,6 +423,17 @@ mod test {
     }
 
     #[test]
+    fn chars() {
+        let t = to_stdvec_dyn(&char::SCHEMA.into(), &json!("é")).unwrap();
+        assert_eq!(t, vec![2, 0xC3, 0xA9]);
+
+        for bad in [json!(""), json!("ab")] {
+            let res = to_stdvec_dyn(&char::SCHEMA.into(), &bad);
+            assert_eq!(res, Err(crate::ser::Error::SchemaMismatch));
+        }
+    }
+
+    #[test]
     fn seqs() {
         let s = json!([1, 2, 3, 4]);
         let t = to_stdvec_dyn(&Vec::<u16>::SCHEMA.into(), &s).unwrap();
@@ -647,11 +498,12 @@ mod test {
         let bye = serde_json::to_value(Enum1::Epsilon(8, false)).unwrap();
         let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
         assert_eq!(vec![4, 8, 0], t);
+
+        let bye = serde_json::to_value(Enum1::Zeta { a: 9, b: true }).unwrap();
+        let t = to_stdvec_dyn(&Enum1::SCHEMA.into(), &bye).unwrap();
+        assert_eq!(vec![5, 9, 1], t);
     }
 
-    // TODO: we don't implement schema for map types like HashMap, BTreeMap, heapless::IndexMap, or
-    // similar types. We should fix that.
-    //
     #[test]
     fn maps() {
         type Map1 = HashMap<String, i64>;
@@ -660,7 +512,18 @@ mod test {
         map.insert("bim".to_string(), 20);
         map.insert("bap".to_string(), 30);
         let bym = serde_json::to_value(map).unwrap();
-        let _t = to_stdvec_dyn(&Map1::SCHEMA.into(), &bym).unwrap();
+        let t = to_stdvec_dyn(&Map1::SCHEMA.into(), &bym).unwrap();
+        assert_eq!(t.len(), 1 + 3 * (4 + 1));
+        assert_eq!(t[0], 3);
+
+        // One entry, so the byte order is fixed.
+        let bym = json!({"bib": -2});
+        let t = to_stdvec_dyn(&Map1::SCHEMA.into(), &bym).unwrap();
+        assert_eq!(t, vec![1, 3, b'b', b'i', b'b', 3]);
+
+        // serde_json can't hold non-string keys.
+        let res = to_stdvec_dyn(&HashMap::<u8, u8>::SCHEMA.into(), &json!({"1": 2}));
+        assert_eq!(res, Err(crate::ser::Error::ShouldSupportButDont));
     }
 
     // Figuring out how serde_json handles various types

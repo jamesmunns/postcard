@@ -46,13 +46,13 @@ starting at `postcard[atom.varint.encoding.continuation]`.
 
 Postcard can serialize and deserialize messages similar to other `serde` formats.
 
-Using the `postcard2-heapless` crate, with its `heapless-v0_9` feature, to serialize to a `heapless::Vec<u8>`:
+Using the `postcard-heapless` crate, with its `heapless-v0_9` feature, to serialize to a `heapless::Vec<u8>`:
 
 ```rust
 use core::ops::Deref;
 use serde::{Serialize, Deserialize};
 use postcard::from_bytes;
-use postcard2_heapless::v0_9::{heapless::Vec, to_vec};
+use postcard_heapless::v0_9::{heapless::Vec, to_vec};
 
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct RefStruct<'a> {
@@ -149,7 +149,7 @@ cargo add serde --no-default-features --features derive
 ```
 
 Other features, such as `alloc`, `std`, or `defmt-v1`, can be added to the `features`
-list as needed. For `heapless` support, add the `postcard2-heapless` crate with its
+list as needed. For `heapless` support, add the `postcard-heapless` crate with its
 `heapless-v0_9` feature.
 
 Library crates should always set `default-features = false` on `postcard`, as Cargo unifies

@@ -4,10 +4,7 @@ members = [
     "source/postcard",
     "source/postcard-core",
     "source/postcard-derive",
-    "source/postcard-derive-ng",
     "source/postcard-dyn",
-    "source/postcard-dyn-ng",
+    "source/postcard-heapless",
     "source/postcard-schema",
-    "source/postcard-schema-ng",
-    "source/postcard2-heapless",
 ]
