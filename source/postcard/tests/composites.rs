@@ -1,4 +1,4 @@
-use postcard2::{DecodeError, DeserializerError, from_bytes, take_from_bytes};
+use postcard::{DecodeError, DeserializerError, from_bytes, take_from_bytes};
 use serde::{Deserialize, Serialize, Serializer};
 
 mod common;

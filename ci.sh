@@ -29,16 +29,16 @@ cargo_test() {
   cargo test --all "$@"
 }
 
-cargo_test --features=alloc,experimental-derive,use-std,use-crc,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema-ng/std
+cargo_test --features=alloc,use-std,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema-ng/std
 
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn --exclude postcard-dyn-ng
-cargo_check --target=thumbv7em-none-eabi --features=alloc,experimental-derive,defmt-v1 --exclude postcard-dyn --exclude postcard-dyn-ng
+cargo_check --target=thumbv7em-none-eabi --features=alloc,defmt-v1 --exclude postcard-dyn --exclude postcard-dyn-ng
 
 # CC https://github.com/jamesmunns/postcard/issues/167 - don't accidentally use atomics
 # on non-atomic systems
-cargo_check --target=riscv32i-unknown-none-elf --features=alloc,experimental-derive --exclude postcard-dyn --exclude postcard-dyn-ng
+cargo_check --target=riscv32i-unknown-none-elf --features=alloc --exclude postcard-dyn --exclude postcard-dyn-ng
 
 # Check MSRV of each crate that declares a `rust-version`
 CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo generate-lockfile

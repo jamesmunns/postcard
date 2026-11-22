@@ -1,4 +1,4 @@
-use postcard2::{DeserializerError, from_bytes, take_from_bytes};
+use postcard::{DeserializerError, from_bytes, take_from_bytes};
 use serde::Deserialize;
 
 #[derive(Debug, PartialEq, Deserialize)]

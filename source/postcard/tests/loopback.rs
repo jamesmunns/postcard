@@ -1,16 +1,8 @@
 use core::fmt::Debug;
-
-#[cfg(feature = "heapless")]
-use core::fmt::Write;
-#[cfg(feature = "heapless")]
 use core::ops::Deref;
-#[cfg(feature = "heapless")]
-use heapless::{FnvIndexMap, String, Vec};
-
-#[cfg(feature = "heapless")]
-use postcard::to_vec;
 
 use postcard::from_bytes;
+use postcard::to_slice;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -123,29 +115,8 @@ fn loopback() {
     test_one(NewTypeStruct(5), &[0x05]);
     test_one(TupleStruct((0xA0, 0x1234)), &[0xA0, 0xB4, 0x24]);
 
-    #[cfg(feature = "heapless")]
-    {
-        let mut input: Vec<u8, 4> = Vec::new();
-        input.extend_from_slice(&[0x01, 0x02, 0x03, 0x04]).unwrap();
-        test_one(input, &[0x04, 0x01, 0x02, 0x03, 0x04]);
-
-        let mut input: String<8> = String::new();
-        write!(&mut input, "helLO!").unwrap();
-        test_one(input, &[0x06, b'h', b'e', b'l', b'L', b'O', b'!']);
-
-        let mut input: FnvIndexMap<u8, u8, 4> = FnvIndexMap::new();
-        input.insert(0x01, 0x05).unwrap();
-        input.insert(0x02, 0x06).unwrap();
-        input.insert(0x03, 0x07).unwrap();
-        input.insert(0x04, 0x08).unwrap();
-        test_one(
-            input,
-            &[0x04, 0x01, 0x05, 0x02, 0x06, 0x03, 0x07, 0x04, 0x08],
-        );
-    }
-
     // `CString` (uses `serialize_bytes`/`deserialize_byte_buf`)
-    #[cfg(feature = "use-std")]
+    #[cfg(feature = "std")]
     test_one(
         std::ffi::CString::new("heLlo").unwrap(),
         &[0x05, b'h', b'e', b'L', b'l', b'o'],
@@ -157,23 +128,8 @@ fn test_one<T>(data: T, ser_rep: &[u8])
 where
     T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
 {
-    let mut buf = [0u8; 2048];
-    let used = postcard::to_slice(&data, &mut buf).unwrap();
-    assert_eq!(used, ser_rep);
-    let deserialized: T = from_bytes(used).unwrap();
-    assert_eq!(data, deserialized);
-
-    #[cfg(feature = "heapless")]
-    test_one_heapless(data, ser_rep);
-}
-
-#[cfg(feature = "heapless")]
-#[track_caller]
-fn test_one_heapless<T>(data: T, ser_rep: &[u8])
-where
-    T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
-{
-    let serialized: Vec<u8, 2048> = to_vec(&data).unwrap();
+    let mut buf = [0u8; 1024];
+    let serialized = to_slice(&data, &mut buf).unwrap();
     assert_eq!(serialized.len(), ser_rep.len());
     let mut x: ::std::vec::Vec<u8> = vec![];
     x.extend(serialized.deref().iter().cloned());
@@ -184,81 +140,4 @@ where
         let deserialized: T = from_bytes(&x).unwrap();
         assert_eq!(data, deserialized);
     }
-}
-
-#[cfg(feature = "use-std")]
-#[test]
-fn std_io_loopback() {
-    use postcard::from_io;
-    use postcard::to_io;
-
-    fn test_io<T>(data: T, ser_rep: &[u8])
-    where
-        T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
-    {
-        let serialized: ::std::vec::Vec<u8> = vec![];
-        let ser = to_io(&data, serialized).unwrap();
-        assert_eq!(ser.len(), ser_rep.len());
-        assert_eq!(ser, ser_rep);
-        {
-            let mut buff = [0; 2048];
-            let x = ser.clone();
-            let deserialized: T = from_io((x.as_slice(), &mut buff)).unwrap().0;
-            assert_eq!(data, deserialized);
-        }
-    }
-
-    test_io(DataEnum::Sho(0x6969, 0x07), &[0x05, 0xE9, 0xD2, 0x01, 0x07]);
-    test_io(
-        BasicU8S {
-            st: 0xABCD,
-            ei: 0xFE,
-            sf: 0x1234_4321_ABCD_DCBA,
-            tt: 0xACAC_ACAC,
-        },
-        &[
-            0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12, 0xAC,
-            0xD9, 0xB2, 0xE5, 0x0A,
-        ],
-    );
-}
-
-#[cfg(all(
-    any(feature = "embedded-io-04", feature = "embedded-io-06"),
-    feature = "alloc"
-))]
-#[test]
-fn std_eio_loopback() {
-    use postcard::from_eio;
-    use postcard::to_eio;
-
-    fn test_io<T>(data: T, ser_rep: &[u8])
-    where
-        T: Serialize + DeserializeOwned + Eq + PartialEq + Debug,
-    {
-        let serialized: ::std::vec::Vec<u8> = vec![];
-        let ser = to_eio(&data, serialized).unwrap();
-        assert_eq!(ser.len(), ser_rep.len());
-        assert_eq!(ser, ser_rep);
-        {
-            let mut buff = [0; 2048];
-            let x = ser.clone();
-            let deserialized: T = from_eio((x.as_slice(), &mut buff)).unwrap().0;
-            assert_eq!(data, deserialized);
-        }
-    }
-
-    test_io(DataEnum::Sho(0x6969, 0x07), &[0x05, 0xE9, 0xD2, 0x01, 0x07]);
-    test_io(
-        BasicU8S {
-            st: 0xABCD,
-            ei: 0xFE,
-            sf: 0x1234_4321_ABCD_DCBA,
-            tt: 0xACAC_ACAC,
-        },
-        &[
-            0xCD, 0xD7, 0x02, 0xFE, 0xBA, 0xB9, 0xB7, 0xDE, 0x9A, 0xE4, 0x90, 0x9A, 0x12, 0xAC,
-            0xD9, 0xB2, 0xE5, 0x0A,
-        ],
-    );
 }

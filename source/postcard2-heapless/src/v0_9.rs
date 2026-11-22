@@ -1,5 +1,5 @@
 use core::convert::Infallible;
-use postcard2::{BufferFull, SerializerError, serialize_with_flavor};
+use postcard::{BufferFull, SerializerError, serialize_with_flavor};
 use serde_core::Serialize;
 
 /// Re-export of the `heapless` v0.9 crate used by this module.
@@ -42,7 +42,7 @@ where
 pub mod ser {
     use core::convert::Infallible;
     use heapless_v0_9::{LenType, Vec};
-    use postcard2::{
+    use postcard::{
         BufferFull,
         ser_flavors::{Flavor, Patch},
     };
@@ -133,7 +133,7 @@ mod test_heapless {
     use core::fmt::Write;
     use core::ops::Deref;
     use heapless_v0_9::{String, Vec, index_map::FnvIndexMap};
-    use postcard2::{from_bytes, varint::varint_max};
+    use postcard::{from_bytes, varint::varint_max};
     use serde_core::{Deserialize, Deserializer, Serialize, Serializer};
 
     #[test]
@@ -546,8 +546,8 @@ mod test_ser {
     use core::fmt::Write;
     use core::ops::Deref;
     use heapless_v0_9::{String, Vec, index_map::FnvIndexMap};
-    use postcard2::serialized_size;
-    use postcard2::varint::{varint_max, varint_usize};
+    use postcard::serialized_size;
+    use postcard::varint::{varint_max, varint_usize};
     use serde::Serialize;
 
     #[test]
@@ -902,7 +902,7 @@ mod test_ser {
                 v.push(0).unwrap();
             }
 
-            let _serialized = postcard2::to_slice(&v, buf).unwrap();
+            let _serialized = postcard::to_slice(&v, buf).unwrap();
 
             // assert_eq!(
             //     heapless_v0_9::Vec::<u8, N>::POSTCARD_MAX_SIZE,
