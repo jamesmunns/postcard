@@ -209,11 +209,8 @@ pub fn discover_tys(
         OwnedDataModelType::U32 => {}
         OwnedDataModelType::U64 => {}
         OwnedDataModelType::U128 => {}
-
-        // TODO: usize and isize don't impl Schema, which, fair.
-        OwnedDataModelType::Usize => unreachable!(),
-        OwnedDataModelType::Isize => unreachable!(),
-        //
+        OwnedDataModelType::Usize => {}
+        OwnedDataModelType::Isize => {}
         OwnedDataModelType::F32 => {}
         OwnedDataModelType::F64 => {}
         OwnedDataModelType::Char => {}
@@ -250,6 +247,6 @@ pub fn discover_tys(
                 discover_tys_data(&variant.data, set);
             }
         }
-        OwnedDataModelType::Schema => todo!(),
+        OwnedDataModelType::Schema => {}
     };
 }

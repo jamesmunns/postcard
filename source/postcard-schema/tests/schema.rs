@@ -414,3 +414,100 @@ fn size_smoke() {
         assert_eq!(calc, bound);
     }
 }
+
+/// `usize` and `isize` don't implement `Schema`, but a decoded schema can contain them.
+#[test]
+fn all_used_types_leaf_kinds() {
+    for leaf in [
+        OwnedDataModelType::Usize,
+        OwnedDataModelType::Isize,
+        OwnedDataModelType::Schema,
+    ] {
+        let ty = OwnedDataModelType::Option(Box::new(leaf.clone()));
+        let used = ty.all_used_types();
+        assert_eq!(used, [ty, leaf].into_iter().collect());
+    }
+}
+
+#[test]
+fn max_size_overflow() {
+    use DataModelType::{ByteArray, Map, Option as Opt, Seq, String as Str, Tuple, U32, U8};
+
+    const HUGE: Option<usize> = Some(usize::MAX);
+    // `usize::MAX` including the length: the largest size that fits.
+    const FITS: &DataModelType = &Str {
+        max_len: Some(usize::MAX - (usize::BITS as usize).div_ceil(7)),
+    };
+    const FITS_DATA: Data = Data::Newtype(FITS);
+
+    const OVERFLOWS: &[DataModelType] = &[
+        Str { max_len: HUGE },
+        ByteArray { max_len: HUGE },
+        Opt(FITS),
+        // The elements overflow.
+        Seq {
+            element: &U32,
+            max_len: HUGE,
+        },
+        // The elements fit, but not with the length.
+        Seq {
+            element: &U8,
+            max_len: HUGE,
+        },
+        Tuple(&[FITS, &U8]),
+        // A key and value overflow.
+        Map {
+            key: FITS,
+            val: &U8,
+            max_len: Some(1),
+        },
+        // The entries overflow.
+        Map {
+            key: &U8,
+            val: &U8,
+            max_len: HUGE,
+        },
+        // The entries fit, but not with the length.
+        Map {
+            key: &U8,
+            val: &DataModelType::Unit,
+            max_len: HUGE,
+        },
+        DataModelType::Struct {
+            name: "S",
+            data: Data::Struct(&[
+                &NamedField {
+                    name: "a",
+                    ty: FITS,
+                },
+                &NamedField { name: "b", ty: &U8 },
+            ]),
+        },
+        DataModelType::Struct {
+            name: "S",
+            data: Data::Tuple(&[FITS, &U8]),
+        },
+        DataModelType::Enum {
+            name: "E",
+            variants: &[&Variant {
+                name: "A",
+                data: FITS_DATA,
+            }],
+        },
+    ];
+
+    assert_eq!(FITS.max_size(), HUGE);
+    assert_eq!(OwnedDataModelType::from(FITS).max_size(), HUGE);
+    assert_eq!(FITS_DATA.max_size(), HUGE);
+    for ty in OVERFLOWS {
+        assert_eq!(ty.max_size(), None, "{ty:?}");
+        assert_eq!(OwnedDataModelType::from(ty).max_size(), None, "{ty:?}");
+    }
+
+    // Zero-size elements don't overflow.
+    let units = Seq {
+        element: &DataModelType::Unit,
+        max_len: HUGE,
+    };
+    assert_eq!(units.max_size(), Some((usize::BITS as usize).div_ceil(7)));
+}

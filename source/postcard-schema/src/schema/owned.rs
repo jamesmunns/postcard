@@ -163,7 +163,10 @@ const fn arr_max_size(data_model_types: &[OwnedDataModelType]) -> Option<usize> 
         let Some(size) = data_model_types[idx].max_size() else {
             return None;
         };
-        sum += size;
+        let Some(total) = size.checked_add(sum) else {
+            return None;
+        };
+        sum = total;
         idx += 1;
     }
     Some(sum)
@@ -240,6 +243,8 @@ pub enum OwnedData {
 
 impl OwnedData {
     /// Max serialized size
+    ///
+    /// This is `None` if there is no maximum, or if it doesn't fit in a `usize`.
     pub const fn max_size(&self) -> Option<usize> {
         match self {
             OwnedData::Unit => Some(0),
@@ -252,7 +257,10 @@ impl OwnedData {
                     let Some(size) = named_fields[idx].ty.max_size() else {
                         return None;
                     };
-                    sum += size;
+                    let Some(total) = size.checked_add(sum) else {
+                        return None;
+                    };
+                    sum = total;
                     idx += 1;
                 }
                 Some(sum)
