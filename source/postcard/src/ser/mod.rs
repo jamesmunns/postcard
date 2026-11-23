@@ -91,7 +91,7 @@ where
     serialize_with_flavor::<T, _>(value, flavors::ExtendFlavor::new(writer))
 }
 
-/// `serialize_with_flavor()` has three generic parameters, `T, F, O`.
+/// `serialize_with_flavor()` has two generic parameters, `T, S`:
 ///
 /// * `T`: This is the type that is being serialized
 /// * `S`: This is the Storage that is used during serialization
