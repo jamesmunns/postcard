@@ -36,16 +36,6 @@ default-features = false
 version = "1"
 optional = true
 
-[dependencies.serde_derive]
-version = "1.0.228"
-optional = true
-default-features = false
-
-[dependencies.serde]
-version = "1.0.228"
-default-features = false
-optional = true
-
 [dev-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 
@@ -55,4 +45,3 @@ std = ["postcard-core/alloc"]
 alloc = ["postcard-core/alloc"]
 
 defmt-v1 = ["dep:defmt", "postcard-core/defmt-v1"]
-serde-derive = ["dep:serde_derive", "dep:serde"]
