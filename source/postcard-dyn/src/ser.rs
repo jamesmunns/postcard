@@ -9,12 +9,16 @@ use postcard_core::ser::{
 use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
 
+/// The error returned when encoding a message.
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
     SchemaMismatch,
     /// Limitations of using serde_json::Value for now
     ShouldSupportButDont,
     Unsupported,
+    /// A limit of the [`SerializeConfig`] was exceeded.
+    LimitExceeded,
 }
 
 impl Display for Error {
@@ -29,16 +33,54 @@ impl Display for Error {
                 "reached a limitation of using serde_json::Value as the encoding source"
             ),
             Error::Unsupported => write!(f, "reached unsupported item"),
+            Error::LimitExceeded => write!(f, "exceeded a configured limit"),
         }
     }
 }
 
 impl std::error::Error for Error {}
 
+/// The limits used by [`to_stdvec_dyn_with_config`].
+///
+/// To change a limit, start from the default:
+///
+/// ```rust
+/// use postcard_dyn::SerializeConfig;
+///
+/// let mut config = SerializeConfig::default();
+/// config.max_depth = 32;
+/// ```
+// TODO: Limit the output length? It can't be much larger than `value` is in memory.
+// TODO: Limit zero-sized elements? A `Vec<()>` of 129 can be encoded, but the default
+// `DeserializeConfig` doesn't decode it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct SerializeConfig {
+    /// The maximum depth of nested types in the schema. Defaults to 128.
+    pub max_depth: usize,
+}
+
+impl Default for SerializeConfig {
+    fn default() -> Self {
+        Self { max_depth: 128 }
+    }
+}
+
+/// Encode `value` as a message with the given schema, with the default
+/// [`SerializeConfig`].
 pub fn to_stdvec_dyn(schema: &OwnedDataModelType, value: &Value) -> Result<Vec<u8>, Error> {
+    to_stdvec_dyn_with_config(schema, value, &SerializeConfig::default())
+}
+
+/// Encode `value` as a message with the given schema.
+pub fn to_stdvec_dyn_with_config(
+    schema: &OwnedDataModelType,
+    value: &Value,
+    config: &SerializeConfig,
+) -> Result<Vec<u8>, Error> {
     let mut out = vec![];
 
-    ser_named_type(schema, value, &mut out)?;
+    ser_named_type(schema, value, &mut out, config.max_depth)?;
 
     Ok(out)
 }
@@ -67,7 +109,13 @@ fn infallible(res: Result<(), Infallible>) {
     let Ok(()) = res;
 }
 
-fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> Result<(), Error> {
+fn ser_named_type(
+    ty: &OwnedDataModelType,
+    value: &Value,
+    out: &mut Vec<u8>,
+    depth: usize,
+) -> Result<(), Error> {
+    let depth = depth.checked_sub(1).ok_or(Error::LimitExceeded)?;
     match ty {
         OwnedDataModelType::Bool => {
             let val = value.as_bool().right()?;
@@ -164,7 +212,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 infallible(try_push_option_none(out));
             } else {
                 infallible(try_push_option_some(out));
-                ser_named_type(ty, value, out)?;
+                ser_named_type(ty, value, out, depth)?;
             }
         }
         OwnedDataModelType::Unit => {}
@@ -176,7 +224,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             name: _,
             data: OwnedData::Newtype(ty),
         } => {
-            ser_named_type(ty, value, out)?;
+            ser_named_type(ty, value, out, depth)?;
         }
         OwnedDataModelType::Seq { element: ty, .. } => {
             let val = value.as_array().right()?;
@@ -184,7 +232,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
             infallible(try_push_length(out, val.len()));
             // Then add values
             for b in val {
-                ser_named_type(ty, b, out)?;
+                ser_named_type(ty, b, out, depth)?;
             }
         }
         OwnedDataModelType::Tuple(tys)
@@ -194,14 +242,14 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
         } => {
             // Tuples with arity of 1 are not arrays, but instead just a single object
             if tys.len() == 1 {
-                return ser_named_type(&tys[0], value, out);
+                return ser_named_type(&tys[0], value, out, depth);
             }
             let val = value.as_array().right()?;
             if val.len() != tys.len() {
                 return Err(Error::SchemaMismatch);
             }
             for (ty, val) in tys.iter().zip(val.iter()) {
-                ser_named_type(ty, val, out)?;
+                ser_named_type(ty, val, out, depth)?;
             }
         }
         OwnedDataModelType::Map { key, val, .. } => {
@@ -218,7 +266,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                 // KEY
                 infallible(try_push_str(out, k));
                 // VALUE
-                ser_named_type(val, v, out)?;
+                ser_named_type(val, v, out, depth)?;
             }
         }
         OwnedDataModelType::Struct {
@@ -233,7 +281,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
 
             for field in nvs.iter() {
                 let v = val.get(field.name.as_ref()).right()?;
-                ser_named_type(&field.ty, v, out)?;
+                ser_named_type(&field.ty, v, out, depth)?;
             }
         }
         OwnedDataModelType::Enum {
@@ -280,12 +328,12 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                         // Nothing to do
                     }
                     OwnedData::Newtype(ty) => {
-                        ser_named_type(ty, v, out)?;
+                        ser_named_type(ty, v, out, depth)?;
                     }
                     OwnedData::Tuple(tys) => {
                         // Tuples with arity of 1 are not arrays, but instead just a single object
                         if tys.len() == 1 {
-                            return ser_named_type(&tys[0], v, out);
+                            return ser_named_type(&tys[0], v, out, depth);
                         }
 
                         let val = v.as_array().right()?;
@@ -295,7 +343,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
                         }
 
                         for (ty, val) in tys.iter().zip(val.iter()) {
-                            ser_named_type(ty, val, out)?;
+                            ser_named_type(ty, val, out, depth)?;
                         }
                     }
                     OwnedData::Struct(nvs) => {
@@ -307,7 +355,7 @@ fn ser_named_type(ty: &OwnedDataModelType, value: &Value, out: &mut Vec<u8>) -> 
 
                         for field in nvs.iter() {
                             let v = val.get(field.name.as_ref()).right()?;
-                            ser_named_type(&field.ty, v, out)?;
+                            ser_named_type(&field.ty, v, out, depth)?;
                         }
                     }
                 }

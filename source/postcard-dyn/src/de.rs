@@ -8,17 +8,21 @@ use postcard_core::de::{
     try_take_f32, try_take_f64, try_take_i128, try_take_i16, try_take_i32, try_take_i64,
     try_take_i8, try_take_isize, try_take_length, try_take_option_discrim, try_take_str,
     try_take_u128, try_take_u16, try_take_u32, try_take_u64, try_take_u8, try_take_usize,
-    DecodeError, UnexpectedEnd,
+    DecodeError, Flavor, UnexpectedEnd,
 };
 use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
 
+/// The error returned when decoding a message.
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
     UnexpectedEndOfData,
     ShouldSupportButDont,
     SchemaMismatch,
     Unsupported,
+    /// A limit of the [`DeserializeConfig`] was exceeded.
+    LimitExceeded,
 }
 
 impl Display for Error {
@@ -33,6 +37,7 @@ impl Display for Error {
                 write!(f, "reached data that was not correct for the given schema")
             }
             Error::Unsupported => write!(f, "reached unsupported item"),
+            Error::LimitExceeded => write!(f, "exceeded a configured limit"),
         }
     }
 }
@@ -69,12 +74,107 @@ impl<T> DecodeExt for Result<T, DecodeError<UnexpectedEnd>> {
     }
 }
 
-pub fn from_slice_dyn(schema: &OwnedDataModelType, data: &[u8]) -> Result<Value, Error> {
-    let mut f = Slice::new(data);
-    deserialize(schema, &mut f)
+/// The limits used by [`from_slice_dyn_with_config`].
+///
+/// To change a limit, start from the default:
+///
+/// ```rust
+/// use postcard_dyn::DeserializeConfig;
+///
+/// let mut config = DeserializeConfig::default();
+/// config.max_zsts = 1024;
+/// ```
+// TODO: Limit the total number of `Value`s? One byte of input can be a whole object, and
+// one byte of a `ByteArray` is a `Value`.
+// TODO: Check lengths against the schema's `max_len`?
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct DeserializeConfig {
+    /// The maximum number of sequence elements that are encoded as zero bytes, such as
+    /// the elements of a `Vec<()>`. Defaults to 128.
+    ///
+    /// This is the total for the whole message, as a message can contain many sequences.
+    /// Zero-sized values outside of sequences are not counted.
+    pub max_zsts: usize,
+
+    /// The maximum length of the input in bytes, including any bytes after the message.
+    /// Defaults to 1 MiB.
+    pub max_input_len: usize,
+
+    /// The maximum depth of nested types in the schema. Defaults to 128.
+    pub max_depth: usize,
 }
 
-fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Error> {
+impl Default for DeserializeConfig {
+    fn default() -> Self {
+        Self {
+            max_zsts: 128,
+            max_input_len: 1024 * 1024,
+            max_depth: 128,
+        }
+    }
+}
+
+/// Decode `data` as a message with the given schema with the default
+/// [`DeserializeConfig`].
+///
+/// Bytes after the message are ignored.
+pub fn from_slice_dyn(schema: &OwnedDataModelType, data: &[u8]) -> Result<Value, Error> {
+    from_slice_dyn_with_config(schema, data, &DeserializeConfig::default())
+}
+
+/// Decode `data` as a message with the given schema.
+///
+/// Bytes after the message are ignored.
+pub fn from_slice_dyn_with_config(
+    schema: &OwnedDataModelType,
+    data: &[u8],
+    config: &DeserializeConfig,
+) -> Result<Value, Error> {
+    if data.len() > config.max_input_len {
+        return Err(Error::LimitExceeded);
+    }
+    let mut f = Slice::new(data);
+    let mut budget = Budget {
+        zsts: Balance(config.max_zsts),
+        depth: Balance(config.max_depth),
+    };
+    deserialize(schema, &mut f, &mut budget)
+}
+
+/// What is left of the limits in a [`DeserializeConfig`].
+struct Budget {
+    zsts: Balance,
+    depth: Balance,
+}
+
+/// A helper type that counts down to zero, and returns an error when we do.
+struct Balance(usize);
+
+impl Balance {
+    /// Take one from a limit.
+    fn spend(&mut self) -> Result<(), Error> {
+        self.0 = self.0.checked_sub(1).ok_or(Error::LimitExceeded)?;
+        Ok(())
+    }
+}
+
+fn deserialize(
+    ty: &OwnedDataModelType,
+    f: &mut Slice<'_>,
+    budget: &mut Budget,
+) -> Result<Value, Error> {
+    budget.depth.spend()?;
+    let val = deserialize_inner(ty, f, budget)?;
+    budget.depth.0 += 1;
+    Ok(val)
+}
+
+fn deserialize_inner(
+    ty: &OwnedDataModelType,
+    f: &mut Slice<'_>,
+    budget: &mut Budget,
+) -> Result<Value, Error> {
     let val = match ty {
         OwnedDataModelType::Bool => Value::Bool(try_take_bool(f).dec()?),
         OwnedDataModelType::I8 => Value::Number(Number::from(try_take_i8(f).dec()?)),
@@ -117,7 +217,7 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
         }
         OwnedDataModelType::Option(inner) => {
             if try_take_option_discrim(f).dec()? {
-                deserialize(inner, f)?
+                deserialize(inner, f, budget)?
             } else {
                 Value::Null
             }
@@ -134,12 +234,18 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
         OwnedDataModelType::Struct {
             name: _,
             data: OwnedData::Newtype(ty),
-        } => deserialize(ty, f)?,
+        } => deserialize(ty, f, budget)?,
         OwnedDataModelType::Seq { element: ty, .. } => {
             let len = try_take_length(f).dec()?;
             let mut vec = vec![];
             for _ in 0..len {
-                vec.push(deserialize(ty, f)?);
+                let before = f.size_hint();
+                let val = deserialize(ty, f, budget)?;
+                // Other elements are limited by the length of the input.
+                if f.size_hint() == before {
+                    budget.zsts.spend()?;
+                }
+                vec.push(val);
             }
             Value::Array(vec)
         }
@@ -156,12 +262,12 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
                 }
                 [ty] => {
                     // Single item, NOT an array
-                    deserialize(ty, f)?
+                    deserialize(ty, f, budget)?
                 }
                 multi => {
                     let mut vec = vec![];
                     for ty in multi.iter() {
-                        vec.push(deserialize(ty, f)?);
+                        vec.push(deserialize(ty, f, budget)?);
                     }
                     Value::Array(vec)
                 }
@@ -179,7 +285,7 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
 
             for _ in 0..map_len {
                 let s = try_take_str(f).dec()?;
-                let v = deserialize(val, f)?;
+                let v = deserialize(val, f, budget)?;
                 map.insert(s.to_string(), v);
             }
 
@@ -191,7 +297,7 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
         } => {
             let mut map = Map::new();
             for nv in nvs.iter() {
-                let val = deserialize(&nv.ty, f)?;
+                let val = deserialize(&nv.ty, f, budget)?;
                 map.insert(nv.name.to_string(), val);
             }
             Value::Object(map)
@@ -210,26 +316,29 @@ fn deserialize(ty: &OwnedDataModelType, f: &mut Slice<'_>) -> Result<Value, Erro
                 }
                 OwnedData::Newtype(ty) => {
                     // everything else becomes an object with one field
-                    let val = deserialize(ty, f)?;
+                    let val = deserialize(ty, f, budget)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Value::Object(map)
                 }
+                // TODO: This and the struct variant clone their schema for each value.
                 OwnedData::Tuple(vec) => {
                     // everything else becomes an object with one field
-                    let val = deserialize(&OwnedDataModelType::Tuple(vec.clone()), f)?;
+                    let val =
+                        deserialize_inner(&OwnedDataModelType::Tuple(vec.clone()), f, budget)?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
                     Value::Object(map)
                 }
                 OwnedData::Struct(vec) => {
                     // everything else becomes an object with one field
-                    let val = deserialize(
+                    let val = deserialize_inner(
                         &OwnedDataModelType::Struct {
                             name: schema.name.clone(),
                             data: OwnedData::Struct(vec.clone()),
                         },
                         f,
+                        budget,
                     )?;
                     let mut map = Map::new();
                     map.insert(schema.name.to_owned().to_string(), val);
@@ -251,6 +360,7 @@ mod test {
     use serde_json::json;
 
     use super::Error;
+    use super::{from_slice_dyn_with_config, DeserializeConfig};
     use crate::{from_slice_dyn, to_stdvec_dyn};
 
     #[derive(Serialize, Deserialize, Schema)]
@@ -411,5 +521,148 @@ mod test {
         assert_eq!(res, Err(Error::Unsupported));
         let res = to_stdvec_dyn(&OwnedDataModelType::Schema, &json!(null));
         assert_eq!(res, Err(crate::ser::Error::Unsupported));
+    }
+
+    #[test]
+    fn max_zsts() {
+        #[derive(Schema)]
+        #[allow(dead_code)]
+        struct Empty {}
+
+        fn decode<T: Schema + ?Sized>(data: &[u8]) -> Result<usize, Error> {
+            let value = from_slice_dyn(&T::SCHEMA.into(), data)?;
+            Ok(value.as_array().unwrap().len())
+        }
+
+        const AT: [u8; 2] = [0x80, 0x01];
+        const OVER: [u8; 2] = [0x81, 0x01];
+        assert_eq!(decode::<Vec<()>>(&AT), Ok(128));
+        assert_eq!(decode::<Vec<()>>(&OVER), Err(Error::LimitExceeded));
+        assert_eq!(decode::<Vec<((), Empty)>>(&AT), Ok(128));
+        assert_eq!(decode::<Vec<((), Empty)>>(&OVER), Err(Error::LimitExceeded));
+        let huge = [0xFF, 0xFF, 0xFF, 0xFF, 0x0F];
+        assert_eq!(decode::<Vec<()>>(&huge), Err(Error::LimitExceeded));
+
+        // The limit is for the whole message.
+        let nested = [2, 64, 64];
+        assert_eq!(decode::<Vec<Vec<()>>>(&nested), Ok(2));
+        let nested = [2, 64, 65];
+        assert_eq!(decode::<Vec<Vec<()>>>(&nested), Err(Error::LimitExceeded));
+
+        // Elements that take bytes aren't counted, even if they contain a `()`.
+        let mut data = vec![0xE8, 0x07];
+        data.extend([0; 1000]);
+        assert_eq!(decode::<Vec<u8>>(&data), Ok(1000));
+        assert_eq!(decode::<Vec<((), u8)>>(&data), Ok(1000));
+
+        let schema = <Vec<()>>::SCHEMA.into();
+        let config = DeserializeConfig {
+            max_zsts: 129,
+            ..Default::default()
+        };
+        assert!(from_slice_dyn_with_config(&schema, &OVER, &config).is_ok());
+        let config = DeserializeConfig {
+            max_zsts: 0,
+            ..Default::default()
+        };
+        let res = from_slice_dyn_with_config(&schema, &[1], &config);
+        assert_eq!(res, Err(Error::LimitExceeded));
+        assert_eq!(
+            from_slice_dyn_with_config(&schema, &[0], &config),
+            Ok(json!([]))
+        );
+    }
+
+    #[test]
+    fn max_input_len() {
+        let schema = u8::SCHEMA.into();
+        let mut data = vec![0; 1024 * 1024];
+        assert_eq!(from_slice_dyn(&schema, &data), Ok(json!(0)));
+        data.push(0);
+        assert_eq!(from_slice_dyn(&schema, &data), Err(Error::LimitExceeded));
+
+        let config = DeserializeConfig {
+            max_input_len: data.len(),
+            ..Default::default()
+        };
+        assert_eq!(
+            from_slice_dyn_with_config(&schema, &data, &config),
+            Ok(json!(0))
+        );
+    }
+
+    #[test]
+    fn max_depth() {
+        use crate::{to_stdvec_dyn_with_config, SerializeConfig};
+        use postcard_schema::schema::owned::{
+            OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant,
+        };
+
+        /// A `u8` in newtypes or enum variants, with this many types in total.
+        fn nested(
+            depth: usize,
+            variant: Option<fn(OwnedDataModelType) -> OwnedData>,
+        ) -> OwnedDataModelType {
+            let mut ty = OwnedDataModelType::U8;
+            for _ in 1..depth {
+                let name = "N".into();
+                ty = match variant {
+                    None => OwnedDataModelType::Struct {
+                        name,
+                        data: OwnedData::Newtype(Box::new(ty)),
+                    },
+                    Some(data) => OwnedDataModelType::Enum {
+                        name,
+                        variants: Box::new([OwnedVariant {
+                            name: "V".into(),
+                            data: data(ty),
+                        }]),
+                    },
+                };
+            }
+            ty
+        }
+
+        #[allow(clippy::type_complexity)]
+        let variants: [Option<fn(OwnedDataModelType) -> OwnedData>; 5] = [
+            None,
+            Some(|ty| OwnedData::Newtype(Box::new(ty))),
+            Some(|ty| OwnedData::Tuple(Box::new([ty]))),
+            Some(|ty| OwnedData::Tuple(Box::new([OwnedDataModelType::Unit, ty]))),
+            Some(|ty| {
+                OwnedData::Struct(Box::new([OwnedNamedField {
+                    name: "f".into(),
+                    ty,
+                }]))
+            }),
+        ];
+        for variant in variants {
+            let at = nested(128, variant);
+            let over = nested(129, variant);
+            let data = [0; 129];
+
+            let value = from_slice_dyn(&at, &data).unwrap();
+            let res = from_slice_dyn(&over, &data);
+            assert_eq!(res, Err(Error::LimitExceeded));
+
+            let config = DeserializeConfig {
+                max_depth: 129,
+                ..Default::default()
+            };
+            let deeper = from_slice_dyn_with_config(&over, &data, &config).unwrap();
+
+            // Encoding has the same limit.
+            assert!(to_stdvec_dyn(&at, &value).is_ok());
+            let res = to_stdvec_dyn(&over, &deeper);
+            assert_eq!(res, Err(crate::ser::Error::LimitExceeded));
+            let config = SerializeConfig { max_depth: 129 };
+            assert!(to_stdvec_dyn_with_config(&over, &deeper, &config).is_ok());
+        }
+
+        // The depth is restored after each element.
+        let schema = <Vec<Option<u8>>>::SCHEMA.into();
+        let data = [&[200, 1][..], &[1; 400]].concat();
+        let value = from_slice_dyn(&schema, &data).unwrap();
+        assert_eq!(to_stdvec_dyn(&schema, &value), Ok(data));
     }
 }
