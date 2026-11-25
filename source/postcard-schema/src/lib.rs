@@ -41,20 +41,23 @@
 //! schema built at runtime, such as one received from a peer, and
 //! [`Key::new_owned`](key::Key::new_owned) computes their keys.
 //!
+//! A schema that disagrees with its type's serde implementations gives wrong
+//! keys and wrong decoding. With the `alloc` or `std` feature,
+//! [`verify`](verify::verify) checks a type's schema against sample values;
+//! and can be used to test hand-written `Schema` impls.
+//!
 //! The [postcard-schema specification] defines keys, so that other
 //! implementations can compute the same keys.
 //!
 //! # Features
 //!
-//! | Feature               | Enables                                                                         |
-//! |---                    |---                                                                              |
-//! | `derive`              | `#[derive(Schema)]`                                                             |
-//! | `alloc`               | the `Owned*` schema types, and `Schema` for `alloc` types                       |
-//! | `std`                 | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types |
-//! | `core-net`            | `Schema` for the `core::net` address types                                      |
-//! | `core-num-saturating` | `Schema` for `core::num::Saturating`                                            |
-//! | `defmt-v1`            | `defmt::Format` for [`Key`](key::Key)                                           |
-//! | `chrono-v0_4`, ...    | `Schema` for that version of that crate's types (see `Cargo.toml`)              |
+//! | Feature            | Enables                                                                         |
+//! |---                 |---                                                                              |
+//! | `derive`           | `#[derive(Schema)]`                                                             |
+//! | `alloc`            | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types           |
+//! | `std`              | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types |
+//! | `defmt-v1`         | `defmt::Format` for [`Key`](key::Key)                                           |
+//! | `chrono-v0_4`, ... | `Schema` for that version of that crate's types (see `Cargo.toml`)              |
 //!
 //! [postcard]: https://docs.rs/postcard
 //! [postcard-schema specification]: https://github.com/jamesmunns/postcard/tree/main/spec/tracey/schema
@@ -63,6 +66,8 @@
 mod impls;
 pub mod key;
 pub mod schema;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod verify;
 
 /// Types with a fixed upper bound
 ///

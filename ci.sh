@@ -31,6 +31,11 @@ cargo_test() {
 
 cargo_test --features=alloc,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema/std,postcard-cobs/postcard-schema-v0_5
 
+# tests/verify_impls.rs checks every postcard-schema impl, including the
+# feature-gated ones.
+cargo clippy --manifest-path source/postcard-schema/Cargo.toml --all-targets --all-features -- --deny=warnings
+cargo test --manifest-path source/postcard-schema/Cargo.toml --all-features
+
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn

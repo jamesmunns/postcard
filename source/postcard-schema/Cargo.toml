@@ -130,6 +130,30 @@ version = "0.4"
 default-features = false
 features = ["serde", "clock"]
 
+[dev-dependencies.heapless_v0_7]
+package = "heapless"
+version = "0.7"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.heapless_v0_8]
+package = "heapless"
+version = "0.8"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.heapless_v0_9]
+package = "heapless"
+version = "0.9.4"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.fixed_v1_0]
+package = "fixed"
+version = "1.0"
+default-features = false
+features = ["serde"]
+
 [[test]]
 name = "schema"
 required-features = ["derive", "std"]
@@ -139,9 +163,6 @@ default = []
 std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["dep:postcard-derive"]
-
-core-net = []
-core-num-saturating = []
 
 chrono-v0_4 = ["dep:chrono_v0_4"]
 defmt-v1 = ["dep:defmt"]
@@ -155,3 +176,11 @@ nalgebra-v0_33 = ["dep:nalgebra_v0_33"]
 nalgebra-v0_34 = ["dep:nalgebra_v0_34"]
 serde-big-array-v0_5 = ["dep:serde-big-array_v0_5"]
 uuid-v1_0 = ["dep:uuid_v1_0"]
+
+[[test]]
+name = "verify"
+required-features = ["derive", "std"]
+
+[[test]]
+name = "verify_impls"
+required-features = ["derive", "std"]

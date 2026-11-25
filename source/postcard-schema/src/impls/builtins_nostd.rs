@@ -75,7 +75,7 @@ impl<T: Schema> Schema for Option<T> {
 
 impl<T: Schema, E: Schema> Schema for Result<T, E> {
     const SCHEMA: &'static DataModelType = &DataModelType::Enum {
-        name: "Result<T, E>",
+        name: "Result",
         variants: &[
             &Variant {
                 name: "Ok",
@@ -106,7 +106,7 @@ impl<T: Schema, const N: usize> Schema for [T; N] {
 
 impl<T: Schema> Schema for Range<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "Range<T>",
+        name: "Range",
         data: Data::Struct(&[
             &NamedField {
                 name: "start",
@@ -122,7 +122,7 @@ impl<T: Schema> Schema for Range<T> {
 
 impl<T: Schema> Schema for RangeInclusive<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "RangeInclusive<T>",
+        name: "RangeInclusive",
         data: Data::Struct(&[
             &NamedField {
                 name: "start",
@@ -138,7 +138,7 @@ impl<T: Schema> Schema for RangeInclusive<T> {
 
 impl<T: Schema> Schema for RangeFrom<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "RangeFrom<T>",
+        name: "RangeFrom",
         data: Data::Struct(&[&NamedField {
             name: "start",
             ty: T::SCHEMA,
@@ -148,7 +148,7 @@ impl<T: Schema> Schema for RangeFrom<T> {
 
 impl<T: Schema> Schema for RangeTo<T> {
     const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "RangeTo<T>",
+        name: "RangeTo",
         data: Data::Struct(&[&NamedField {
             name: "end",
             ty: T::SCHEMA,
@@ -156,29 +156,16 @@ impl<T: Schema> Schema for RangeTo<T> {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+// serde writes the octets as a `[u8; 4]`
 impl Schema for core::net::Ipv4Addr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "Ipv4Addr",
-        data: Data::Struct(&[&NamedField {
-            name: "octets",
-            ty: <[u8; 4]>::SCHEMA,
-        }]),
-    };
+    const SCHEMA: &'static DataModelType = <[u8; 4]>::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+// serde writes the octets as a `[u8; 16]`
 impl Schema for core::net::Ipv6Addr {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "Ipv6Addr",
-        data: Data::Struct(&[&NamedField {
-            name: "octets",
-            ty: <[u8; 16]>::SCHEMA,
-        }]),
-    };
+    const SCHEMA: &'static DataModelType = <[u8; 16]>::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::IpAddr {
     const SCHEMA: &'static DataModelType = &DataModelType::Enum {
         name: "IpAddr",
@@ -195,49 +182,16 @@ impl Schema for core::net::IpAddr {
     };
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+// serde writes an `(ip, port)` tuple
 impl Schema for core::net::SocketAddrV4 {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "SocketAddrV4",
-        data: Data::Struct(&[
-            &NamedField {
-                name: "ip",
-                ty: core::net::Ipv4Addr::SCHEMA,
-            },
-            &NamedField {
-                name: "port",
-                ty: u16::SCHEMA,
-            },
-        ]),
-    };
+    const SCHEMA: &'static DataModelType = <(core::net::Ipv4Addr, u16)>::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
+// serde writes an `(ip, port)` tuple, without the flow info and scope ID
 impl Schema for core::net::SocketAddrV6 {
-    const SCHEMA: &'static DataModelType = &DataModelType::Struct {
-        name: "SocketAddrV6",
-        data: Data::Struct(&[
-            &NamedField {
-                name: "ip",
-                ty: core::net::Ipv6Addr::SCHEMA,
-            },
-            &NamedField {
-                name: "port",
-                ty: u16::SCHEMA,
-            },
-            &NamedField {
-                name: "flowinfo",
-                ty: u32::SCHEMA,
-            },
-            &NamedField {
-                name: "scope_id",
-                ty: u32::SCHEMA,
-            },
-        ]),
-    };
+    const SCHEMA: &'static DataModelType = <(core::net::Ipv6Addr, u16)>::SCHEMA;
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "core-net")))]
 impl Schema for core::net::SocketAddr {
     const SCHEMA: &'static DataModelType = &DataModelType::Enum {
         name: "SocketAddr",
@@ -258,8 +212,6 @@ impl<T: Schema> Schema for core::num::Wrapping<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
-#[cfg(feature = "core-num-saturating")]
-#[cfg_attr(docsrs, doc(cfg(feature = "core-num-saturating")))]
 impl<T: Schema> Schema for core::num::Saturating<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }

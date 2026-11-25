@@ -1,53 +1,41 @@
 //! Implementations of the [`Schema`] trait for the `fixed` crate v1.0
+//!
+//! Without its `serde-str` feature, `fixed` serializes each number as a struct
+//! with one field, `bits`, and that is the schema here. With `serde-str`, it
+//! serializes just the bits instead. Both have the same encoding, but the
+//! schema here only matches the first.
 
-use crate::{schema::DataModelType, Schema};
+use crate::{
+    schema::{Data, DataModelType, NamedField},
+    Schema,
+};
 
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedI8<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::I8;
+macro_rules! fixed_schema {
+    ($($ty:ident => $bits:ident),* $(,)?) => {
+        $(
+            #[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
+            impl<Frac> Schema for fixed_v1_0::$ty<Frac> {
+                const SCHEMA: &'static DataModelType = &DataModelType::Struct {
+                    name: stringify!($ty),
+                    data: Data::Struct(&[&NamedField {
+                        name: "bits",
+                        ty: &DataModelType::$bits,
+                    }]),
+                };
+            }
+        )*
+    };
 }
 
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedI16<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::I16;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedI32<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::I32;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedI64<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::I64;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedI128<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::I128;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedU8<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::U8;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedU16<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::U16;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedU32<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::U32;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedU64<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::U64;
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "fixed-v1_0")))]
-impl<Frac> Schema for fixed_v1_0::FixedU128<Frac> {
-    const SCHEMA: &'static DataModelType = &DataModelType::U128;
-}
+fixed_schema![
+    FixedI8 => I8,
+    FixedI16 => I16,
+    FixedI32 => I32,
+    FixedI64 => I64,
+    FixedI128 => I128,
+    FixedU8 => U8,
+    FixedU16 => U16,
+    FixedU32 => U32,
+    FixedU64 => U64,
+    FixedU128 => U128,
+];
