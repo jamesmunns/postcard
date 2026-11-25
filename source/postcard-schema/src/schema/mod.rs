@@ -16,12 +16,13 @@
 //! like deserialize them, as you can't generally get static references at runtime without
 //! a lot of leaking.
 //!
-//! For cases like this, the [`owned`] module exists, which has copies of all of the "borrowed"
-//! versions of the Data Model types. These owned types implement `From` for their borrowed
-//! counterpoint, so if you need to deserialize something, you probably want the Owned variant!
+//! For cases like this, this module also has owned copies, such as [`OwnedDataModelType`], of all
+//! of the "borrowed" versions of the Data Model types. These owned types implement `From` for their
+//! borrowed counterpart, so if you need to deserialize something, you probably want the Owned
+//! variant!
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub mod fmt;
+mod fmt;
 
 use serde::Serialize;
 
@@ -64,12 +65,6 @@ pub enum DataModelType {
 
     /// A variably encoded u128
     U128,
-
-    /// A variably encoded usize
-    Usize,
-
-    /// A variably encoded isize
-    Isize,
 
     /// The `f32` Serde Data Model Type
     F32,
@@ -129,13 +124,13 @@ pub enum DataModelType {
 
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
     Enum {
-        /// The name of this struct
+        /// The name of this enum
         name: &'static str,
         /// The variants contained in this enum
         variants: &'static [&'static Variant],
     },
 
-    /// A [`DataModelType`]/[`OwnedDataModelType`](owned::OwnedDataModelType)
+    /// A [`DataModelType`]/[`OwnedDataModelType`]
     Schema,
 }
 
@@ -185,8 +180,6 @@ macro_rules! max_size_dmt {
                     U32 => Some(postcard_core::varint::varint_max::<i32>()),
                     U64 => Some(postcard_core::varint::varint_max::<u64>()),
                     U128 => Some(postcard_core::varint::varint_max::<u128>()),
-                    Usize => Some(postcard_core::varint::varint_max::<usize>()),
-                    Isize => Some(postcard_core::varint::varint_max::<isize>()),
                     F32 => Some(4),
                     F64 => Some(8),
                     Char => Some(5),
@@ -336,4 +329,6 @@ pub struct Variant {
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub mod owned;
+mod owned;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use owned::{OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant};

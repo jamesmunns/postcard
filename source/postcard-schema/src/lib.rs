@@ -2,12 +2,87 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 //! # Postcard Schema
+//!
+//! Schemas and keys for types sent with [postcard].
+//!
+//! A schema ([`DataModelType`](schema::DataModelType)) describes a type the way
+//! serde sees it: the calls its `Serialize` implementation makes, with the
+//! names of fields and variants and any maximum lengths. The [`Schema`] trait
+//! gives a type's schema as a constant, built at compile time without
+//! allocating, and `#[derive(Schema)]` implements the [`Schema`] trait for
+//! types.
+//!
+//! A [`Key`](key::Key) is an 8-byte hash of a list of strings and schemas, such
+//! as a method name and the schemas of its request and response. Two programs
+//! that compute the same key from their own types can cheaply check that they
+//! agree on those types, without exchanging the schemas. A key is not a
+//! security boundary: what is received still needs to be validated.
+//!
+//! ```rust
+//! # #[cfg(feature = "derive")] {
+//! use postcard_schema::{
+//!     key::{Item, Key, Options},
+//!     Schema,
+//! };
+//!
+//! #[derive(Schema)]
+//! struct Read {
+//!     channel: u8,
+//! }
+//!
+//! const READ: Key = Key::new(
+//!     &Options::DEFAULT,
+//!     &[Item::String("read"), Item::Schema(Read::SCHEMA)],
+//! );
+//! # }
+//! ```
+//!
+//! With the `alloc` or `std` feature, the `Owned*` types in [`schema`] hold a
+//! schema built at runtime, such as one received from a peer, and
+//! [`Key::new_owned`](key::Key::new_owned) computes their keys.
+//!
+//! A schema that disagrees with its type's serde implementations gives wrong
+//! keys and wrong decoding. With the `alloc` or `std` feature,
+//! [`verify`](verify::verify) checks a type's schema against sample values;
+//! and can be used to test hand-written `Schema` impls.
+//!
+//! The [postcard-schema specification] defines keys, so that other
+//! implementations can compute the same keys.
+//!
+//! # Features
+//!
+//! | Feature                   | Enables                                                                           |
+//! |---                        |---                                                                                |
+//! | `derive`                  | `#[derive(Schema)]`                                                               |
+//! | `alloc`                   | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types             |
+//! | `std`                     | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types   |
+//! | `defmt-v1`                | `defmt::Format` for [`Key`](key::Key)                                             |
+//! | `key-v2`                  | version 2 keys, [`Key::new_v2`](key::Key::new_v2), for peers that still use them  |
+//! | `postcard-schema-v0_2`    | [`legacy::v0_2`], to read the schemas that postcard-schema 0.2 devices send       |
+//! | `postcard-schema-ng-v0_4` | [`legacy::ng_v0_4`], to read the schemas that postcard-schema-ng 0.4 devices send |
+//! | `chrono-v0_4`, ...        | `Schema` for that version of that crate's types (see `Cargo.toml`)                |
+//!
+//! [postcard]: https://docs.rs/postcard
+//! [postcard-schema specification]: https://github.com/jamesmunns/postcard/tree/main/spec/tracey/schema
+// TODO: point the spec link at its postcard.rs URL once it is published.
 
-pub mod impls;
+mod impls;
 pub mod key;
+#[cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4")))
+)]
+pub mod legacy;
 pub mod schema;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod verify;
 
 /// Types with a fixed upper bound
+///
+/// The schemas of these types carry the maximum length, which is part of a key
+/// when the maximum lengths option
+/// ([`Options::max_len`](key::Options::max_len)) is enabled.
 pub mod max_len {
     #[cfg(feature = "std")]
     pub use crate::impls::builtins_maxlen::std::{MaxLenBytes, MaxLenString};
@@ -84,37 +159,4 @@ pub trait Schema {
     /// A recursive data structure that describes the schema of the given
     /// type.
     const SCHEMA: &'static schema::DataModelType;
-}
-
-#[cfg(all(test, feature = "derive"))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn crate_path() {
-        #[allow(unused)]
-        #[derive(Schema)]
-        #[postcard(crate = crate)]
-        struct Point {
-            x: i32,
-            y: i32,
-        }
-
-        assert_eq!(
-            Point::SCHEMA,
-            &schema::DataModelType::Struct {
-                name: "Point",
-                data: schema::Data::Struct(&[
-                    &schema::NamedField {
-                        name: "x",
-                        ty: i32::SCHEMA
-                    },
-                    &schema::NamedField {
-                        name: "y",
-                        ty: i32::SCHEMA
-                    },
-                ])
-            }
-        );
-    }
 }

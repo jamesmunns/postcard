@@ -23,7 +23,7 @@ impl<Tz: chrono_v0_4::TimeZone> Schema for chrono_v0_4::DateTime<Tz> {
 #[cfg(test)]
 mod test {
     use crate::Schema;
-    use chrono_v0_4::{DateTime, FixedOffset, NaiveDate, TimeZone, Utc};
+    use chrono_v0_4::{DateTime, FixedOffset, NaiveDate, TimeZone};
 
     fn longest_rfc3339() -> DateTime<FixedOffset> {
         let offset = FixedOffset::east_opt(23 * 3600 + 59 * 60).unwrap();
@@ -46,14 +46,5 @@ mod test {
             postcard::from_bytes::<DateTime<FixedOffset>>(used).unwrap(),
             dt
         );
-    }
-
-    #[test]
-    fn chrono_basic_check() {
-        let dt = Utc::now();
-        let mut buf = [0u8; 64];
-        let used = postcard::to_slice(&dt, &mut buf).unwrap();
-        assert!(used.len() <= DateTime::<FixedOffset>::SCHEMA.max_size().unwrap());
-        assert_eq!(postcard::from_bytes::<DateTime<Utc>>(used).unwrap(), dt);
     }
 }

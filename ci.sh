@@ -31,6 +31,11 @@ cargo_test() {
 
 cargo_test --features=alloc,derive,nalgebra-v0_33,nalgebra-v0_34,heapless-v0_8,heapless-v0_9,defmt-v1,postcard-schema/std,postcard-cobs/postcard-schema-v0_5
 
+# tests/verify_impls.rs checks every postcard-schema impl, including the
+# feature-gated ones.
+cargo clippy --manifest-path source/postcard-schema/Cargo.toml --all-targets --all-features -- --deny=warnings
+cargo test --manifest-path source/postcard-schema/Cargo.toml --all-features
+
 # NOTE: we exclude postcard-dyn for these checks because it is std-only
 
 cargo_check --target=thumbv7em-none-eabi --no-default-features --exclude postcard-dyn
@@ -48,13 +53,13 @@ for manifest in source/*/Cargo.toml; do
   pkg=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -n 1)
   ensure_toolchain "$msrv"
   rustup target add --toolchain "$msrv" thumbv7em-none-eabi
-  cargo +"$msrv" check -p "$pkg" --all-targets
-  cargo +"$msrv" test -p "$pkg"
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  cargo +"$msrv" check --manifest-path "$manifest" --all-targets
+  cargo +"$msrv" test --manifest-path "$manifest"
+  cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi
   [ "$pkg" = "postcard-core" ] || continue
-  cargo +"$msrv" check -p "$pkg" --all-targets --all-features
-  cargo +"$msrv" test -p "$pkg" --all-features
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features
+  cargo +"$msrv" check --manifest-path "$manifest" --all-targets --all-features
+  cargo +"$msrv" test --manifest-path "$manifest" --all-features
+  cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi --all-features
 done
 
 cargo fmt --all -- --check

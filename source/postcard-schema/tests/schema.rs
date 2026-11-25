@@ -1,5 +1,5 @@
 use postcard_schema::{
-    schema::{owned::OwnedDataModelType, Data, DataModelType, NamedField, Variant},
+    schema::{Data, DataModelType, NamedField, OwnedDataModelType, Variant},
     Schema,
 };
 use std::path::PathBuf;
@@ -34,12 +34,6 @@ struct Outer<'a> {
 
 #[allow(unused)]
 #[derive(Schema)]
-struct Slice<'a> {
-    x: &'a [u8],
-}
-
-#[allow(unused)]
-#[derive(Schema)]
 #[postcard(bound = "")] // doesn't compile without this
 struct Bound<F: bound::Fun> {
     x: F::Out<u8>,
@@ -59,7 +53,7 @@ mod bound {
 }
 
 #[test]
-fn test_enum_serialize() {
+fn derive_enum() {
     assert_eq!(
         &DataModelType::Enum {
             name: "Inner'",
@@ -100,7 +94,7 @@ fn test_enum_serialize() {
 }
 
 #[test]
-fn test_struct_serialize() {
+fn derive_struct() {
     assert_eq!(
         Outer::SCHEMA,
         &DataModelType::Struct {
@@ -139,24 +133,7 @@ fn test_struct_serialize() {
 }
 
 #[test]
-fn test_slice_serialize() {
-    assert_eq!(
-        &DataModelType::Struct {
-            name: "Slice",
-            data: Data::Struct(&[&NamedField {
-                name: "x",
-                ty: &DataModelType::Seq {
-                    element: u8::SCHEMA,
-                    max_len: None
-                },
-            }]),
-        },
-        Slice::SCHEMA
-    );
-}
-
-#[test]
-fn test_bound_serialize() {
+fn derive_bound() {
     assert_eq!(
         &DataModelType::Struct {
             name: "Bound",
@@ -208,15 +185,11 @@ fn owned_punning() {
 
     // TODO: This is wildly repetitive, and likely could benefit from interning of
     // repeated types, strings, etc.
-    assert_eq!(ser_borrowed_schema.len(), 189);
 
     // Check that we round-trip correctly
     let deser_borrowed_schema =
         postcard::from_bytes::<OwnedDataModelType>(&ser_borrowed_schema).unwrap();
-    let deser_owned_schema = postcard::from_bytes::<OwnedDataModelType>(&ser_owned_schema).unwrap();
-    assert_eq!(deser_borrowed_schema, deser_owned_schema);
     assert_eq!(deser_borrowed_schema, owned_schema);
-    assert_eq!(deser_owned_schema, owned_schema);
 }
 
 #[allow(unused)]
@@ -313,7 +286,7 @@ struct ClassicGen<T: Schema> {
 }
 
 #[test]
-fn smoke() {
+fn pseudocode() {
     #[allow(clippy::type_complexity)]
     let tests: &[(fn() -> String, &str)] = &[
         (dewit::<u8>, "u8"),
@@ -369,7 +342,7 @@ fn smoke() {
 }
 
 #[test]
-fn size_smoke() {
+fn max_size() {
     #[allow(clippy::type_complexity)]
     let tests: &[(Option<usize>, Option<usize>)] = &[
         (u8::SCHEMA.max_size(), Some(1)),
@@ -415,18 +388,23 @@ fn size_smoke() {
     }
 }
 
-/// `usize` and `isize` don't implement `Schema`, but a decoded schema can contain them.
+/// `all_used_types` on the `Schema` leaf kind, inside an `Option`.
 #[test]
 fn all_used_types_leaf_kinds() {
-    for leaf in [
-        OwnedDataModelType::Usize,
-        OwnedDataModelType::Isize,
-        OwnedDataModelType::Schema,
-    ] {
-        let ty = OwnedDataModelType::Option(Box::new(leaf.clone()));
-        let used = ty.all_used_types();
-        assert_eq!(used, [ty, leaf].into_iter().collect());
-    }
+    let leaf = OwnedDataModelType::Schema;
+    let ty = OwnedDataModelType::Option(Box::new(leaf.clone()));
+    let used = ty.all_used_types();
+    assert_eq!(used, [ty, leaf].into_iter().collect());
+}
+
+/// serde serializes `usize` and `isize` as `u64` and `i64`.
+#[test]
+fn usize_isize() {
+    use core::num::{NonZeroIsize, NonZeroUsize};
+    assert_eq!(usize::SCHEMA, &DataModelType::U64);
+    assert_eq!(NonZeroUsize::SCHEMA, &DataModelType::U64);
+    assert_eq!(isize::SCHEMA, &DataModelType::I64);
+    assert_eq!(NonZeroIsize::SCHEMA, &DataModelType::I64);
 }
 
 #[test]

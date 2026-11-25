@@ -97,7 +97,10 @@ Each crate is checked only against the requirements of the layers it implements,
 so neither crate's [tracey] coverage reaches 100% on its own. `postcard-core`
 covers the conformance and atom requirements, and `postcard` covers the
 composite, schema, and serde requirements. Together, they cover every
-requirement. `postcard-schema` and `postcard-dyn` are not yet traced.
+requirement. `postcard-dyn` is not yet traced.
+
+`postcard-schema` is traced against the separate Postcard Schema Specification,
+which also defines `postcard-schema`'s `Key`s.
 
 ## Conformance
 

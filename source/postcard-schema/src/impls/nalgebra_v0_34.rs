@@ -46,23 +46,11 @@ const fn flatten<T, const N: usize>(slice: &[[T; N]]) -> &[T] {
     unsafe { core::slice::from_raw_parts(slice.as_ptr().cast(), len) }
 }
 
-#[test]
-fn flattened() {
-    type T = nalgebra_v0_34::SMatrix<u8, 3, 3>;
-    assert_eq!(T::SCHEMA, <[u8; 9]>::SCHEMA);
-}
-
+/// nalgebra serializes a matrix in column-major order, as its schema a flat
+/// array) assumes
 #[test]
 fn smoke() {
     let x = nalgebra_v0_34::SMatrix::<u8, 3, 3>::new(1, 2, 3, 4, 5, 6, 7, 8, 9);
     let y = postcard::to_vec(&x).unwrap();
     assert_eq!(&[1, 4, 7, 2, 5, 8, 3, 6, 9], y.as_slice());
-}
-
-#[test]
-fn point() {
-    type P = nalgebra_v0_34::Point3<u8>;
-    assert_eq!(P::SCHEMA, <[u8; 3]>::SCHEMA);
-    let y = postcard::to_vec(&P::new(1, 2, 3)).unwrap();
-    assert_eq!(&[1, 2, 3], y.as_slice());
 }

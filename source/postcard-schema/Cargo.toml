@@ -86,14 +86,27 @@ path = "../postcard-derive"
 version = "0.4.0"
 optional = true
 
-[dependencies.defmt_v0_3]
-package = "defmt"
-version = "0.3.5"
+[dependencies.defmt]
+version = "1"
 optional = true
 
 [dependencies.serde-big-array_v0_5]
 package = "serde-big-array"
 version = "0.5.1"
+optional = true
+
+[dependencies.postcard-schema_v0_2]
+package = "postcard-schema"
+version = "0.2.6"
+default-features = false
+features = ["alloc"]
+optional = true
+
+[dependencies.postcard-schema-ng_v0_4]
+package = "postcard-schema-ng"
+version = "0.4.1"
+default-features = false
+features = ["alloc"]
 optional = true
 
 [dependencies.enum-map_v3_0]
@@ -131,6 +144,63 @@ version = "0.4"
 default-features = false
 features = ["serde", "clock"]
 
+[dev-dependencies.heapless_v0_7]
+package = "heapless"
+version = "0.7"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.heapless_v0_8]
+package = "heapless"
+version = "0.8"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.heapless_v0_9]
+package = "heapless"
+version = "0.9.4"
+default-features = false
+features = ["serde"]
+
+[dev-dependencies.fixed_v1_0]
+package = "fixed"
+version = "1.0"
+default-features = false
+features = ["serde"]
+
+# The crates that version 2 keys must match, for tests/key_v2.rs
+[dev-dependencies.postcard-schema_v0_2]
+package = "postcard-schema"
+version = "0.2.6"
+features = [
+    "derive",
+    "use-std",
+    "core-net",
+    "core-num-saturating",
+    "chrono-v0_4",
+    "fixed-v1_0",
+    "heapless-v0_8",
+    "nalgebra-v0_33",
+    "serde-big-array-v0_5",
+    "uuid-v1_0",
+]
+
+[dev-dependencies.postcard-schema-ng_v0_4]
+package = "postcard-schema-ng"
+version = "0.4.1"
+features = [
+    "derive",
+    "use-std",
+    "core-net",
+    "core-num-saturating",
+    "chrono-v0_4",
+    "fixed-v1_0",
+    "heapless-v0_8",
+    "nalgebra-v0_33",
+    "serde-big-array-v0_5",
+    "uuid-v1_0",
+]
+
 [[test]]
 name = "schema"
 required-features = ["derive", "std"]
@@ -140,12 +210,15 @@ default = []
 std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["dep:postcard-derive"]
-
-core-net = []
-core-num-saturating = []
+# version 2 key hashing, for peers that still use it
+key-v2 = []
+# postcard-schema 0.2's owned schema types, to read schemas from older devices
+postcard-schema-v0_2 = ["std", "dep:postcard-schema_v0_2"]
+# postcard-schema-ng 0.4's owned schema types, to read schemas from older devices
+postcard-schema-ng-v0_4 = ["std", "dep:postcard-schema-ng_v0_4"]
 
 chrono-v0_4 = ["dep:chrono_v0_4"]
-defmt-v0_3 = ["dep:defmt_v0_3"]
+defmt-v1 = ["dep:defmt"]
 # requires msrv 1.95
 enum-map-v3_0 = ["dep:enum-map_v3_0"]
 fixed-v1_0 = ["dep:fixed_v1_0"]
@@ -156,3 +229,15 @@ nalgebra-v0_33 = ["dep:nalgebra_v0_33"]
 nalgebra-v0_34 = ["dep:nalgebra_v0_34"]
 serde-big-array-v0_5 = ["dep:serde-big-array_v0_5"]
 uuid-v1_0 = ["dep:uuid_v1_0"]
+
+[[test]]
+name = "verify"
+required-features = ["derive", "std"]
+
+[[test]]
+name = "verify_impls"
+required-features = ["derive", "std"]
+
+[[test]]
+name = "key_v2"
+required-features = ["derive", "std", "key-v2"]

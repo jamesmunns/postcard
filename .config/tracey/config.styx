@@ -32,4 +32,23 @@ specs (
       }
     )
   }
+  {
+    name postcard-schema
+    include (
+      spec/tracey/schema/01-intro.md
+      spec/tracey/schema/02-keys.md
+      spec/tracey/schema/99-glossary.md
+    )
+    impls (
+      {
+        name postcard-schema
+        include (
+          source/postcard-schema/src/key/hash.rs
+        )
+        test_include (
+          source/postcard-schema/src/key/hash/tests.rs
+        )
+      }
+    )
+  }
 )

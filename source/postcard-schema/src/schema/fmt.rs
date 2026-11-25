@@ -18,7 +18,7 @@ use alloc::{format, string::String, vec::Vec};
 ///
 /// Use `top_level = true` when this is a standalone type, and `top_level = false`
 /// when this type is contained within another type
-pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_level: bool) {
+pub(crate) fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_level: bool) {
     let fmt_data = |data: &OwnedData, buf: &mut String| match data {
         OwnedData::Unit => {}
         OwnedData::Newtype(inner) => {
@@ -68,8 +68,6 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
         OwnedDataModelType::U32 => *buf += "u32",
         OwnedDataModelType::U64 => *buf += "u64",
         OwnedDataModelType::U128 => *buf += "u128",
-        OwnedDataModelType::Usize => *buf += "usize",
-        OwnedDataModelType::Isize => *buf += "isize",
         OwnedDataModelType::F32 => *buf += "f32",
         OwnedDataModelType::F64 => *buf += "f64",
         OwnedDataModelType::Char => *buf += "char",
@@ -177,7 +175,7 @@ pub fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, top_leve
 
 /// Collect unique types mentioned by this [`OwnedDataModelType`]
 #[cfg(feature = "std")]
-pub fn discover_tys(
+pub(crate) fn discover_tys(
     ty: &OwnedDataModelType,
     set: &mut std::collections::HashSet<OwnedDataModelType>,
 ) {
@@ -209,8 +207,6 @@ pub fn discover_tys(
         OwnedDataModelType::U32 => {}
         OwnedDataModelType::U64 => {}
         OwnedDataModelType::U128 => {}
-        OwnedDataModelType::Usize => {}
-        OwnedDataModelType::Isize => {}
         OwnedDataModelType::F32 => {}
         OwnedDataModelType::F64 => {}
         OwnedDataModelType::Char => {}

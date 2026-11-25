@@ -3,10 +3,10 @@ use std::{convert::Infallible, fmt::Display, num::TryFromIntError, ops::Deref};
 use postcard_core::ser::{
     try_push_bool, try_push_bytes, try_push_char, try_push_discriminant, try_push_f32,
     try_push_f64, try_push_i128, try_push_i16, try_push_i32, try_push_i64, try_push_i8,
-    try_push_isize, try_push_length, try_push_option_none, try_push_option_some, try_push_str,
-    try_push_u128, try_push_u16, try_push_u32, try_push_u64, try_push_u8, try_push_usize,
+    try_push_length, try_push_option_none, try_push_option_some, try_push_str, try_push_u128,
+    try_push_u16, try_push_u32, try_push_u64, try_push_u8,
 };
-use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
+use postcard_schema::schema::{OwnedData, OwnedDataModelType};
 use serde_json::Value;
 
 /// The error returned when encoding a message.
@@ -166,16 +166,6 @@ fn ser_named_type(
         OwnedDataModelType::U128 => {
             let val = value.as_u64().right()?;
             infallible(try_push_u128(out, u128::from(val)));
-        }
-        OwnedDataModelType::Usize => {
-            let val = value.as_u64().right()?;
-            let val = usize::try_from(val)?;
-            infallible(try_push_usize(out, val));
-        }
-        OwnedDataModelType::Isize => {
-            let val = value.as_i64().right()?;
-            let val = isize::try_from(val)?;
-            infallible(try_push_isize(out, val));
         }
         OwnedDataModelType::F32 => {
             let val = value.as_f64().right()?;
