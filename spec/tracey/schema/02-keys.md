@@ -395,11 +395,11 @@ by their implementations:
 
 [content addressing]: https://en.wikipedia.org/wiki/Content-addressable_storage
 [Schemas]: #the-postcard-schema-specification--schemas
-[postcard type]: https://postcard.rs/1.1/postcard/postcard/spec.html#glossary--type
-[Postcard Wire Specification]: https://postcard.rs/1.1/postcard/postcard/spec.html
-[Serde binding]: https://postcard.rs/1.1/postcard/postcard/spec.html#the-serde-binding
+[postcard type]: https://postcard.rs/wire/1.1/spec.html#glossary--type
+[Postcard Wire Specification]: https://postcard.rs/wire/1.1/spec.html
+[Serde binding]: https://postcard.rs/wire/1.1/spec.html#the-serde-binding
 [What Changes a Key]: #keys--how-keys-work--what-changes-a-key
-[Wire Compatibility]: https://postcard.rs/1.1/postcard/postcard/spec.html#implementation-considerations--interoperability--schema-evolution--wire-compatibility
+[Wire Compatibility]: https://postcard.rs/wire/1.1/spec.html#implementation-considerations--interoperability--schema-evolution--wire-compatibility
 [items]: #glossary--item
 [options]: #glossary--options
 [key input]: #glossary--key-input
