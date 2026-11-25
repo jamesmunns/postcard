@@ -40,21 +40,22 @@ pub fn take_from_bytes_cobs<'a, T>(s: &'a mut [u8]) -> Result<(T, &'a mut [u8])>
 where
     T: Deserialize<'a>,
 {
-    let mut report = decode_in_place_report(s).map_err(|_| Error::DeserializeBadEncoding)?;
+    let report = decode_in_place_report(s).map_err(|_| Error::DeserializeBadEncoding)?;
+    let mut src_used = report.parsed_size();
 
     // The report does not include terminator bytes. If there is one in the
     // buffer right AFTER the message, also include it.
-    if s.get(report.src_used) == Some(&0) {
-        report.src_used += 1;
+    if s.get(src_used) == Some(&0) {
+        src_used += 1;
     }
 
     // First split off the amount used for the "destination", which includes our now
     // decoded message to deserialize
-    let (dst_used, dst_unused) = s.split_at_mut(report.dst_used);
+    let (dst_used, dst_unused) = s.split_at_mut(report.frame_size());
 
     // Then create a slice that includes the unused bytes, but DON'T include the
     // excess bytes that were "shrunk" away from the original message
-    let (_unused, src_unused) = dst_unused.split_at_mut(report.src_used - report.dst_used);
+    let (_unused, src_unused) = dst_unused.split_at_mut(src_used - report.frame_size());
     Ok((from_bytes::<T>(dst_used)?, src_unused))
 }
 
