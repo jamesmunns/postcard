@@ -219,10 +219,7 @@ impl<'de: 'a, 'a, const N: usize> Deserialize<'de> for MaxLenByteSlice<'a, N> {
 }
 
 impl<'a, const N: usize> Schema for MaxLenByteSlice<'a, N> {
-    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-        element: &DataModelType::U8,
-        max_len: Some(N),
-    };
+    const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: Some(N) };
 }
 
 #[cfg(feature = "std")]
@@ -467,10 +464,7 @@ pub(crate) mod std {
     }
 
     impl<const N: usize> Schema for MaxLenBytes<N> {
-        const SCHEMA: &'static DataModelType = &DataModelType::Seq {
-            element: &DataModelType::U8,
-            max_len: Some(N),
-        };
+        const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: Some(N) };
     }
 
     #[cfg(test)]
@@ -482,6 +476,7 @@ pub(crate) mod std {
         #[test]
         fn bounded_str() {
             use super::*;
+            // N bytes, plus a varint length: 1 byte up to 127, 2 bytes from 128
             assert_eq!(MaxLenString::<8>::SCHEMA.max_size(), Some(9));
             assert_eq!(MaxLenString::<127>::SCHEMA.max_size(), Some(128));
             assert_eq!(MaxLenString::<128>::SCHEMA.max_size(), Some(130));
@@ -510,6 +505,7 @@ pub(crate) mod std {
         #[test]
         fn bounded_bytes() {
             use super::*;
+            // N bytes, plus a varint length: 1 byte up to 127, 2 bytes from 128
             assert_eq!(MaxLenBytes::<8>::SCHEMA.max_size(), Some(9));
             assert_eq!(MaxLenBytes::<127>::SCHEMA.max_size(), Some(128));
             assert_eq!(MaxLenBytes::<128>::SCHEMA.max_size(), Some(130));
@@ -532,10 +528,7 @@ pub(crate) mod std {
 
             assert_eq!(
                 <MaxLenBytes<5>>::SCHEMA,
-                &DataModelType::Seq {
-                    element: &DataModelType::U8,
-                    max_len: Some(5),
-                }
+                &DataModelType::ByteArray { max_len: Some(5) }
             );
             assert_eq!(<MaxLenBytes<5>>::SCHEMA, <MaxLenByteSlice<'_, 5>>::SCHEMA);
         }
@@ -549,6 +542,7 @@ mod test {
     #[test]
     fn bounded_str() {
         use super::*;
+        // N bytes, plus a varint length: 1 byte up to 127, 2 bytes from 128
         assert_eq!(MaxLenStr::<8>::SCHEMA.max_size(), Some(9));
         assert_eq!(MaxLenStr::<127>::SCHEMA.max_size(), Some(128));
         assert_eq!(MaxLenStr::<128>::SCHEMA.max_size(), Some(130));
@@ -574,6 +568,7 @@ mod test {
     #[test]
     fn bounded_bytes() {
         use super::*;
+        // N bytes, plus a varint length: 1 byte up to 127, 2 bytes from 128
         assert_eq!(MaxLenByteSlice::<8>::SCHEMA.max_size(), Some(9));
         assert_eq!(MaxLenByteSlice::<127>::SCHEMA.max_size(), Some(128));
         assert_eq!(MaxLenByteSlice::<128>::SCHEMA.max_size(), Some(130));
@@ -594,10 +589,7 @@ mod test {
 
         assert_eq!(
             <MaxLenByteSlice<'_, 5>>::SCHEMA,
-            &DataModelType::Seq {
-                element: &DataModelType::U8,
-                max_len: Some(5),
-            }
+            &DataModelType::ByteArray { max_len: Some(5) }
         );
     }
 }

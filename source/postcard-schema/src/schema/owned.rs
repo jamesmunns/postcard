@@ -82,16 +82,10 @@ pub enum OwnedDataModelType {
     /// A variably encoded u128
     U128,
 
-    /// A variably encoded usize
-    Usize,
-
-    /// A variably encoded isize
-    Isize,
-
     /// The `f32` Serde Data Model Type
     F32,
 
-    /// The `f64 Serde Data Model Type
+    /// The `f64` Serde Data Model Type
     F64,
 
     /// The `char` Serde Data Model Type
@@ -117,7 +111,7 @@ pub enum OwnedDataModelType {
 
     /// The "Sequence" Serde Data Model Type
     Seq {
-        /// Items in the sequence
+        /// Element type of the sequence
         element: Box<Self>,
         /// Maximum length of the sequence
         max_len: Option<usize>,
@@ -146,7 +140,7 @@ pub enum OwnedDataModelType {
 
     /// The "Enum" Serde Data Model Type (which contains any of the "Variant" types)
     Enum {
-        /// The name of this struct
+        /// The name of this enum
         name: Box<str>,
         /// The variants contained in this enum
         variants: Box<[OwnedVariant]>,
@@ -188,8 +182,6 @@ impl From<&DataModelType> for OwnedDataModelType {
             DataModelType::U32 => Self::U32,
             DataModelType::U64 => Self::U64,
             DataModelType::U128 => Self::U128,
-            DataModelType::Usize => Self::Usize,
-            DataModelType::Isize => Self::Isize,
             DataModelType::F32 => Self::F32,
             DataModelType::F64 => Self::F64,
             DataModelType::Char => Self::Char,
@@ -285,9 +277,9 @@ impl From<&Data> for OwnedData {
 /// The owned version of [`NamedField`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct OwnedNamedField {
-    /// The name of this value
+    /// The name of this field
     pub name: Box<str>,
-    /// The type of this value
+    /// The type of this field
     pub ty: OwnedDataModelType,
 }
 

@@ -6,11 +6,10 @@ use std::{
 use postcard_core::de::{
     flavors::Slice, try_take_bool, try_take_bytes, try_take_char, try_take_discriminant,
     try_take_f32, try_take_f64, try_take_i128, try_take_i16, try_take_i32, try_take_i64,
-    try_take_i8, try_take_isize, try_take_length, try_take_option_discrim, try_take_str,
-    try_take_u128, try_take_u16, try_take_u32, try_take_u64, try_take_u8, try_take_usize,
-    DecodeError, Flavor, UnexpectedEnd,
+    try_take_i8, try_take_length, try_take_option_discrim, try_take_str, try_take_u128,
+    try_take_u16, try_take_u32, try_take_u64, try_take_u8, DecodeError, Flavor, UnexpectedEnd,
 };
-use postcard_schema::schema::owned::{OwnedData, OwnedDataModelType};
+use postcard_schema::schema::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
 
 /// The error returned when decoding a message.
@@ -195,8 +194,6 @@ fn deserialize_inner(
             let val = u64::try_from(val).map_err(|_| Error::ShouldSupportButDont)?;
             Value::Number(Number::from(val))
         }
-        OwnedDataModelType::Usize => Value::Number(Number::from(try_take_usize(f).dec()?)),
-        OwnedDataModelType::Isize => Value::Number(Number::from(try_take_isize(f).dec()?)),
         OwnedDataModelType::F32 => {
             let val = try_take_f32(f).dec()?;
             Value::Number(Number::from_f64(val.into()).right()?)
@@ -515,7 +512,7 @@ mod test {
 
     #[test]
     fn schema_is_unsupported() {
-        use postcard_schema::schema::owned::OwnedDataModelType;
+        use postcard_schema::schema::OwnedDataModelType;
 
         let res = from_slice_dyn(&OwnedDataModelType::Schema, &[]);
         assert_eq!(res, Err(Error::Unsupported));
@@ -594,7 +591,7 @@ mod test {
     #[test]
     fn max_depth() {
         use crate::{to_stdvec_dyn_with_config, SerializeConfig};
-        use postcard_schema::schema::owned::{
+        use postcard_schema::schema::{
             OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant,
         };
 

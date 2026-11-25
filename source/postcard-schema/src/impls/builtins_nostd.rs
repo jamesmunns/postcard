@@ -10,8 +10,8 @@ use core::{
     fmt::Arguments,
     marker::PhantomData,
     num::{
-        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroU128, NonZeroU16,
-        NonZeroU32, NonZeroU64, NonZeroU8,
+        NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize, NonZeroU128,
+        NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
     },
     ops::{Range, RangeFrom, RangeInclusive, RangeTo},
     time::Duration,
@@ -51,6 +51,13 @@ impl_schema![
     NonZeroI64: DataModelType::I64, NonZeroI128: DataModelType::I128,
     NonZeroU16: DataModelType::U16, NonZeroU32: DataModelType::U32,
     NonZeroU64: DataModelType::U64, NonZeroU128: DataModelType::U128
+];
+
+// serde has no `usize` or `isize`: their `Serialize` impls call `serialize_u64`
+// and `serialize_i64`, so we use that for their schema impls
+impl_schema![
+    usize: DataModelType::U64, NonZeroUsize: DataModelType::U64,
+    isize: DataModelType::I64, NonZeroIsize: DataModelType::I64
 ];
 
 impl_schema!(tuple => [

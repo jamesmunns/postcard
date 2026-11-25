@@ -8,34 +8,31 @@
 //! be treated as misuse **resistant**, not misuse **proof**. It is possible
 //! for there to be hash collisions, and as a non-cryptographic hash, it is
 //! likely trivial to intentionally cause a collision.
+//!
+//! A [`Key`] is computed from [`Options`] and an ordered list of [`Item`]s.
+//! The application chooses both, and both sides of a connection need to choose
+//! the same ones. The Keys chapter of the postcard-schema specification defines
+//! everything else, including what changes a key.
 
 use serde::{Deserialize, Serialize};
 
 use crate::{schema::DataModelType, Schema};
 
-pub mod hash;
+mod hash;
 
-// TODO: https://github.com/knurling-rs/defmt/issues/928
-#[cfg(feature = "defmt-v0_3")]
-use defmt_v0_3 as defmt;
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use hash::owned::OwnedItem;
+pub use hash::{Item, Options};
 
 /// The `Key` uniquely identifies what "kind" of message this is.
 ///
-/// In order to generate it, `postcard-schema` takes two pieces of data:
+/// Created with [`Key::new`], or [`Key::new_owned`] for owned schemas.
 ///
-/// * a `&str` "path" URI, similar to how you would use URIs as part of an HTTP path
-/// * The schema of the message type itself, using the [`Schema`] trait
-///
-/// [`Schema`]: crate::Schema
-///
-/// Specifically, we use [`Fnv1a`](https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function),
-/// and produce a 64-bit digest, by first hashing the path, then hashing the
-/// schema. Fnv1a is a non-cryptographic hash function, designed to be reasonably
-/// efficient to compute even on small platforms like microcontrollers.
-///
-/// Changing **anything** about *either* of the path or the schema will produce
-/// a drastically different `Key` value.
-#[cfg_attr(feature = "defmt-v0_3", derive(defmt_v0_3::Format))]
+/// A change to a schema changes its key only if it changes the schema's
+/// postcard type, or a name or maximum length that the [`Options`] include. A
+/// newtype struct and its field, for example, have the same key, and the names
+/// of types are never part of a key.
+#[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize, Hash)]
 pub struct Key([u8; 8]);
 
@@ -46,23 +43,27 @@ impl Schema for Key {
     };
 }
 
+/// Formats the bytes as lowercase hex, in order, as in `Key(94a18b70c2aa4b3f)`.
 impl core::fmt::Debug for Key {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("Key(")?;
-        for b in self.0.iter() {
-            f.write_fmt(format_args!("{b} "))?;
+        write!(f, "Key({self})")
+    }
+}
+
+/// Formats the bytes as lowercase hex, in order, as in `94a18b70c2aa4b3f`.
+impl core::fmt::Display for Key {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for b in self.0 {
+            write!(f, "{b:02x}")?;
         }
-        f.write_str(")")
+        Ok(())
     }
 }
 
 impl Key {
-    /// Create a Key for the given type and path
-    pub const fn for_path<T>(path: &str) -> Self
-    where
-        T: Schema + ?Sized,
-    {
-        Key(hash::fnv1a64::hash_ty_path::<T>(path))
+    /// The key of `items`, with `options`
+    pub const fn new(options: &Options, items: &[Item<'_>]) -> Self {
+        Key(hash::hasher(options, items))
     }
 
     /// Create a key from a given 8-byte value
@@ -95,14 +96,16 @@ impl Key {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 mod key_owned {
     use super::*;
-    use crate::schema::owned::OwnedDataModelType;
     impl Key {
-        /// Calculate the Key for the given path and [`OwnedDataModelType`]
-        pub fn for_owned_schema_path(path: &str, nt: &OwnedDataModelType) -> Key {
-            Key(hash::fnv1a64_owned::hash_ty_path_owned(path, nt))
+        /// The key of `items`, with `options`, for owned schemas
+        ///
+        /// This gives the same key as [`Key::new`] for the equivalent borrowed
+        /// items.
+        pub const fn new_owned(options: &Options, items: &[OwnedItem<'_>]) -> Self {
+            Key(hash::owned::hasher(options, items))
         }
     }
 }
@@ -130,5 +133,12 @@ mod test {
         let new = <Key as Schema>::SCHEMA;
 
         assert_eq!(old, new);
+    }
+
+    #[test]
+    fn formatting() {
+        let key = Key::from_bytes([0x94, 0xa1, 0x8b, 0x70, 0xc2, 0xaa, 0x4b, 0x03]);
+        assert_eq!(format!("{key}"), "94a18b70c2aa4b03");
+        assert_eq!(format!("{key:?}"), "Key(94a18b70c2aa4b03)");
     }
 }
