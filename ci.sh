@@ -53,13 +53,13 @@ for manifest in source/*/Cargo.toml; do
   pkg=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -n 1)
   ensure_toolchain "$msrv"
   rustup target add --toolchain "$msrv" thumbv7em-none-eabi
-  cargo +"$msrv" check -p "$pkg" --all-targets
-  cargo +"$msrv" test -p "$pkg"
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi
+  cargo +"$msrv" check --manifest-path "$manifest" --all-targets
+  cargo +"$msrv" test --manifest-path "$manifest"
+  cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi
   [ "$pkg" = "postcard-core" ] || continue
-  cargo +"$msrv" check -p "$pkg" --all-targets --all-features
-  cargo +"$msrv" test -p "$pkg" --all-features
-  cargo +"$msrv" check -p "$pkg" --target=thumbv7em-none-eabi --all-features
+  cargo +"$msrv" check --manifest-path "$manifest" --all-targets --all-features
+  cargo +"$msrv" test --manifest-path "$manifest" --all-features
+  cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi --all-features
 done
 
 cargo fmt --all -- --check

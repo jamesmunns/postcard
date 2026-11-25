@@ -51,13 +51,16 @@
 //!
 //! # Features
 //!
-//! | Feature            | Enables                                                                         |
-//! |---                 |---                                                                              |
-//! | `derive`           | `#[derive(Schema)]`                                                             |
-//! | `alloc`            | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types           |
-//! | `std`              | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types |
-//! | `defmt-v1`         | `defmt::Format` for [`Key`](key::Key)                                           |
-//! | `chrono-v0_4`, ... | `Schema` for that version of that crate's types (see `Cargo.toml`)              |
+//! | Feature                   | Enables                                                                           |
+//! |---                        |---                                                                                |
+//! | `derive`                  | `#[derive(Schema)]`                                                               |
+//! | `alloc`                   | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types             |
+//! | `std`                     | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types   |
+//! | `defmt-v1`                | `defmt::Format` for [`Key`](key::Key)                                             |
+//! | `key-v2`                  | version 2 keys, [`Key::new_v2`](key::Key::new_v2), for peers that still use them  |
+//! | `postcard-schema-v0_2`    | [`legacy::v0_2`], to read the schemas that postcard-schema 0.2 devices send       |
+//! | `postcard-schema-ng-v0_4` | [`legacy::ng_v0_4`], to read the schemas that postcard-schema-ng 0.4 devices send |
+//! | `chrono-v0_4`, ...        | `Schema` for that version of that crate's types (see `Cargo.toml`)                |
 //!
 //! [postcard]: https://docs.rs/postcard
 //! [postcard-schema specification]: https://github.com/jamesmunns/postcard/tree/main/spec/tracey/schema
@@ -65,6 +68,12 @@
 
 mod impls;
 pub mod key;
+#[cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4"))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4")))
+)]
+pub mod legacy;
 pub mod schema;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod verify;

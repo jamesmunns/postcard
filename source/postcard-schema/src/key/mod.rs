@@ -19,6 +19,9 @@ use serde::{Deserialize, Serialize};
 use crate::{schema::DataModelType, Schema};
 
 mod hash;
+#[cfg(feature = "key-v2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "key-v2")))]
+pub mod v2;
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub use hash::owned::OwnedItem;
@@ -66,6 +69,14 @@ impl Key {
         Key(hash::hasher(options, items))
     }
 
+    /// The version 2 key of `items`, with `options`, as computed by `flavor`,
+    /// for talking to peers that still use version 2 (see [`v2`])
+    #[cfg(feature = "key-v2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "key-v2")))]
+    pub const fn new_v2(flavor: v2::Flavor, options: &Options, items: &[Item<'_>]) -> Self {
+        Key(v2::hasher(flavor, options, items))
+    }
+
     /// Create a key from a given 8-byte value
     ///
     /// NOTE: Since [`Key`]s should never be used to replace full type safety,
@@ -106,6 +117,18 @@ mod key_owned {
         /// items.
         pub const fn new_owned(options: &Options, items: &[OwnedItem<'_>]) -> Self {
             Key(hash::owned::hasher(options, items))
+        }
+
+        /// The version 2 key of `items`, with `options`, for owned schemas
+        /// (see [`v2`])
+        #[cfg(feature = "key-v2")]
+        #[cfg_attr(docsrs, doc(cfg(feature = "key-v2")))]
+        pub const fn new_owned_v2(
+            flavor: v2::Flavor,
+            options: &Options,
+            items: &[OwnedItem<'_>],
+        ) -> Self {
+            Key(v2::owned::hasher(flavor, options, items))
         }
     }
 }
