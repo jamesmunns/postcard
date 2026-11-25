@@ -2,8 +2,9 @@
 
 ## Version and Stability
 
-This document is a draft of the Postcard Schema Specification, which describes
-how the `postcard-schema` crate identifies schemas. It is not yet stable.
+This document is a draft of version 0.1 of the Postcard Schema Specification,
+which describes how the `postcard-schema` crate identifies schemas. It is not
+yet stable.
 
 It builds on the [Postcard Wire Specification], which defines how messages are
 encoded. This specification does not change the wire format.
@@ -83,7 +84,7 @@ the [CC-BY-SA 4.0 license]. The full license text is in
 `spec/tracey/LICENSE-CC-BY-SA` in the [postcard repository].
 
 [Keys]: #keys
-[Postcard Wire Specification]: https://postcard.rs/1.1/postcard/postcard/spec.html
+[Postcard Wire Specification]: https://postcard.rs/wire/1.1/spec.html
 [Serde Data Model]: https://serde.rs/data-model.html
 [FNV]: https://datatracker.ietf.org/doc/draft-eastlake-fnv/
 [MurmurHash3]: https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp

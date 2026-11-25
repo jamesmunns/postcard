@@ -18,7 +18,7 @@ layers, and clarifies and codifies behavior that was potentially unclear in
 version 1.0 of the specification.
 
 Version 1.0 of this specification remains available as an archive at
-<https://postcard.rs/1.0/>.
+<https://postcard.rs/wire/1.0/>.
 
 The postcard crate versions 1.x.y and postcard 2.x.y all implement the wire
 format described by the 1.x specifications, and will each produce the same

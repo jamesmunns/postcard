@@ -63,8 +63,7 @@
 //! | `chrono-v0_4`, ...        | `Schema` for that version of that crate's types (see `Cargo.toml`)                |
 //!
 //! [postcard]: https://docs.rs/postcard
-//! [postcard-schema specification]: https://github.com/jamesmunns/postcard/tree/main/spec/tracey/schema
-// TODO: point the spec link at its postcard.rs URL once it is published.
+//! [postcard-schema specification]: https://postcard.rs/schema/0.1/
 
 mod impls;
 pub mod key;
