@@ -148,6 +148,14 @@ pub fn varint_u128(n: u128, out: &mut [u8; varint_max::<u128>()]) -> &mut [u8] {
     encode_varint(n, out)
 }
 
+/// Returns the number of bytes it takes to encode the given `val` using a postcard varint
+pub fn bytes_to_encode(val: impl Into<u128>) -> usize {
+    let val: u128 = val.into();
+    let mut buf = [0; varint_max::<u128>()];
+
+    varint_u128(val, &mut buf).len()
+}
+
 /// Convert an `i16` into its zig-zag encoded `u16` counterpart
 // postcard[impl atom.varint.encoding.zigzag]
 #[inline]
@@ -202,4 +210,44 @@ pub fn de_zig_zag_i64(n: u64) -> i64 {
 #[inline]
 pub fn de_zig_zag_i128(n: u128) -> i128 {
     ((n >> 1) as i128) ^ (-((n & 0b1) as i128))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::varint::bytes_to_encode;
+
+    #[test]
+    fn encode_size_1() {
+        assert_eq!(bytes_to_encode(1_u32), 1)
+    }
+
+    #[test]
+    fn encode_size_127() {
+        assert_eq!(bytes_to_encode(127_u32), 1)
+    }
+
+    #[test]
+    fn encode_size_128() {
+        assert_eq!(bytes_to_encode(128_u32), 2)
+    }
+
+    #[test]
+    fn encode_size_16383() {
+        assert_eq!(bytes_to_encode(16383_u32), 2)
+    }
+
+    #[test]
+    fn encode_size_16384() {
+        assert_eq!(bytes_to_encode(16384_u32), 3)
+    }
+
+    #[test]
+    fn encode_size_65535() {
+        assert_eq!(bytes_to_encode(65_535_u32), 3)
+    }
+
+    #[test]
+    fn encode_size_65536() {
+        assert_eq!(bytes_to_encode(65_536_u32), 3)
+    }
 }

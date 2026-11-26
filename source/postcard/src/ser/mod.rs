@@ -79,16 +79,29 @@ where
 /// use postcard::to_extend;
 /// let mut vec = Vec::new();
 ///
-/// let ser = to_extend(&true, vec).unwrap();
-/// let vec = to_extend("Hi!", ser).unwrap();
+/// to_extend(&true, &mut vec).unwrap();
+/// to_extend("Hi!", &mut vec).unwrap();
 /// assert_eq!(&vec[0..5], &[0x01, 0x03, b'H', b'i', b'!']);
 /// ```
-pub fn to_extend<T, W>(value: &T, writer: W) -> Result<W, SerializerError<Infallible, Infallible>>
+pub fn to_extend<T, W>(
+    value: &T,
+    writer: &mut W,
+) -> Result<(), SerializerError<Infallible, Infallible>>
 where
     T: Serialize + ?Sized,
     W: core::iter::Extend<u8>,
 {
-    serialize_with_flavor::<T, _>(value, flavors::ExtendFlavor::new(writer))
+    serialize_with_flavor::<T, _>(value, flavors::ExtendFlavor::new(ExtendRef(writer)))?;
+    Ok(())
+}
+
+struct ExtendRef<'a, W>(&'a mut W);
+
+impl<W: core::iter::Extend<u8>> core::iter::Extend<u8> for ExtendRef<'_, W> {
+    #[inline(always)]
+    fn extend<I: IntoIterator<Item = u8>>(&mut self, iter: I) {
+        self.0.extend(iter);
+    }
 }
 
 /// `serialize_with_flavor()` has two generic parameters, `T, S`:

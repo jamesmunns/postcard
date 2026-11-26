@@ -13,6 +13,10 @@ pub mod builtins_alloc;
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod builtins_std;
 
+#[cfg(feature = "bytes-v1_0")]
+#[cfg_attr(docsrs, doc(cfg(feature = "bytes-v1_0")))]
+pub mod bytes_v1_0;
+
 #[cfg(feature = "chrono-v0_4")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono-v0_4")))]
 pub mod chrono_v0_4;
@@ -37,6 +41,14 @@ pub mod heapless_v0_8;
 #[cfg_attr(docsrs, doc(cfg(feature = "heapless-v0_9")))]
 pub mod heapless_v0_9;
 
+#[cfg(feature = "indexmap-v2_0")]
+#[cfg_attr(docsrs, doc(cfg(feature = "indexmap-v2_0")))]
+pub mod indexmap_v2_0;
+
+#[cfg(feature = "log-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-v0_4")))]
+pub mod log_v0_4;
+
 #[cfg(feature = "nalgebra-v0_33")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;
@@ -45,9 +57,21 @@ pub mod nalgebra_v0_33;
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 pub mod nalgebra_v0_34;
 
+#[cfg(feature = "num-complex-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "num-complex-v0_4")))]
+pub mod num_complex_v0_4;
+
 #[cfg(feature = "serde-big-array-v0_5")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde-big-array-v0_5")))]
 pub mod serde_big_array_v0_5;
+
+#[cfg(feature = "uom-v0_37")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uom-v0_37")))]
+pub mod uom_v0_37;
+
+#[cfg(feature = "uom-v0_38")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uom-v0_38")))]
+pub mod uom_v0_38;
 
 #[cfg(feature = "uuid-v1_0")]
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid-v1_0")))]

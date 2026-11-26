@@ -17,10 +17,12 @@ use postcard_schema::{
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     marker::PhantomData,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     path::PathBuf,
+    rc::Rc,
+    sync::Arc,
     time::Duration,
 };
 
@@ -150,7 +152,10 @@ fn std_types() {
     r.check("BTreeMap", BTreeMap::from([(1u8, 2u32), (3, 4)]));
     r.check("HashSet", HashSet::from([1u8]));
     r.check("BTreeSet", BTreeSet::from([1u8, 2]));
+    r.check_all("VecDeque", &[VecDeque::from([1u16, 2, 3]), VecDeque::new()]);
     r.check("Box", Box::new(5u8));
+    r.check("Rc", Rc::new(5u8));
+    r.check("Arc", Arc::new(5u8));
     r.check("Cow<str>", Cow::<str>::Owned("a".into()));
     r.finish();
 }
@@ -190,6 +195,8 @@ fn feature_types() {
     #[allow(unused_mut)]
     let mut r = Report::default();
 
+    #[cfg(feature = "bytes-v1_0")]
+    r.check("Bytes", bytes_v1_0::Bytes::from(vec![1, 2, 3, 4]));
     #[cfg(feature = "chrono-v0_4")]
     {
         use chrono_v0_4::{DateTime, Utc};
@@ -238,6 +245,41 @@ fn feature_types() {
         "heapless 0.9 String",
         heapless_v0_9::String::<4>::try_from("hi").unwrap(),
     );
+    #[cfg(feature = "indexmap-v2_0")]
+    r.check(
+        "IndexMap",
+        indexmap_v2_0::IndexMap::<String, u32>::from([("a".to_string(), 2), ("b".to_string(), 3)]),
+    );
+    #[cfg(feature = "indexmap-v2_0")]
+    r.check(
+        "IndexSet",
+        indexmap_v2_0::IndexSet::<u32>::from([1, 2, 3, 4]),
+    );
+    #[cfg(feature = "log-v0_4")]
+    {
+        use log_v0_4::{Level, LevelFilter};
+        r.check_all(
+            "log Level",
+            &[
+                Level::Error,
+                Level::Warn,
+                Level::Info,
+                Level::Debug,
+                Level::Trace,
+            ],
+        );
+        r.check_all(
+            "log LevelFilter",
+            &[
+                LevelFilter::Off,
+                LevelFilter::Error,
+                LevelFilter::Warn,
+                LevelFilter::Info,
+                LevelFilter::Debug,
+                LevelFilter::Trace,
+            ],
+        );
+    }
     #[cfg(feature = "nalgebra-v0_33")]
     {
         use nalgebra_v0_33 as na;
@@ -251,6 +293,15 @@ fn feature_types() {
             "na 0.33 UnitQuaternion",
             na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
         );
+        r.check("na 0.33 Translation3", na::Translation3::new(1u8, 2, 3));
+        r.check(
+            "na 0.33 Isometry3",
+            na::Isometry3 {
+                rotation: na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
+                translation: na::Translation3::new(1.0f32, 2.0, 3.0),
+            },
+        );
+        r.check("na 0.33 Complex", na::Complex::new(1.0f32, 2.0));
     }
     #[cfg(feature = "nalgebra-v0_34")]
     {
@@ -265,12 +316,61 @@ fn feature_types() {
             "na 0.34 UnitQuaternion",
             na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
         );
+        r.check("na 0.34 Translation3", na::Translation3::new(1u8, 2, 3));
+        r.check(
+            "na 0.34 Isometry3",
+            na::Isometry3 {
+                rotation: na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
+                translation: na::Translation3::new(1.0f32, 2.0, 3.0),
+            },
+        );
+        r.check("na 0.34 Complex", na::Complex::new(1.0f32, 2.0));
     }
+    #[cfg(feature = "num-complex-v0_4")]
+    r.check("Complex", num_complex_v0_4::Complex::new(1u8, 2));
     #[cfg(feature = "serde-big-array-v0_5")]
     r.check(
         "serde_big_array Array",
         serde_big_array_v0_5::Array([7u8; 40]),
     );
+    #[cfg(feature = "uom-v0_37")]
+    {
+        use uom_v0_37::si::{acceleration::meter_per_second_squared, f32, f64, u8};
+        use uom_v0_37::si::{
+            angular_velocity::radian_per_second, thermodynamic_temperature::kelvin,
+        };
+        r.check(
+            "uom 0.37 f32 Acceleration",
+            f32::Acceleration::new::<meter_per_second_squared>(4.0),
+        );
+        r.check(
+            "uom 0.37 f64 ThermodynamicTemperature",
+            f64::ThermodynamicTemperature::new::<kelvin>(300.0),
+        );
+        r.check(
+            "uom 0.37 u8 AngularVelocity",
+            u8::AngularVelocity::new::<radian_per_second>(4),
+        );
+    }
+    #[cfg(feature = "uom-v0_38")]
+    {
+        use uom_v0_38::si::{acceleration::meter_per_second_squared, f32, f64, u8};
+        use uom_v0_38::si::{
+            angular_velocity::radian_per_second, thermodynamic_temperature::kelvin,
+        };
+        r.check(
+            "uom 0.38 f32 Acceleration",
+            f32::Acceleration::new::<meter_per_second_squared>(4.0),
+        );
+        r.check(
+            "uom 0.38 f64 ThermodynamicTemperature",
+            f64::ThermodynamicTemperature::new::<kelvin>(300.0),
+        );
+        r.check(
+            "uom 0.38 u8 AngularVelocity",
+            u8::AngularVelocity::new::<radian_per_second>(4),
+        );
+    }
     #[cfg(feature = "uuid-v1_0")]
     r.check("Uuid", uuid_v1_0::Uuid::from_u128(0x1234));
     r.finish();

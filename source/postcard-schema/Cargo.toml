@@ -81,6 +81,44 @@ version = "1.0"
 optional = true
 default-features = false
 
+[dependencies.bytes_v1_0]
+package = "bytes"
+version = "1.0"
+optional = true
+default-features = false
+
+[dependencies.indexmap_v2_0]
+package = "indexmap"
+version = "2.0"
+optional = true
+default-features = false
+
+[dependencies.log_v0_4]
+package = "log"
+version = "0.4"
+optional = true
+default-features = false
+
+[dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+optional = true
+default-features = false
+
+[dependencies.uom_v0_37]
+package = "uom"
+version = "0.37.0"
+optional = true
+default-features = false
+features = ["si", "f32", "f64"]
+
+[dependencies.uom_v0_38]
+package = "uom"
+version = "0.38.0"
+optional = true
+default-features = false
+features = ["si", "f32", "f64"]
+
 [dependencies.postcard-derive]
 path = "../postcard-derive"
 version = "0.4.0"
@@ -114,6 +152,10 @@ package = "enum-map"
 version = "3.0.0"
 default-features = false
 optional = true
+
+[dev-dependencies.serde]
+version = "1.0"
+features = ["rc"]
 
 [dev-dependencies.postcard]
 path = "../postcard"
@@ -168,6 +210,38 @@ version = "1.0"
 default-features = false
 features = ["serde"]
 
+[dev-dependencies.bytes_v1_0]
+package = "bytes"
+version = "1.0"
+features = ["serde"]
+
+[dev-dependencies.indexmap_v2_0]
+package = "indexmap"
+version = "2.0"
+features = ["serde"]
+
+[dev-dependencies.log_v0_4]
+package = "log"
+version = "0.4"
+features = ["serde"]
+
+[dev-dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+features = ["serde"]
+
+[dev-dependencies.uom_v0_37]
+package = "uom"
+version = "0.37.0"
+default-features = false
+features = ["si", "serde", "f32", "f64", "u8"]
+
+[dev-dependencies.uom_v0_38]
+package = "uom"
+version = "0.38.0"
+default-features = false
+features = ["si", "serde", "f32", "f64", "u8"]
+
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]
 package = "postcard-schema"
@@ -217,6 +291,7 @@ legacy-schema-v0_2 = ["std", "dep:postcard-schema_v0_2"]
 # postcard-schema-ng 0.4's owned schema types, to read schemas from older devices
 legacy-schema-ng-v0_4 = ["std", "dep:postcard-schema-ng_v0_4"]
 
+bytes-v1_0 = ["dep:bytes_v1_0"]
 chrono-v0_4 = ["dep:chrono_v0_4"]
 defmt-v1 = ["dep:defmt"]
 # requires msrv 1.95
@@ -225,9 +300,14 @@ fixed-v1_0 = ["dep:fixed_v1_0"]
 heapless-v0_7 = ["dep:heapless_v0_7"]
 heapless-v0_8 = ["dep:heapless_v0_8"]
 heapless-v0_9 = ["dep:heapless_v0_9"]
-nalgebra-v0_33 = ["dep:nalgebra_v0_33"]
-nalgebra-v0_34 = ["dep:nalgebra_v0_34"]
+indexmap-v2_0 = ["dep:indexmap_v2_0"]
+log-v0_4 = ["dep:log_v0_4"]
+nalgebra-v0_33 = ["dep:nalgebra_v0_33", "num-complex-v0_4"]
+nalgebra-v0_34 = ["dep:nalgebra_v0_34", "num-complex-v0_4"]
+num-complex-v0_4 = ["dep:num_complex_v0_4"]
 serde-big-array-v0_5 = ["dep:serde-big-array_v0_5"]
+uom-v0_37 = ["dep:uom_v0_37"]
+uom-v0_38 = ["dep:uom_v0_38"]
 uuid-v1_0 = ["dep:uuid_v1_0"]
 
 [[test]]
