@@ -35,11 +35,24 @@ impl<K: Schema> Schema for alloc::collections::BTreeSet<K> {
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
+impl<T: Schema> Schema for alloc::collections::VecDeque<T> {
+    const SCHEMA: &'static DataModelType = &DataModelType::Seq {
+        element: T::SCHEMA,
+        max_len: None,
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: Schema> Schema for alloc::boxed::Box<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
 impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<'_, T> {
+    const SCHEMA: &'static DataModelType = T::SCHEMA;
+}
+
+#[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
+impl<T: Schema> Schema for alloc::rc::Rc<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }

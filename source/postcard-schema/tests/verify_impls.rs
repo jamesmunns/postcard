@@ -17,10 +17,12 @@ use postcard_schema::{
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque},
     marker::PhantomData,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6},
     path::PathBuf,
+    rc::Rc,
+    sync::Arc,
     time::Duration,
 };
 
@@ -150,7 +152,10 @@ fn std_types() {
     r.check("BTreeMap", BTreeMap::from([(1u8, 2u32), (3, 4)]));
     r.check("HashSet", HashSet::from([1u8]));
     r.check("BTreeSet", BTreeSet::from([1u8, 2]));
+    r.check_all("VecDeque", &[VecDeque::from([1u16, 2, 3]), VecDeque::new()]);
     r.check("Box", Box::new(5u8));
+    r.check("Rc", Rc::new(5u8));
+    r.check("Arc", Arc::new(5u8));
     r.check("Cow<str>", Cow::<str>::Owned("a".into()));
     r.finish();
 }
