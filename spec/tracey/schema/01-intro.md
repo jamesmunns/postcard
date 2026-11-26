@@ -26,7 +26,8 @@ meanings defined in the [Postcard Wire Specification].
 ## Scope
 
 This version of the specification only covers [Keys]: the 8-byte hash of a list
-of strings and schemas, chosen by an application.
+of strings and schemas, chosen by an application; and [Schema Tables]: how
+schemas are sent.
 
 TODO: define the schema data model
 TODO: define how a schema is encoded on the wire
@@ -83,6 +84,7 @@ the [CC-BY-SA 4.0 license]. The full license text is in
 `spec/tracey/LICENSE-CC-BY-SA` in the [postcard repository].
 
 [Keys]: #keys
+[Schema Tables]: #schema-tables
 [Postcard Wire Specification]: https://postcard.rs/wire/1.1/spec.html
 [Serde Data Model]: https://serde.rs/data-model.html
 [FNV]: https://datatracker.ietf.org/doc/draft-eastlake-fnv/
