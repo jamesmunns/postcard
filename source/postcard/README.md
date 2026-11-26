@@ -17,9 +17,13 @@ allowing for flexibility to customize behavior as needed.
 
 ## Format Stability
 
-As of v1.0.0, `postcard` has a documented and stable wire format. More information about this
-wire format can be found in the `spec/` folder of the Postcard repository, or viewed online
-at <https://postcard.rs>.
+As of v1.0.0, `postcard` has a documented and stable wire format. The
+specifications are in the `spec/` folder of the Postcard repository, and
+published at <https://postcard.rs>:
+
+* [Postcard Wire Specification 1.1](https://postcard.rs/wire/1.1/), which `postcard` 2.0 implements
+* [Postcard Wire Specification 1.0](https://postcard.rs/wire/1.0/), the original specification
+* [Postcard Schema Specification 0.1](https://postcard.rs/schema/0.1/), which `postcard-schema` implements
 
 Work towards the Postcard Specification and portions of the Postcard 1.0 Release
 were sponsored by Mozilla Corporation.
@@ -29,7 +33,7 @@ were sponsored by Mozilla Corporation.
 All signed and unsigned integers larger than eight bits are encoded using a `varint`.
 This includes the length of array slices, as well as the discriminant of `enums`.
 
-For more information, see the varint requirements of the wire specification, starting at `postcard[atom.varint.encoding.continuation]`.
+For more information, see the varint requirements of the wire specification, starting at [`postcard[atom.varint.encoding.continuation]`](https://postcard.rs/wire/1.1/spec.html#atom.varint.encoding.continuation).
 
 ## Example - Serialization/Deserialization
 

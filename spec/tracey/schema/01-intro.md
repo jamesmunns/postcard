@@ -30,7 +30,6 @@ of strings and schemas, chosen by an application; and [Schema Tables]: how
 schemas are sent.
 
 TODO: define the schema data model
-TODO: define how a schema is encoded on the wire
 
 ## Schemas
 

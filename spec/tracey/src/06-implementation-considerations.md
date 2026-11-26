@@ -6,7 +6,7 @@ no requirements.
 <!--
     TODO: Decide whether any of the SHOULDs below become tracked requirements,
     e.g. in a small spec of their own, so that each implementation can show it
-    addresses them. Concrete limits (such as postcard2's) belong in each
+    addresses them. Concrete limits (such as postcard's) belong in each
     library's own documentation.
 -->
 
@@ -32,7 +32,7 @@ untrusted message.
     TODO: postcard caps preallocation at the bytes remaining
     (`SeqAccess::size_hint`), but decoding a `Vec<()>` with a length near
     `u64::MAX` loops that many times, from about ten bytes of input. Decide
-    whether postcard2 should limit this, e.g. with an element budget in the
+    whether postcard should limit this, e.g. with an element budget in the
     deserializer.
 -->
 
