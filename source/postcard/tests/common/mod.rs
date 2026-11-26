@@ -6,7 +6,9 @@ use serde::{Serialize, de::DeserializeOwned};
 
 /// Serialize `val`, returning the encoded bytes.
 pub fn encode<T: Serialize + ?Sized>(val: &T) -> Vec<u8> {
-    postcard::to_extend(val, Vec::new()).unwrap()
+    let mut out = Vec::new();
+    postcard::to_extend(val, &mut out).unwrap();
+    out
 }
 
 /// Ensure `val` encodes to exactly `expected`, and that `expected` decodes
