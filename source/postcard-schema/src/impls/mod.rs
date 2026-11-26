@@ -13,6 +13,10 @@ pub mod builtins_alloc;
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod builtins_std;
 
+#[cfg(feature = "bytes-v1_0")]
+#[cfg_attr(docsrs, doc(cfg(feature = "bytes-v1_0")))]
+pub mod bytes_v1_0;
+
 #[cfg(feature = "chrono-v0_4")]
 #[cfg_attr(docsrs, doc(cfg(feature = "chrono-v0_4")))]
 pub mod chrono_v0_4;

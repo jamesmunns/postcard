@@ -81,6 +81,12 @@ version = "1.0"
 optional = true
 default-features = false
 
+[dependencies.bytes_v1_0]
+package = "bytes"
+version = "1.0"
+optional = true
+default-features = false
+
 [dependencies.postcard-derive]
 path = "../postcard-derive"
 version = "0.4.0"
@@ -172,6 +178,11 @@ version = "1.0"
 default-features = false
 features = ["serde"]
 
+[dev-dependencies.bytes_v1_0]
+package = "bytes"
+version = "1.0"
+features = ["serde"]
+
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]
 package = "postcard-schema"
@@ -221,6 +232,7 @@ legacy-schema-v0_2 = ["std", "dep:postcard-schema_v0_2"]
 # postcard-schema-ng 0.4's owned schema types, to read schemas from older devices
 legacy-schema-ng-v0_4 = ["std", "dep:postcard-schema-ng_v0_4"]
 
+bytes-v1_0 = ["dep:bytes_v1_0"]
 chrono-v0_4 = ["dep:chrono_v0_4"]
 defmt-v1 = ["dep:defmt"]
 # requires msrv 1.95

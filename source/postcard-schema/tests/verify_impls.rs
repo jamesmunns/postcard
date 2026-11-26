@@ -195,6 +195,8 @@ fn feature_types() {
     #[allow(unused_mut)]
     let mut r = Report::default();
 
+    #[cfg(feature = "bytes-v1_0")]
+    r.check("Bytes", bytes_v1_0::Bytes::from(vec![1, 2, 3, 4]));
     #[cfg(feature = "chrono-v0_4")]
     {
         use chrono_v0_4::{DateTime, Utc};
