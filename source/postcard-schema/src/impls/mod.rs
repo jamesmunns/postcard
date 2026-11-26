@@ -45,6 +45,10 @@ pub mod heapless_v0_9;
 #[cfg_attr(docsrs, doc(cfg(feature = "indexmap-v2_0")))]
 pub mod indexmap_v2_0;
 
+#[cfg(feature = "log-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "log-v0_4")))]
+pub mod log_v0_4;
+
 #[cfg(feature = "nalgebra-v0_33")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_33")))]
 pub mod nalgebra_v0_33;

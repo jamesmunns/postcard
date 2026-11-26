@@ -255,6 +255,31 @@ fn feature_types() {
         "IndexSet",
         indexmap_v2_0::IndexSet::<u32>::from([1, 2, 3, 4]),
     );
+    #[cfg(feature = "log-v0_4")]
+    {
+        use log_v0_4::{Level, LevelFilter};
+        r.check_all(
+            "log Level",
+            &[
+                Level::Error,
+                Level::Warn,
+                Level::Info,
+                Level::Debug,
+                Level::Trace,
+            ],
+        );
+        r.check_all(
+            "log LevelFilter",
+            &[
+                LevelFilter::Off,
+                LevelFilter::Error,
+                LevelFilter::Warn,
+                LevelFilter::Info,
+                LevelFilter::Debug,
+                LevelFilter::Trace,
+            ],
+        );
+    }
     #[cfg(feature = "nalgebra-v0_33")]
     {
         use nalgebra_v0_33 as na;
