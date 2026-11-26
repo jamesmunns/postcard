@@ -37,7 +37,7 @@
 //! which had no maximum lengths. [`Options::names`] is always ignored:
 //! version 2 always includes field and variant names.
 
-use super::{Item, Options};
+use crate::key::{Item, Key, Options};
 use crate::schema::{Data, DataModelType, NamedField, Variant};
 
 /// Which crate's version 2 keys to match
@@ -50,6 +50,21 @@ pub enum Flavor {
 }
 
 impl Flavor {
+    /// The version 2 key of `items`, with `options`, as this flavor's crate
+    /// computes it
+    pub const fn key(self, options: &Options, items: &[Item<'_>]) -> Key {
+        Key::from_bytes(hasher(self, options, items))
+    }
+
+    /// The version 2 key of `items`, with `options`, for owned schemas
+    ///
+    /// This gives the same key as [`Flavor::key`] for the equivalent borrowed
+    /// items.
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub const fn key_owned(self, options: &Options, items: &[crate::key::OwnedItem<'_>]) -> Key {
+        Key::from_bytes(owned::hasher(self, options, items))
+    }
+
     const fn is_v0_2(self) -> bool {
         matches!(self, Flavor::PostcardSchemaV0_2)
     }

@@ -18,11 +18,10 @@
 //! Each converts `From` its borrowed counterpart.
 //!
 //! Neither form implements serde's `Serialize` or `Deserialize`: a schema is
-//! sent as a [schema table](table) instead.
+//! sent as a [schema table](crate::table) instead.
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod fmt;
-pub mod table;
 
 /// This enum lists which of the Data Model Types apply to a given type. This describes how the
 /// type is encoded on the wire.

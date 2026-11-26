@@ -12,7 +12,7 @@
 //! allocating, and `#[derive(Schema)]` implements the [`Schema`] trait for
 //! types.
 //!
-//! A [`Key`](key::Key) is an 8-byte hash of a list of strings and schemas, such
+//! A [`Key`] is an 8-byte hash of a list of strings and schemas, such
 //! as a method name and the schemas of its request and response. Two programs
 //! that compute the same key from their own types can cheaply check that they
 //! agree on those types, without exchanging the schemas. A key is not a
@@ -20,10 +20,7 @@
 //!
 //! ```rust
 //! # #[cfg(feature = "derive")] {
-//! use postcard_schema::{
-//!     key::{Item, Key, Options},
-//!     Schema,
-//! };
+//! use postcard_schema::{Item, Key, Options, Schema};
 //!
 //! #[derive(Schema)]
 //! struct Read {
@@ -39,19 +36,19 @@
 //!
 //! With the `alloc` or `std` feature, the `Owned*` types in [`schema`] hold a
 //! schema built at runtime, such as one received from a peer, and
-//! [`Key::new_owned`](key::Key::new_owned) computes their keys.
+//! [`Key::new_owned`] computes their keys.
 //!
-//! Schemas are sent as a [schema table](schema::table): an ordinary type,
+//! Schemas are sent as a [schema table](table): an ordinary type,
 //! holding one or more schemas with each part stored once. [`schema_table!`]
 //! builds a schema table at compile time, and [`schema_table_bytes!`]
 //! builds its postcard encoding at compile time. With the `alloc` or `std`
-//! feature, [`OwnedSchemaTable`](schema::table::OwnedSchemaTable) can be used
+//! feature, [`OwnedSchemaTable`] can be used
 //! to build or receive one at runtime, and `decode` converts a table back into
 //! schemas.
 //!
 //! ```rust
 //! # #[cfg(all(feature = "derive", feature = "std"))] {
-//! use postcard_schema::{schema::table::OwnedSchemaTable, schema_table, Schema};
+//! use postcard_schema::{schema_table, OwnedSchemaTable, Schema};
 //!
 //! #[derive(Schema)]
 //! struct Read {
@@ -79,29 +76,50 @@
 //!
 //! # Features
 //!
-//! | Feature                   | Enables                                                                           |
-//! |---                        |---                                                                                |
-//! | `derive`                  | `#[derive(Schema)]`                                                               |
-//! | `alloc`                   | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types             |
-//! | `std`                     | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types   |
-//! | `defmt-v1`                | `defmt::Format` for [`Key`](key::Key)                                             |
-//! | `key-v2`                  | version 2 keys, [`Key::new_v2`](key::Key::new_v2), for peers that still use them  |
-//! | `postcard-schema-v0_2`    | [`legacy::v0_2`], to read the schemas that postcard-schema 0.2 devices send       |
-//! | `postcard-schema-ng-v0_4` | [`legacy::ng_v0_4`], to read the schemas that postcard-schema-ng 0.4 devices send |
-//! | `chrono-v0_4`, ...        | `Schema` for that version of that crate's types (see `Cargo.toml`)                |
+//! | Feature            | Enables                                                                         |
+//! |---                 |---                                                                              |
+//! | `derive`           | `#[derive(Schema)]`                                                             |
+//! | `alloc`            | the `Owned*` schema types, [`verify`], and `Schema` for `alloc` types           |
+//! | `std`              | what `alloc` enables, `Schema` for `std` types, and the owned [`max_len`] types |
+//! | `defmt-v1`         | `defmt::Format` for [`Key`]                                                     |
+//! | `chrono-v0_4`, ... | `Schema` for that version of that crate's types (see `Cargo.toml`)              |
+//!
+//! # Talking to older peers
+//!
+//! The [`legacy`] module, behind its own features, is only for talking to peers
+//! built with an older version. New code doesn't need it.
+//!
+//! | Feature                 | Enables                                                                           |
+//! |---                      |---                                                                                |
+//! | `legacy-key-v2`         | [`legacy::key_v2`], to compute the version 2 keys that older peers use            |
+//! | `legacy-schema-v0_2`    | [`legacy::v0_2`], to read the schemas that postcard-schema 0.2 devices send       |
+//! | `legacy-schema-ng-v0_4` | [`legacy::ng_v0_4`], to read the schemas that postcard-schema-ng 0.4 devices send |
 //!
 //! [postcard]: https://docs.rs/postcard
 //! [postcard-schema specification]: https://postcard.rs/schema/0.1/
 
 mod impls;
 pub mod key;
-#[cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4"))]
+#[cfg(any(
+    feature = "legacy-key-v2",
+    feature = "legacy-schema-v0_2",
+    feature = "legacy-schema-ng-v0_4"
+))]
 #[cfg_attr(
     docsrs,
-    doc(cfg(any(feature = "postcard-schema-v0_2", feature = "postcard-schema-ng-v0_4")))
+    doc(cfg(any(
+        feature = "legacy-key-v2",
+        feature = "legacy-schema-v0_2",
+        feature = "legacy-schema-ng-v0_4"
+    )))
 )]
 pub mod legacy;
 pub mod schema;
+pub mod table;
+
+pub use key::{Item, Key, Options};
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use table::OwnedSchemaTable;
 #[cfg(any(feature = "std", feature = "alloc"))]
 pub mod verify;
 

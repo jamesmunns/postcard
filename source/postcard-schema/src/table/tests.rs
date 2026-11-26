@@ -1,8 +1,8 @@
-use super::{
-    NameRef, OwnedSchemaTable, OwnedTableData, OwnedTableNode as O, OwnedTableVariant,
-    RawOwnedSchemaTable, SchemaTable, SchemaTableRef, Span, TableData, TableField, TableNode as N,
-    TableVariant, VERSION,
+use super::node::{
+    NameRef, OwnedTableData, OwnedTableNode as O, OwnedTableVariant, Span, TableData, TableField,
+    TableNode as N, TableVariant,
 };
+use super::{OwnedSchemaTable, RawOwnedSchemaTable, SchemaTable, SchemaTableRef, VERSION};
 use crate::{schema::OwnedDataModelType, Schema};
 
 /// A const-built table, received
@@ -515,14 +515,14 @@ fn near_duplicates_are_kept_apart() {
 }
 
 mod malformed {
-    use super::super::{DecodeConfig, TableError as E};
+    use super::super::{TableError as E, TableLimits};
     use super::*;
 
     /// The default config, with a limit of `n` nodes
-    fn max_nodes(n: usize) -> DecodeConfig {
-        DecodeConfig {
+    fn max_nodes(n: usize) -> TableLimits {
+        TableLimits {
             max_nodes: n,
-            ..DecodeConfig::default()
+            ..TableLimits::default()
         }
     }
 
@@ -532,7 +532,7 @@ mod malformed {
     trait Check {
         fn valid(&self) -> Result<(), E>;
         fn decode(&self) -> Result<Vec<OwnedDataModelType>, E>;
-        fn decode_with_config(&self, c: &DecodeConfig) -> Result<Vec<OwnedDataModelType>, E>;
+        fn decode_with_limits(&self, c: &TableLimits) -> Result<Vec<OwnedDataModelType>, E>;
     }
 
     impl Check for RawOwnedSchemaTable {
@@ -544,8 +544,8 @@ mod malformed {
             self.clone().validate()?.decode()
         }
 
-        fn decode_with_config(&self, c: &DecodeConfig) -> Result<Vec<OwnedDataModelType>, E> {
-            self.clone().validate()?.decode_with_config(c)
+        fn decode_with_limits(&self, c: &TableLimits) -> Result<Vec<OwnedDataModelType>, E> {
+            self.clone().validate()?.decode_with_limits(c)
         }
     }
 
@@ -767,7 +767,7 @@ mod malformed {
             data: crate::schema::OwnedData::Unit,
         };
         assert_eq!(
-            t.decode_with_config(&max_nodes(100)),
+            t.decode_with_limits(&max_nodes(100)),
             Ok(vec![
                 T::Tuple([T::U8, T::U8].into()),
                 T::Tuple([T::U8, T::Bool].into()),
@@ -835,7 +835,7 @@ mod malformed {
         t.roots = vec![1];
         assert_eq!(t.valid(), Ok(()));
         assert_eq!(
-            t.decode_with_config(&max_nodes(1_000_000)),
+            t.decode_with_limits(&max_nodes(1_000_000)),
             Err(E::LimitExceeded)
         );
         // An array of 1000 arrays of 1000 `U8`s, and the arrays
@@ -855,15 +855,15 @@ mod malformed {
         );
         t.roots = vec![2];
         assert_eq!(
-            t.decode_with_config(&max_nodes(1_000_000)),
+            t.decode_with_limits(&max_nodes(1_000_000)),
             Err(E::LimitExceeded)
         );
         assert_eq!(
-            t.decode_with_config(&max_nodes(1_001_001)).map(|v| v.len()),
+            t.decode_with_limits(&max_nodes(1_001_001)).map(|v| v.len()),
             Ok(1)
         );
         assert_eq!(
-            t.decode_with_config(&max_nodes(1_001_000)),
+            t.decode_with_limits(&max_nodes(1_001_000)),
             Err(E::LimitExceeded)
         );
     }
@@ -880,13 +880,13 @@ mod malformed {
         t.roots = vec![64];
         assert_eq!(t.valid(), Ok(()));
         assert_eq!(
-            t.decode_with_config(&max_nodes(100_000)),
+            t.decode_with_limits(&max_nodes(100_000)),
             Err(E::LimitExceeded)
         );
         t.roots = vec![3];
         // 8 `U8`s and 7 tuples
-        assert_eq!(t.decode_with_config(&max_nodes(15)).map(|v| v.len()), Ok(1));
-        assert_eq!(t.decode_with_config(&max_nodes(14)), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&max_nodes(15)).map(|v| v.len()), Ok(1));
+        assert_eq!(t.decode_with_limits(&max_nodes(14)), Err(E::LimitExceeded));
     }
 
     /// Each use of a name counts towards the name byte limit, including
@@ -920,13 +920,13 @@ mod malformed {
         );
         t.roots = vec![2];
         assert_eq!(t.valid(), Ok(()));
-        let mut config = DecodeConfig {
+        let mut config = TableLimits {
             max_name_bytes: 64 * 64 * 1000 - 1,
-            ..DecodeConfig::default()
+            ..TableLimits::default()
         };
-        assert_eq!(t.decode_with_config(&config), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&config), Err(E::LimitExceeded));
         config.max_name_bytes += 1;
-        assert_eq!(t.decode_with_config(&config).map(|v| v.len()), Ok(1));
+        assert_eq!(t.decode_with_limits(&config).map(|v| v.len()), Ok(1));
     }
 
     /// A chain of nested types is limited by depth, whatever the other limits,
@@ -942,7 +942,7 @@ mod malformed {
         t.roots = vec![10_000];
         assert_eq!(t.valid(), Ok(()));
         assert_eq!(
-            t.decode_with_config(&max_nodes(usize::MAX)),
+            t.decode_with_limits(&max_nodes(usize::MAX)),
             Err(E::LimitExceeded)
         );
         // 128 nested types are allowed by default, and 129 aren't.
@@ -1006,8 +1006,8 @@ mod malformed {
         let mut t = table(nodes, "");
         // 15 nodes each
         t.roots = vec![3, 3];
-        assert_eq!(t.decode_with_config(&max_nodes(29)), Err(E::LimitExceeded));
-        assert_eq!(t.decode_with_config(&max_nodes(30)).map(|v| v.len()), Ok(2));
+        assert_eq!(t.decode_with_limits(&max_nodes(29)), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&max_nodes(30)).map(|v| v.len()), Ok(2));
     }
 
     /// Depth is the longest path from a root, not the number of nested types:
@@ -1017,19 +1017,19 @@ mod malformed {
     fn depth_is_per_path() {
         let mut t = table(vec![O::U8, O::Option(0), O::Tuple(vec![1; 200])], "");
         t.roots = vec![2];
-        let depth = |max_depth| DecodeConfig {
+        let depth = |max_depth| TableLimits {
             max_depth,
-            ..DecodeConfig::default()
+            ..TableLimits::default()
         };
-        assert_eq!(t.decode_with_config(&depth(3)).map(|v| v.len()), Ok(1));
-        assert_eq!(t.decode_with_config(&depth(2)), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&depth(3)).map(|v| v.len()), Ok(1));
+        assert_eq!(t.decode_with_limits(&depth(2)), Err(E::LimitExceeded));
     }
 
     /// Sizes too large to count are rejected, whatever the limits.
     // schema[verify table.budget]
     #[test]
     fn sizes_that_overflow() {
-        let unlimited = DecodeConfig {
+        let unlimited = TableLimits {
             max_nodes: usize::MAX,
             max_name_bytes: usize::MAX,
             max_depth: usize::MAX,
@@ -1041,7 +1041,7 @@ mod malformed {
         }
         let mut t = table(nodes, "");
         t.roots = vec![64];
-        assert_eq!(t.decode_with_config(&unlimited), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&unlimited), Err(E::LimitExceeded));
         // Copies of a pair, which overflow when multiplied
         let mut t = table(
             vec![
@@ -1055,7 +1055,7 @@ mod malformed {
             "",
         );
         t.roots = vec![2];
-        assert_eq!(t.decode_with_config(&unlimited), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&unlimited), Err(E::LimitExceeded));
     }
 
     /// Variants and fields count towards the budget, as well as types.
@@ -1079,8 +1079,8 @@ mod malformed {
         let mut t = t;
         t.roots = vec![1];
         // The enum, its variant, two fields, and their two `U8`s
-        assert_eq!(t.decode_with_config(&max_nodes(6)).map(|v| v.len()), Ok(1));
-        assert_eq!(t.decode_with_config(&max_nodes(5)), Err(E::LimitExceeded));
+        assert_eq!(t.decode_with_limits(&max_nodes(6)).map(|v| v.len()), Ok(1));
+        assert_eq!(t.decode_with_limits(&max_nodes(5)), Err(E::LimitExceeded));
     }
 }
 
@@ -1232,13 +1232,13 @@ fn runtime_builder_is_linear() {
         data: OwnedData::Struct(fields.into()),
     };
     let start = std::time::Instant::now();
-    let config = super::DecodeConfig {
+    let config = super::TableLimits {
         max_nodes: 1_000_000,
         max_name_bytes: 4 << 20,
-        ..super::DecodeConfig::default()
+        ..super::TableLimits::default()
     };
-    let t = OwnedSchemaTable::new_with_config(core::slice::from_ref(&ty), &config).unwrap();
-    assert_eq!(t.decode_with_config(&config), Ok(vec![ty]));
+    let t = OwnedSchemaTable::new_with_limits(core::slice::from_ref(&ty), &config).unwrap();
+    assert_eq!(t.decode_with_limits(&config), Ok(vec![ty]));
     // Generous, so this only fails if building is far from linear
     assert!(start.elapsed() < std::time::Duration::from_secs(10));
 }
@@ -1274,16 +1274,16 @@ fn roots_are_deduplicated() {
 // schema[verify table.budget]
 #[test]
 fn runtime_builder_limits() {
-    use super::{DecodeConfig, TableError as E};
-    let config = |max_nodes, max_name_bytes, max_depth| DecodeConfig {
+    use super::{TableError as E, TableLimits};
+    let config = |max_nodes, max_name_bytes, max_depth| TableLimits {
         max_nodes,
         max_name_bytes,
         max_depth,
     };
-    let build = |c: &DecodeConfig| {
+    let build = |c: &TableLimits| {
         let t =
-            OwnedSchemaTable::new_with_config(&[Point::SCHEMA.into(), Point::SCHEMA.into()], c)?;
-        t.decode_with_config(c).map(|v| v.len())
+            OwnedSchemaTable::new_with_limits(&[Point::SCHEMA.into(), Point::SCHEMA.into()], c)?;
+        t.decode_with_limits(c).map(|v| v.len())
     };
     // Two of: the struct, two fields and their two `U8`s, with 8 bytes of
     // names, two deep.

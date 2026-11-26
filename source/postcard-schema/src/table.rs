@@ -23,15 +23,11 @@
 //! Both have the same encoding and the same schema. In the encoding, each node
 //! holds its own variants, fields and tuple elements.
 //!
-//! Building at compile time takes three steps, as array lengths have to be
-//! known in const context:
-//!
-//! 1. [`scratch_lengths()`] counts nodes, lists and name bytes without
-//!    deduplication, giving an upper bound on the space needed.
-//! 2. [`TableScratch::new()`] builds the deduplicated table into scratch space
-//!    of that size, and [`TableScratch::lengths()`] reports how much of it was
-//!    used.
-//! 3. [`SchemaTable::new()`] copies the used part into right-sized arrays.
+//! Deserializing an [`OwnedSchemaTable`] validates it. [`RawOwnedSchemaTable`]
+//! is a table that may not be valid, such as one built by hand.
+//! [`TableLimits`] bounds the schemas that decoding a table, or building one at
+//! runtime, can produce. The nodes, and the lists and names they refer to, are
+//! in [`node`].
 //!
 //! [`schema_table_bytes!`] goes one step further, and serializes the table in
 //! the postcard format as a byte array at compile time, so it can be sent with
@@ -40,122 +36,30 @@
 //! [`schema_table!`]: crate::schema_table
 //! [`schema_table_bytes!`]: crate::schema_table_bytes
 
-use super::{Data, DataModelType, NamedField, Variant};
+use crate::schema::{Data, DataModelType, NamedField, Variant};
 use intern::{Interner, EMPTY_EDGE, EMPTY_STATE};
+use node::{NameRef, Span, TableData, TableField, TableNode, TableVariant};
+#[cfg(any(feature = "std", feature = "alloc"))]
+use node::{OwnedTableData, OwnedTableNode, OwnedTableVariant};
 use serde::{
     ser::{SerializeStruct, SerializeStructVariant},
-    Deserialize, Serialize, Serializer,
+    Serialize, Serializer,
 };
 
 /// The current version of the table format
 pub const VERSION: u32 = 1;
 
-/// A name: a byte range of the table's `names` string
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct NameRef {
-    /// Offset of the first byte of the name
-    pub offset: u32,
-    /// Length of the name in bytes
-    pub len: u32,
-}
-
-/// A field of a struct or struct variant
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct TableField {
-    /// The field's name
-    pub name: NameRef,
-    /// The `nodes` index of the field's type
-    pub ty: u32,
-}
-
-/// A range of one of a [`SchemaTable`]'s lists: [`SchemaTable::children`],
-/// [`SchemaTable::variants`] or [`SchemaTable::fields`]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Span {
-    /// Offset of the first item
-    pub start: u32,
-    /// Number of items
-    pub len: u32,
-}
-
-/// The contents of a struct or variant in a [`SchemaTable`]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TableData {
-    /// [`Data::Unit`]
-    Unit,
-    /// [`Data::Newtype`], with the node index of its type
-    Newtype(u32),
-    /// [`Data::Tuple`], with a span of [`SchemaTable::children`]
-    Tuple(Span),
-    /// [`Data::Struct`], with a span of [`SchemaTable::fields`]
-    Struct(Span),
-}
-
-/// A variant of an enum in a [`SchemaTable`]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TableVariant {
-    /// The variant's name
-    pub name: NameRef,
-    /// The variant's contents
-    pub data: TableData,
-}
-
-/// One type in a [`SchemaTable`]
-///
-/// Each `u32` is the index of a node, which appears before this node in the
-/// `nodes` list.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(missing_docs)]
-pub enum TableNode {
-    Bool,
-    I8,
-    U8,
-    I16,
-    I32,
-    I64,
-    I128,
-    U16,
-    U32,
-    U64,
-    U128,
-    F32,
-    F64,
-    Char,
-    String {
-        max_len: Option<u64>,
-    },
-    ByteArray {
-        max_len: Option<u64>,
-    },
-    Option(u32),
-    Unit,
-    Seq {
-        element: u32,
-        max_len: Option<u64>,
-    },
-    /// A span of [`SchemaTable::children`]
-    Tuple(Span),
-    Map {
-        key: u32,
-        val: u32,
-        max_len: Option<u64>,
-    },
-    Struct {
-        name: NameRef,
-        data: TableData,
-    },
-    /// A span of [`SchemaTable::variants`]
-    Enum {
-        name: NameRef,
-        variants: Span,
-    },
-    /// A tuple of `len` copies of `element`, such as an array. Builders write
-    /// this for tuples of two or more elements that are all the same node.
-    Array {
-        element: u32,
-        len: u64,
-    },
-}
+// Building at compile time takes three steps, as array lengths have to be known
+// in const context:
+//
+// 1. `scratch_lengths()` counts nodes, lists and name bytes without
+//    deduplication, giving an upper bound on the space needed.
+// 2. `TableScratch::new()` builds the deduplicated table into scratch space of
+//    that size, and `TableScratch::lengths()` reports how much of it was used.
+// 3. `SchemaTable::new()` copies the used part into right-sized arrays.
+//
+// The macros do all three; the items for steps one and two, and
+// `SchemaTable::new`, are hidden from the docs.
 
 // ---- Step one: upper bounds ----
 
@@ -228,6 +132,7 @@ impl Counter {
 }
 
 /// The array lengths of a [`TableScratch`] or [`SchemaTable`]
+#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(missing_docs)]
 pub struct TableLengths {
@@ -240,6 +145,7 @@ pub struct TableLengths {
 }
 
 /// The scratch space needed to build a table of `roots`
+#[doc(hidden)]
 ///
 /// This is an upper bound, assuming nothing can be deduplicated. The space for
 /// each list is doubled, as a list being collected is kept on a stack at the
@@ -521,6 +427,7 @@ const EMPTY_FIELD: TableField = TableField {
 };
 
 /// A deduplicated table, built into scratch space
+#[doc(hidden)]
 ///
 /// The const parameters are the scratch space, from [`scratch_lengths()`]:
 /// roots, nodes, children, variants, fields and name bytes. Only the start of
@@ -645,8 +552,9 @@ impl<
 /// A table of one or more schemas, built at compile time
 ///
 /// The const parameters are the numbers of roots, nodes, children, variants,
-/// fields and name bytes, from [`TableScratch::lengths()`]. Use
-/// [`schema_table!`] rather than building this directly.
+/// fields and name bytes. Use [`schema_table!`] rather than building this
+/// directly; the type only needs writing out to keep a table in a
+/// `static`.
 ///
 /// The fields are public, so a table can be built by hand. Reading, serializing
 /// or converting a table panics if its spans, names or indices are out of
@@ -705,6 +613,7 @@ impl<
     ///
     /// Fails (at compile time, in const context) if the const parameters don't
     /// match [`TableScratch::lengths()`].
+    #[doc(hidden)]
     pub const fn new<
         const SCRATCH_ROOTS: usize,
         const SCRATCH_NODES: usize,
@@ -976,7 +885,7 @@ impl Serialize for VariantSer<'_, '_> {
 /// the table is built in inner `const` items.
 ///
 /// ```
-/// use postcard_schema::{schema::table::TableNode, schema_table};
+/// use postcard_schema::{schema_table, table::node::TableNode};
 ///
 /// let table = schema_table!(u8, Option<u8>);
 /// assert_eq!(table.nodes, [TableNode::U8, TableNode::Option(0)]);
@@ -1008,15 +917,15 @@ impl Serialize for VariantSer<'_, '_> {
 /// number of stack frames". Raising `#![recursion_limit]` in the crate that
 /// uses the macro raises that limit too.
 ///
-/// The table isn't checked against a [`DecodeConfig`], so a peer decoding it
+/// The table isn't checked against a [`TableLimits`], so a peer decoding it
 /// with the default limits rejects types nested more than 128 deep, or with
 /// more than 65536 types, variants and fields.
 ///
 /// A large table is best kept in a `const` or `static`, as a `let` copies it
 /// onto the stack.
 ///
-/// [`SchemaTable`]: crate::schema::table::SchemaTable
-/// [`DecodeConfig`]: crate::schema::table::DecodeConfig
+/// [`SchemaTable`]: crate::table::SchemaTable
+/// [`TableLimits`]: crate::table::TableLimits
 #[macro_export]
 macro_rules! schema_table {
     ($($ty:ty),+ $(,)?) => {{
@@ -1050,7 +959,7 @@ macro_rules! schema_table {
 /// # assert_eq!(SCHEMAS.len(), 9);
 /// ```
 ///
-/// [`SchemaTable`]: crate::schema::table::SchemaTable
+/// [`SchemaTable`]: crate::table::SchemaTable
 /// [`schema_table!`]: crate::schema_table
 #[macro_export]
 macro_rules! schema_table_bytes {
@@ -1068,28 +977,28 @@ macro_rules! schema_table_bytes {
 macro_rules! __schema_table_consts {
     ($($ty:ty),+) => {
         const __ROOTS: &[&$crate::schema::DataModelType] = &[$(<$ty as $crate::Schema>::SCHEMA),+];
-        const __MAX: $crate::schema::table::TableLengths =
-            $crate::schema::table::scratch_lengths(__ROOTS);
-        const __SCRATCH: $crate::schema::table::TableScratch<
+        const __MAX: $crate::table::TableLengths =
+            $crate::table::scratch_lengths(__ROOTS);
+        const __SCRATCH: $crate::table::TableScratch<
             { __MAX.roots },
             { __MAX.nodes },
             { __MAX.children },
             { __MAX.variants },
             { __MAX.fields },
             { __MAX.names },
-        > = $crate::schema::table::TableScratch::new::<
-            { $crate::schema::table::__states_for(__MAX.names) },
-            { $crate::schema::table::__edges_for(__MAX.names) },
+        > = $crate::table::TableScratch::new::<
+            { $crate::table::__states_for(__MAX.names) },
+            { $crate::table::__edges_for(__MAX.names) },
         >(__ROOTS);
-        const __LEN: $crate::schema::table::TableLengths = __SCRATCH.lengths();
-        const __TABLE: $crate::schema::table::SchemaTable<
+        const __LEN: $crate::table::TableLengths = __SCRATCH.lengths();
+        const __TABLE: $crate::table::SchemaTable<
             { __LEN.roots },
             { __LEN.nodes },
             { __LEN.children },
             { __LEN.variants },
             { __LEN.fields },
             { __LEN.names },
-        > = $crate::schema::table::SchemaTable::new(&__SCRATCH);
+        > = $crate::table::SchemaTable::new(&__SCRATCH);
     };
 }
 
@@ -1243,7 +1152,7 @@ const fn to_u64_opt(n: Option<usize>) -> Option<u64> {
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod decode;
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub use decode::{DecodeConfig, TableError};
+pub use decode::{TableError, TableLimits};
 mod encode;
 mod intern;
 #[doc(hidden)]
@@ -1251,9 +1160,8 @@ pub use intern::{edges_for as __edges_for, states_for as __states_for};
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod owned;
 #[cfg(any(feature = "std", feature = "alloc"))]
-pub use owned::{
-    OwnedSchemaTable, OwnedTableData, OwnedTableNode, OwnedTableVariant, RawOwnedSchemaTable,
-};
+pub use owned::{OwnedSchemaTable, RawOwnedSchemaTable};
+pub mod node;
 mod schemas;
 
 #[cfg(all(test, feature = "derive", feature = "std"))]

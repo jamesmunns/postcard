@@ -1,4 +1,10 @@
-//! Schemas from older versions of postcard-schema
+//! Keys and schemas of older versions of postcard-schema
+//!
+//! These are for talking to peers built with an older version. The rest
+//! of this crate is the current version, which new code should use.
+//!
+//! [`key_v2`] computes the version 2 keys of postcard-schema 0.2, as used by
+//! postcard-rpc, and postcard-schema-ng 0.4, as used by temperance.
 //!
 //! These let a host built with this version read the schemas that a device
 //! built with an older version sends, such as the schema data that postcard-rpc
@@ -7,23 +13,30 @@
 //! [`v0_2`] covers postcard-schema 0.2, as used by postcard-rpc, and
 //! [`ng_v0_4`] covers postcard-schema-ng 0.4, as used by temperance.
 
+#[cfg(feature = "legacy-key-v2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-key-v2")))]
+pub mod key_v2;
+
 /// A legacy schema contains the `Schema` kind, which this version doesn't have
 ///
 /// A schema is now encoded as a schema table, an ordinary type, so there is
 /// no kind meaning "a schema".
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SchemaKindUnsupported;
 
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
 impl core::fmt::Display for SchemaKindUnsupported {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str("the `Schema` kind is not supported")
     }
 }
 
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
 impl std::error::Error for SchemaKindUnsupported {}
 
-#[cfg(feature = "postcard-schema-v0_2")]
-#[cfg_attr(docsrs, doc(cfg(feature = "postcard-schema-v0_2")))]
+#[cfg(feature = "legacy-schema-v0_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-schema-v0_2")))]
 pub mod v0_2 {
     //! The owned schema types of postcard-schema 0.2
     //!
@@ -149,8 +162,8 @@ pub mod v0_2 {
     }
 }
 
-#[cfg(feature = "postcard-schema-ng-v0_4")]
-#[cfg_attr(docsrs, doc(cfg(feature = "postcard-schema-ng-v0_4")))]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-schema-ng-v0_4")))]
 pub mod ng_v0_4 {
     //! The owned schema types of postcard-schema-ng 0.4
     //!

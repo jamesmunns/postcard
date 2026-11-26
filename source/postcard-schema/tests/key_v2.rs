@@ -3,7 +3,8 @@
 //! type deriving `Schema` with each crate.
 
 use postcard_schema::{
-    key::{v2::Flavor, Item, Key, Options, OwnedItem},
+    key::{Item, Options, OwnedItem},
+    legacy::key_v2::Flavor,
     schema::OwnedDataModelType,
     Schema,
 };
@@ -152,14 +153,12 @@ types! {
 /// hasher gives the same key
 #[track_caller]
 fn key_v2<T: Schema + ?Sized>(flavor: Flavor, path: &str) -> [u8; 8] {
-    let key = Key::new_v2(
-        flavor,
+    let key = flavor.key(
         &Options::DEFAULT,
         &[Item::String(path), Item::Schema(T::SCHEMA)],
     );
     let owned: OwnedDataModelType = T::SCHEMA.into();
-    let owned_key = Key::new_owned_v2(
-        flavor,
+    let owned_key = flavor.key_owned(
         &Options::DEFAULT,
         &[OwnedItem::String(path), OwnedItem::Schema(&owned)],
     );
@@ -245,7 +244,7 @@ fn matches_published_features() {
 ///
 /// The `Schema` kind is found wherever it is, so converting any type that
 /// contains it fails.
-#[cfg(feature = "postcard-schema-v0_2")]
+#[cfg(feature = "legacy-schema-v0_2")]
 #[test]
 fn schema_kind_unsupported_v0_2() {
     use postcard_schema::legacy::{
@@ -309,7 +308,7 @@ fn schema_kind_unsupported_v0_2() {
 }
 
 /// As [`schema_kind_unsupported_v0_2`], for postcard-schema-ng 0.4.
-#[cfg(feature = "postcard-schema-ng-v0_4")]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
 #[test]
 fn schema_kind_unsupported_ng_v0_4() {
     use postcard_schema::legacy::{
@@ -382,7 +381,7 @@ fn schema_kind_unsupported_ng_v0_4() {
 
 /// The kinds that this version doesn't have become the kinds with the same
 /// encoding, and maximum lengths are kept where the older crate had them.
-#[cfg(feature = "postcard-schema-v0_2")]
+#[cfg(feature = "legacy-schema-v0_2")]
 #[test]
 fn legacy_kinds_convert_v0_2() {
     use postcard_schema::legacy::v0_2;
@@ -403,7 +402,7 @@ fn legacy_kinds_convert_v0_2() {
 }
 
 /// As [`legacy_kinds_convert_v0_2`], for postcard-schema-ng 0.4.
-#[cfg(feature = "postcard-schema-ng-v0_4")]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
 #[test]
 fn legacy_kinds_convert_ng_v0_4() {
     use postcard_schema::legacy::ng_v0_4::OwnedDataModelType as Ng;
@@ -476,17 +475,14 @@ fn max_len_matches_ng() {
             HashItem::Schema(<(NgS, Vec<u8>, Option<NgS>) as ng_crate::Schema>::SCHEMA),
         ],
     );
-    assert_eq!(Key::new_v2(NG, &opt, &items).to_bytes(), ng);
-    assert_eq!(
-        Key::new_v2(V0_2, &opt, &items),
-        Key::new_v2(V0_2, &Options::DEFAULT, &items)
-    );
+    assert_eq!(NG.key(&opt, &items).to_bytes(), ng);
+    assert_eq!(V0_2.key(&opt, &items), V0_2.key(&Options::DEFAULT, &items));
 }
 
 /// A schema that a postcard-schema 0.2 device sends, once converted, gives the
 /// key that postcard-schema 0.2 computes, including for the types that this
 /// version describes differently.
-#[cfg(feature = "postcard-schema-v0_2")]
+#[cfg(feature = "legacy-schema-v0_2")]
 #[test]
 fn converted_v0_2_schemas_match() {
     use postcard_schema::legacy::v0_2::OwnedNamedType;
@@ -496,8 +492,7 @@ fn converted_v0_2_schemas_match() {
     fn converts<T: v0_2_crate::Schema + ?Sized>(path: &str) {
         let nt: OwnedNamedType = T::SCHEMA.into();
         let ty = OwnedDataModelType::try_from(&nt).unwrap();
-        let key = Key::new_owned_v2(
-            V0_2,
+        let key = V0_2.key_owned(
             &Options::DEFAULT,
             &[OwnedItem::String(path), OwnedItem::Schema(&ty)],
         );
@@ -527,7 +522,7 @@ fn converted_v0_2_schemas_match() {
 /// A schema that a postcard-schema-ng 0.4 device sends, once converted,
 /// gives the key that postcard-schema-ng 0.4 computes, with and without
 /// maximum lengths (temperance hashes with them).
-#[cfg(feature = "postcard-schema-ng-v0_4")]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
 #[test]
 fn converted_ng_v0_4_schemas_match() {
     use ng_crate::key::hash::{fnv1a64::hasher, HashItem, HashOptions};
@@ -544,8 +539,7 @@ fn converted_ng_v0_4_schemas_match() {
                 &ng_opt,
                 &[HashItem::String(path), HashItem::Schema(T::SCHEMA)],
             );
-            let key = Key::new_owned_v2(
-                NG,
+            let key = NG.key_owned(
                 &Options::DEFAULT.with_max_len(max_len),
                 &[OwnedItem::String(path), OwnedItem::Schema(&ty)],
             );

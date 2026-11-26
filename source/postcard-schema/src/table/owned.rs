@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     array_of,
     intern::{self, Interner},
-    to_u32, DecodeConfig, NameRef, SchemaTableRef, TableData, TableError, TableField, TableNode,
+    to_u32, NameRef, SchemaTableRef, TableData, TableError, TableField, TableLimits, TableNode,
     TableVariant, VERSION,
 };
 use crate::schema::{OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant};
@@ -168,20 +168,20 @@ pub struct OwnedTableVariant {
 }
 
 impl OwnedSchemaTable {
-    /// Builds a table of `roots`, within the default [`DecodeConfig`]
+    /// Builds a table of `roots`, within the default [`TableLimits`]
     ///
     /// Each distinct type is a root once, in the order first given.
     ///
     /// This gives the same table as [`schema_table!`](crate::schema_table) does
     /// for the same schemas.
     pub fn new(roots: &[OwnedDataModelType]) -> Result<Self, TableError> {
-        Self::new_with_config(roots, &DecodeConfig::default())
+        Self::new_with_limits(roots, &TableLimits::default())
     }
 
-    /// Builds a table of `roots`, if they are within `config`'s limits
+    /// Builds a table of `roots`, if they are within `limits`
     ///
     /// The limits are counted as decoding counts them, for all of `roots`
-    /// together, so the table decodes with the same config. They are checked
+    /// together, so the table decodes with the same limits. They are checked
     /// before building, without recursion, and building recurses once per level
     /// of nested types.
     ///
@@ -189,12 +189,12 @@ impl OwnedSchemaTable {
     /// counting each use, so `max_name_bytes` limits that too.
     ///
     /// Panics if the table would have `u32::MAX` or more nodes or name bytes.
-    pub fn new_with_config(
+    pub fn new_with_limits(
         roots: &[OwnedDataModelType],
-        config: &DecodeConfig,
+        limits: &TableLimits,
     ) -> Result<Self, TableError> {
         // The space for names is an upper bound, assuming none are reused.
-        let name_bytes = name_bytes(roots, config).ok_or(TableError::LimitExceeded)?;
+        let name_bytes = name_bytes(roots, limits).ok_or(TableError::LimitExceeded)?;
         let mut names = vec![0; name_bytes];
         let mut states = vec![intern::EMPTY_STATE; intern::states_for(name_bytes)];
         let mut edges = vec![intern::EMPTY_EDGE; intern::edges_for(name_bytes)];
@@ -278,8 +278,8 @@ impl From<SchemaTableRef<'_>> for RawOwnedSchemaTable {
 }
 
 /// The total length of the names in `roots`, counting each use, or `None` if
-/// `roots` exceed `config`'s limits
-fn name_bytes(roots: &[OwnedDataModelType], config: &DecodeConfig) -> Option<usize> {
+/// `roots` exceed `limits`
+fn name_bytes(roots: &[OwnedDataModelType], limits: &TableLimits) -> Option<usize> {
     use OwnedDataModelType as T;
     /// Something still to count, with the depth of its type
     enum Item<'a> {
@@ -290,13 +290,13 @@ fn name_bytes(roots: &[OwnedDataModelType], config: &DecodeConfig) -> Option<usi
     let mut count = |n: usize, names: usize| {
         nodes = nodes.checked_add(n)?;
         name_bytes = name_bytes.checked_add(names)?;
-        (nodes <= config.max_nodes && name_bytes <= config.max_name_bytes).then_some(())
+        (nodes <= limits.max_nodes && name_bytes <= limits.max_name_bytes).then_some(())
     };
     let mut stack: Vec<Item<'_>> = roots.iter().map(|r| Item::Ty(r, 1)).collect();
     while let Some(item) = stack.pop() {
         match item {
             Item::Ty(ty, depth) => {
-                if depth > config.max_depth {
+                if depth > limits.max_depth {
                     return None;
                 }
                 count(1, 0)?;

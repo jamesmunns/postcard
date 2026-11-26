@@ -38,7 +38,7 @@ pub enum TableError {
         /// The index of the node
         node: usize,
     },
-    /// Decoding the table would exceed a limit of the [`DecodeConfig`].
+    /// Decoding the table would exceed a limit of the [`TableLimits`].
     LimitExceeded,
 }
 
@@ -58,7 +58,7 @@ impl core::fmt::Display for TableError {
 #[cfg(feature = "std")]
 impl std::error::Error for TableError {}
 
-/// Limits on decoding a schema table
+/// Limits on the schemas of a schema table, when decoding or building one
 ///
 /// Nodes can be shared, so a small table can decode to very large schemas: a
 /// [billion laughs] style attack. Each limit is the total for all of a table's
@@ -67,15 +67,15 @@ impl std::error::Error for TableError {}
 /// [billion laughs]: https://en.wikipedia.org/wiki/Billion_laughs_attack
 ///
 /// ```rust
-/// use postcard_schema::schema::table::DecodeConfig;
+/// use postcard_schema::table::TableLimits;
 ///
-/// let mut config = DecodeConfig::default();
-/// config.max_nodes = 1 << 20;
+/// let mut limits = TableLimits::default();
+/// limits.max_nodes = 1 << 20;
 /// ```
 // schema[impl table.budget]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub struct DecodeConfig {
+pub struct TableLimits {
     /// The maximum number of schema nodes to produce: types, variants and
     /// fields. Defaults to 65536.
     ///
@@ -94,7 +94,7 @@ pub struct DecodeConfig {
     pub max_depth: usize,
 }
 
-impl Default for DecodeConfig {
+impl Default for TableLimits {
     fn default() -> Self {
         // defaults are guesses
         Self {
@@ -210,9 +210,9 @@ impl RawOwnedSchemaTable {
 }
 
 impl OwnedSchemaTable {
-    /// Expands each root into a schema, with the default [`DecodeConfig`].
+    /// Expands each root into a schema, with the default [`TableLimits`].
     pub fn decode(&self) -> Result<Vec<OwnedDataModelType>, TableError> {
-        self.decode_with_config(&DecodeConfig::default())
+        self.decode_with_limits(&TableLimits::default())
     }
 
     /// Expands each root into a schema.
@@ -222,14 +222,14 @@ impl OwnedSchemaTable {
     /// before anything is expanded.
     ///
     /// Returns [`TableError::LimitExceeded`] if the schemas exceed any of
-    /// `config`'s limits. A `max_depth` of 0 rejects every table.
+    /// `limits`. A `max_depth` of 0 rejects every table.
     // schema[impl table.meaning]
-    pub fn decode_with_config(
+    pub fn decode_with_limits(
         &self,
-        config: &DecodeConfig,
+        limits: &TableLimits,
     ) -> Result<Vec<OwnedDataModelType>, TableError> {
         let uses = self.uses();
-        self.check_size(&uses, config)?;
+        self.check_size(&uses, limits)?;
         Ok(self.expand(uses))
     }
 
@@ -250,12 +250,12 @@ impl OwnedSchemaTable {
     }
 
     /// Checks the size and depth of every used node's schema, and the total of
-    /// the roots, against `config`.
-    fn check_size(&self, uses: &[usize], config: &DecodeConfig) -> Result<(), TableError> {
+    /// the roots, against `limits`.
+    fn check_size(&self, uses: &[usize], limits: &TableLimits) -> Result<(), TableError> {
         let limit = Size {
-            nodes: config.max_nodes,
-            name_bytes: config.max_name_bytes,
-            depth: config.max_depth,
+            nodes: limits.max_nodes,
+            name_bytes: limits.max_name_bytes,
+            depth: limits.max_depth,
         };
         let mut sizes = vec![Size::ZERO; self.nodes.len()];
         for (i, node) in self.nodes.iter().enumerate() {
@@ -481,7 +481,7 @@ fn children(node: &OwnedTableNode, mut f: impl FnMut(u32)) {
     }
 }
 
-/// The size of a schema, as [`DecodeConfig`] counts it
+/// The size of a schema, as [`TableLimits`] counts it
 #[derive(Debug, Clone, Copy)]
 struct Size {
     nodes: usize,

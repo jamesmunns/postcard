@@ -330,9 +330,9 @@ fn derived_types() {
 #[test]
 fn schema_table() {
     use postcard_schema::{
-        schema::table::{
-            NameRef, RawOwnedSchemaTable, SchemaTableRef, Span, TableData as D, TableField,
-            TableNode as N, TableVariant,
+        table::{
+            node::{NameRef, Span, TableData as D, TableField, TableNode as N, TableVariant},
+            RawOwnedSchemaTable, SchemaTableRef,
         },
         verify::Coverage,
     };
