@@ -352,6 +352,25 @@ fn feature_types() {
             u8::AngularVelocity::new::<radian_per_second>(4),
         );
     }
+    #[cfg(feature = "uom-v0_38")]
+    {
+        use uom_v0_38::si::{acceleration::meter_per_second_squared, f32, f64, u8};
+        use uom_v0_38::si::{
+            angular_velocity::radian_per_second, thermodynamic_temperature::kelvin,
+        };
+        r.check(
+            "uom 0.38 f32 Acceleration",
+            f32::Acceleration::new::<meter_per_second_squared>(4.0),
+        );
+        r.check(
+            "uom 0.38 f64 ThermodynamicTemperature",
+            f64::ThermodynamicTemperature::new::<kelvin>(300.0),
+        );
+        r.check(
+            "uom 0.38 u8 AngularVelocity",
+            u8::AngularVelocity::new::<radian_per_second>(4),
+        );
+    }
     #[cfg(feature = "uuid-v1_0")]
     r.check("Uuid", uuid_v1_0::Uuid::from_u128(0x1234));
     r.finish();

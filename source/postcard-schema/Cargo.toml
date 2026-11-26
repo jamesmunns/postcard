@@ -112,6 +112,13 @@ optional = true
 default-features = false
 features = ["si", "f32", "f64"]
 
+[dependencies.uom_v0_38]
+package = "uom"
+version = "0.38.0"
+optional = true
+default-features = false
+features = ["si", "f32", "f64"]
+
 [dependencies.postcard-derive]
 path = "../postcard-derive"
 version = "0.4.0"
@@ -229,6 +236,12 @@ version = "0.37.0"
 default-features = false
 features = ["si", "serde", "f32", "f64", "u8"]
 
+[dev-dependencies.uom_v0_38]
+package = "uom"
+version = "0.38.0"
+default-features = false
+features = ["si", "serde", "f32", "f64", "u8"]
+
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]
 package = "postcard-schema"
@@ -294,6 +307,7 @@ nalgebra-v0_34 = ["dep:nalgebra_v0_34", "num-complex-v0_4"]
 num-complex-v0_4 = ["dep:num_complex_v0_4"]
 serde-big-array-v0_5 = ["dep:serde-big-array_v0_5"]
 uom-v0_37 = ["dep:uom_v0_37"]
+uom-v0_38 = ["dep:uom_v0_38"]
 uuid-v1_0 = ["dep:uuid_v1_0"]
 
 [[test]]
