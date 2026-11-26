@@ -1,7 +1,4 @@
-use std::{
-    fmt::{Debug, Display},
-    ops::Deref,
-};
+use std::fmt::{Debug, Display};
 
 use postcard_core::de::{
     flavors::Slice, try_take_bool, try_take_bytes, try_take_char, try_take_discriminant,
@@ -269,19 +266,13 @@ fn deserialize_inner(
             }
         }
         OwnedDataModelType::Map { key, val, .. } => {
-            // TODO: There's also a mismatch here because serde_json::Value requires
-            // keys to be strings, when postcard doesn't.
-            if !matches!(key.deref(), &OwnedDataModelType::String { max_len: _ }) {
-                return Err(Error::ShouldSupportButDont);
-            }
-
             let map_len = try_take_length(f).dec()?;
             let mut map = Map::new();
 
             for _ in 0..map_len {
-                let s = try_take_str(f).dec()?;
+                let k = de_map_key(key, f, budget)?;
                 let v = deserialize(val, f, budget)?;
-                map.insert(s.to_string(), v);
+                map.insert(k, v);
             }
 
             Value::Object(map)
@@ -345,13 +336,55 @@ fn deserialize_inner(
     Ok(val)
 }
 
+/// Deserialize a single map key.
+///
+/// `serde_json::Value` requires map keys to be strings, when postcard doesn't.
+/// `serde_json` handles that by encoding primitive keys as their string
+/// representation, so we do the same. Key types that `serde_json` also can't
+/// represent as a string are still rejected.
+fn de_map_key(
+    ty: &OwnedDataModelType,
+    f: &mut Slice<'_>,
+    budget: &mut Budget,
+) -> Result<String, Error> {
+    match ty {
+        OwnedDataModelType::Bool
+        | OwnedDataModelType::I8
+        | OwnedDataModelType::I16
+        | OwnedDataModelType::I32
+        | OwnedDataModelType::I64
+        | OwnedDataModelType::I128
+        | OwnedDataModelType::U8
+        | OwnedDataModelType::U16
+        | OwnedDataModelType::U32
+        | OwnedDataModelType::U64
+        | OwnedDataModelType::U128
+        | OwnedDataModelType::String { .. }
+        | OwnedDataModelType::Enum { .. } => {
+            let key = match deserialize(ty, f, budget)? {
+                // Unit variants of an enum come back as their name, anything
+                // else is an object, which can't be a key.
+                Value::String(s) => s,
+                Value::Bool(b) => b.to_string(),
+                Value::Number(n) => n.to_string(),
+                _ => return Err(Error::ShouldSupportButDont),
+            };
+            Ok(key)
+        }
+        // TODO: `serde_json` also stores `char` and float keys as strings, but
+        // round tripping a float through a decimal string is not something we
+        // want to do silently.
+        _ => Err(Error::ShouldSupportButDont),
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
 
-    use postcard_schema::Schema;
+    use postcard_schema::{schema::OwnedDataModelType, Schema};
     use serde::{Deserialize, Serialize};
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     use super::Error;
     use super::{from_slice_dyn_with_config, DeserializeConfig};
@@ -505,6 +538,111 @@ mod test {
 
         let de = from_slice_dyn(&Map1::SCHEMA.into(), &[1, 3, b'b', b'i', b'b', 3]).unwrap();
         assert_eq!(de, json!({"bib": -2}));
+    }
+
+    #[derive(Serialize, Deserialize, Schema, PartialEq, Eq, PartialOrd, Ord)]
+    enum Key1 {
+        Alpha,
+        Beta,
+    }
+
+    /// Like [`Key1`], but declared in an order the variant names don't sort in.
+    #[derive(Serialize, Deserialize, Schema, PartialEq, Eq, PartialOrd, Ord)]
+    enum Key2 {
+        Zeta,
+        Alpha,
+    }
+
+    /// Round trip a map through postcard, into a `Value`, and back into postcard,
+    /// checking the `Value` along the way.
+    fn map_round_trip<T: Serialize + Schema>(map: &T, expect: Value) {
+        let schema = OwnedDataModelType::from(T::SCHEMA);
+        let bytes = postcard::to_vec(map).unwrap();
+
+        let de = from_slice_dyn(&schema, &bytes).unwrap();
+        assert_eq!(de, expect);
+        assert_eq!(de, serde_json::to_value(map).unwrap());
+
+        let ser = to_stdvec_dyn(&schema, &de).unwrap();
+        assert_eq!(ser, bytes);
+    }
+
+    #[test]
+    fn non_string_map_keys() {
+        // String keys, which have always worked
+        map_round_trip(
+            &BTreeMap::from([("bib".to_string(), 10u8), ("bim".to_string(), 20)]),
+            json! {{"bib": 10, "bim": 20}},
+        );
+
+        // Anything serde_json can store as a string key, we can too
+        map_round_trip(
+            &BTreeMap::from([(false, 10u8), (true, 20)]),
+            json! {{"false": 10, "true": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(1u32, 10u8), (2, 20)]),
+            json! {{"1": 10, "2": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(-1i64, 10u8), (5, 20)]),
+            json! {{"-1": 10, "5": 20}},
+        );
+        map_round_trip(
+            &BTreeMap::from([(Key1::Alpha, 10u8), (Key1::Beta, 20)]),
+            json! {{"Alpha": 10, "Beta": 20}},
+        );
+
+        // Keys only sort the same as their string form when they are strings,
+        // so every other key type needs its entries put back in key order
+        // before they are written out again.
+
+        // Unsigned, digit widths that sort the other way around as strings
+        map_round_trip(
+            &BTreeMap::from([(2u32, 20u8), (10, 100)]),
+            json! {{"2": 20, "10": 100}},
+        );
+
+        // Negative, same digit width, which sorts backwards as strings
+        map_round_trip(
+            &BTreeMap::from([(-1i8, 1u8), (-2, 2)]),
+            json! {{"-1": 1, "-2": 2}},
+        );
+
+        // Mixed sign
+        map_round_trip(
+            &BTreeMap::from([(-2i16, 1u8), (-1, 2), (3, 3), (10, 4)]),
+            json! {{"-2": 1, "-1": 2, "3": 3, "10": 4}},
+        );
+
+        // Unit variants sort by declaration order, not by name
+        map_round_trip(
+            &BTreeMap::from([(Key2::Zeta, 10u8), (Key2::Alpha, 20)]),
+            json! {{"Zeta": 10, "Alpha": 20}},
+        );
+
+        // Nested maps get the same treatment
+        map_round_trip(
+            &BTreeMap::from([
+                (2u32, BTreeMap::from([(2u32, 1u8), (10, 2)])),
+                (10, BTreeMap::new()),
+            ]),
+            json! {{"2": {"2": 1, "10": 2}, "10": {}}},
+        );
+
+        // Keys serde_json can't store as a string are still rejected, rather
+        // than silently mangled
+        type Map1 = BTreeMap<(u8, u8), u8>;
+        let map = Map1::from([((1, 2), 10)]);
+        let bytes = postcard::to_vec(&map).unwrap();
+        assert_eq!(
+            from_slice_dyn(&Map1::SCHEMA.into(), &bytes),
+            Err(Error::ShouldSupportButDont)
+        );
+        assert_eq!(
+            to_stdvec_dyn(&Map1::SCHEMA.into(), &json! {{"[1,2]": 10}}),
+            Err(crate::ser::Error::ShouldSupportButDont)
+        );
     }
 
     #[test]
