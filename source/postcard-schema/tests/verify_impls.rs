@@ -325,3 +325,83 @@ fn derived_types() {
     r.check_all("Derived", &[derived(Some("x".into())), derived(None)]);
     r.finish();
 }
+
+/// The schema table types' hand-written `Schema` impls.
+#[test]
+fn schema_table() {
+    use postcard_schema::{
+        schema::table::{
+            NameRef, RawOwnedSchemaTable, SchemaTableRef, Span, TableData as D, TableField,
+            TableNode as N, TableVariant,
+        },
+        verify::Coverage,
+    };
+    let name = NameRef { offset: 0, len: 1 };
+    let span = Span { start: 0, len: 1 };
+    let nodes = [
+        N::Bool,
+        N::I8,
+        N::U8,
+        N::I16,
+        N::I32,
+        N::I64,
+        N::I128,
+        N::U16,
+        N::U32,
+        N::U64,
+        N::U128,
+        N::F32,
+        N::F64,
+        N::Char,
+        N::String { max_len: None },
+        N::String { max_len: Some(3) },
+        N::ByteArray { max_len: None },
+        N::Option(0),
+        N::Unit,
+        N::Seq {
+            element: 0,
+            max_len: None,
+        },
+        N::Tuple(span),
+        N::Map {
+            key: 0,
+            val: 1,
+            max_len: None,
+        },
+        N::Struct {
+            name,
+            data: D::Unit,
+        },
+        N::Struct {
+            name,
+            data: D::Newtype(0),
+        },
+        N::Struct {
+            name,
+            data: D::Tuple(span),
+        },
+        N::Enum {
+            name,
+            variants: span,
+        },
+        N::Array { element: 0, len: 4 },
+    ];
+    let variants = [TableVariant {
+        name,
+        data: D::Struct(span),
+    }];
+    let fields = [TableField { name, ty: 0 }];
+    let table = SchemaTableRef {
+        version: 1,
+        roots: &[0],
+        nodes: &nodes,
+        children: &[0],
+        variants: &variants,
+        fields: &fields,
+        names: "a",
+    };
+    let mut coverage = Coverage::new::<SchemaTableRef>();
+    coverage.add(&verify_serialize(&table).unwrap()).unwrap();
+    coverage.check().unwrap();
+    verify_all(&[RawOwnedSchemaTable::from(table)]).unwrap();
+}

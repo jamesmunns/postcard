@@ -388,13 +388,23 @@ fn max_size() {
     }
 }
 
-/// `all_used_types` on a leaf kind, inside an `Option`.
+/// `all_used_types` on each leaf kind, inside an `Option`.
 #[test]
 fn all_used_types_leaf_kinds() {
-    let leaf = OwnedDataModelType::Bool;
-    let ty = OwnedDataModelType::Option(Box::new(leaf.clone()));
-    let used = ty.all_used_types();
-    assert_eq!(used, [ty, leaf].into_iter().collect());
+    use OwnedDataModelType as T;
+    let leaves = [
+        T::Bool,
+        T::U8,
+        T::Unit,
+        T::Char,
+        T::String { max_len: None },
+        T::ByteArray { max_len: Some(4) },
+    ];
+    for leaf in leaves {
+        let ty = T::Option(Box::new(leaf.clone()));
+        let used = ty.all_used_types();
+        assert_eq!(used, [ty, leaf].into_iter().collect());
+    }
 }
 
 /// serde serializes `usize` and `isize` as `u64` and `i64`.

@@ -41,13 +41,41 @@
 //! schema built at runtime, such as one received from a peer, and
 //! [`Key::new_owned`](key::Key::new_owned) computes their keys.
 //!
-//! A schema that disagrees with its type's serde implementations gives wrong
-//! keys and wrong decoding. With the `alloc` or `std` feature,
-//! [`verify`](verify::verify) checks a type's schema against sample values;
-//! and can be used to test hand-written `Schema` impls.
+//! Schemas are sent as a [schema table](schema::table): an ordinary type,
+//! holding one or more schemas with each part stored once. [`schema_table!`]
+//! builds a schema table at compile time, and [`schema_table_bytes!`]
+//! builds its postcard encoding at compile time. With the `alloc` or `std`
+//! feature, [`OwnedSchemaTable`](schema::table::OwnedSchemaTable) can be used
+//! to build or receive one at runtime, and `decode` converts a table back into
+//! schemas.
 //!
-//! The [postcard-schema specification] defines keys, so that other
-//! implementations can compute the same keys.
+//! ```rust
+//! # #[cfg(all(feature = "derive", feature = "std"))] {
+//! use postcard_schema::{schema::table::OwnedSchemaTable, schema_table, Schema};
+//!
+//! #[derive(Schema)]
+//! struct Read {
+//!     channel: u8,
+//! }
+//!
+//! // Built at compile time, and sent as postcard data
+//! let bytes = postcard::to_vec(&schema_table!(Read, Option<Read>)).unwrap();
+//!
+//! // Received, then checked and expanded, within the default limits
+//! let table: OwnedSchemaTable = postcard::from_bytes(&bytes).unwrap();
+//! let schemas = table.decode().unwrap();
+//! assert_eq!(schemas[0], Read::SCHEMA.into());
+//! # }
+//! ```
+//!
+//! A schema that disagrees with its type's serde implementations calculates
+//! incorrect keys and performs incorrect decoding. With the `alloc` or `std`
+//! feature, [`verify`](verify::verify) checks a type's schema against sample
+//! values, and can be used to test hand-written `Schema` impls.
+//!
+//! The [postcard-schema specification] defines keys and schema tables, so
+//! that other implementations can compute the same keys and read the same
+//! tables.
 //!
 //! # Features
 //!

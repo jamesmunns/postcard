@@ -22,6 +22,7 @@
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod fmt;
+pub mod table;
 
 use serde::Serialize;
 
