@@ -331,8 +331,11 @@ fn derived_types() {
 fn schema_table() {
     use postcard_schema::{
         table::{
-            node::{NameRef, Span, TableData as D, TableField, TableNode as N, TableVariant},
-            RawOwnedSchemaTable, SchemaTableRef,
+            node::{
+                NameRef, OwnedTableData, OwnedTableNode, OwnedTableVariant, Span, TableData as D,
+                TableField, TableNode as N, TableVariant,
+            },
+            OwnedSchemaTable, RawOwnedSchemaTable, SchemaTableRef,
         },
         verify::Coverage,
     };
@@ -403,5 +406,39 @@ fn schema_table() {
     let mut coverage = Coverage::new::<SchemaTableRef>();
     coverage.add(&verify_serialize(&table).unwrap()).unwrap();
     coverage.check().unwrap();
-    verify_all(&[RawOwnedSchemaTable::from(table)]).unwrap();
+
+    let mut r = Report::default();
+    let raw = RawOwnedSchemaTable::from(table);
+    r.check("RawOwnedSchemaTable", raw.clone());
+    // the table is valid, so it's also an `OwnedSchemaTable`
+    let owned: OwnedSchemaTable = raw.clone().validate().unwrap();
+    r.check("OwnedSchemaTable", owned);
+    // the parts of a table, on their own
+    r.check_all::<OwnedTableNode>("OwnedTableNode", &raw.nodes);
+    let datas: Vec<OwnedTableData> = raw
+        .nodes
+        .iter()
+        .filter_map(|n| match n {
+            OwnedTableNode::Struct { data, .. } => Some(data.clone()),
+            _ => None,
+        })
+        .chain([OwnedTableData::Struct(vec![TableField { name, ty: 0 }])])
+        .collect();
+    r.check_all("OwnedTableData", &datas);
+    let variants: Vec<OwnedTableVariant> = datas
+        .iter()
+        .map(|data| OwnedTableVariant {
+            name,
+            data: data.clone(),
+        })
+        .collect();
+    r.check_all("OwnedTableVariant", &variants);
+    r.check("NameRef", name);
+    r.check("TableField", TableField { name, ty: 3 });
+    // a const-built table serializes as a `SchemaTableRef`
+    r.check_ser(
+        "SchemaTable",
+        &postcard_schema::schema_table!(Option<u8>, (u8, bool)),
+    );
+    r.finish();
 }
