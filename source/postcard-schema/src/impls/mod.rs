@@ -57,6 +57,10 @@ pub mod nalgebra_v0_33;
 #[cfg_attr(docsrs, doc(cfg(feature = "nalgebra-v0_34")))]
 pub mod nalgebra_v0_34;
 
+#[cfg(feature = "num-complex-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "num-complex-v0_4")))]
+pub mod num_complex_v0_4;
+
 #[cfg(feature = "serde-big-array-v0_5")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde-big-array-v0_5")))]
 pub mod serde_big_array_v0_5;

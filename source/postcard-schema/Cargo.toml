@@ -99,6 +99,12 @@ version = "0.4"
 optional = true
 default-features = false
 
+[dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+optional = true
+default-features = false
+
 [dependencies.postcard-derive]
 path = "../postcard-derive"
 version = "0.4.0"
@@ -205,6 +211,11 @@ package = "log"
 version = "0.4"
 features = ["serde"]
 
+[dev-dependencies.num_complex_v0_4]
+package = "num-complex"
+version = "0.4"
+features = ["serde"]
+
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]
 package = "postcard-schema"
@@ -265,8 +276,9 @@ heapless-v0_8 = ["dep:heapless_v0_8"]
 heapless-v0_9 = ["dep:heapless_v0_9"]
 indexmap-v2_0 = ["dep:indexmap_v2_0"]
 log-v0_4 = ["dep:log_v0_4"]
-nalgebra-v0_33 = ["dep:nalgebra_v0_33"]
-nalgebra-v0_34 = ["dep:nalgebra_v0_34"]
+nalgebra-v0_33 = ["dep:nalgebra_v0_33", "num-complex-v0_4"]
+nalgebra-v0_34 = ["dep:nalgebra_v0_34", "num-complex-v0_4"]
+num-complex-v0_4 = ["dep:num_complex_v0_4"]
 serde-big-array-v0_5 = ["dep:serde-big-array_v0_5"]
 uuid-v1_0 = ["dep:uuid_v1_0"]
 

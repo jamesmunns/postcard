@@ -293,6 +293,15 @@ fn feature_types() {
             "na 0.33 UnitQuaternion",
             na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
         );
+        r.check("na 0.33 Translation3", na::Translation3::new(1u8, 2, 3));
+        r.check(
+            "na 0.33 Isometry3",
+            na::Isometry3 {
+                rotation: na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
+                translation: na::Translation3::new(1.0f32, 2.0, 3.0),
+            },
+        );
+        r.check("na 0.33 Complex", na::Complex::new(1.0f32, 2.0));
     }
     #[cfg(feature = "nalgebra-v0_34")]
     {
@@ -307,7 +316,18 @@ fn feature_types() {
             "na 0.34 UnitQuaternion",
             na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
         );
+        r.check("na 0.34 Translation3", na::Translation3::new(1u8, 2, 3));
+        r.check(
+            "na 0.34 Isometry3",
+            na::Isometry3 {
+                rotation: na::Unit::new_unchecked(na::Quaternion::new(1.0f32, 0.0, 0.0, 0.0)),
+                translation: na::Translation3::new(1.0f32, 2.0, 3.0),
+            },
+        );
+        r.check("na 0.34 Complex", na::Complex::new(1.0f32, 2.0));
     }
+    #[cfg(feature = "num-complex-v0_4")]
+    r.check("Complex", num_complex_v0_4::Complex::new(1u8, 2));
     #[cfg(feature = "serde-big-array-v0_5")]
     r.check(
         "serde_big_array Array",
