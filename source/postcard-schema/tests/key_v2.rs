@@ -572,23 +572,6 @@ fn converted_ng_v0_4_schemas_match() {
     converts::<ng::Res>("result");
 }
 
-/// Without `Usize` and `Isize`, this version numbers the kinds after them
-/// differently, so a schema encoded by postcard-schema-ng 0.4 decodes as the
-/// wrong kind unless it is decoded as `legacy::ng_v0_4`'s type.
-#[cfg(feature = "postcard-schema-ng-v0_4")]
-#[test]
-fn ng_v0_4_encoding_differs() {
-    use postcard_schema::legacy::ng_v0_4::OwnedDataModelType as NgOwned;
-    let bytes = postcard::to_vec(&NgOwned::F32).unwrap();
-    let ng: NgOwned = postcard::from_bytes(&bytes).unwrap();
-    assert_eq!(
-        OwnedDataModelType::try_from(&ng),
-        Ok(OwnedDataModelType::F32)
-    );
-    let wrong: OwnedDataModelType = postcard::from_bytes(&bytes).unwrap();
-    assert_ne!(wrong, OwnedDataModelType::F32);
-}
-
 /// postcard-derive 0.2.2 and later honour `#[serde(rename)]`, as this crate's
 /// derive does, so renamed types match postcard-schema 0.2.6.
 /// postcard-derive-ng ignores it, so they can't match postcard-schema-ng 0.4.

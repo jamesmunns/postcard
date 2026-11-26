@@ -173,25 +173,6 @@ struct TestStruct2<'a> {
     z: Result<TestStruct1, u32>,
 }
 
-#[test]
-fn owned_punning() {
-    let borrowed_schema = TestStruct2::SCHEMA;
-    let owned_schema: OwnedDataModelType = borrowed_schema.into();
-
-    // Check that they are the same on the wire when serialized
-    let ser_borrowed_schema = postcard::to_vec(borrowed_schema).unwrap();
-    let ser_owned_schema = postcard::to_vec(&owned_schema).unwrap();
-    assert_eq!(ser_borrowed_schema, ser_owned_schema);
-
-    // TODO: This is wildly repetitive, and likely could benefit from interning of
-    // repeated types, strings, etc.
-
-    // Check that we round-trip correctly
-    let deser_borrowed_schema =
-        postcard::from_bytes::<OwnedDataModelType>(&ser_borrowed_schema).unwrap();
-    assert_eq!(deser_borrowed_schema, owned_schema);
-}
-
 #[allow(unused)]
 #[derive(Debug, Schema)]
 struct TestStruct3(u64);

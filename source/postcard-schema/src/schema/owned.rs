@@ -3,7 +3,6 @@
 use crate::schema::size_as_varint_usize;
 
 use super::{Data, DataModelType, NamedField, Variant};
-use serde::{Deserialize, Serialize};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
@@ -43,7 +42,7 @@ impl core::fmt::Display for OwnedDataModelType {
 // ---
 
 /// The owned version of [`DataModelType`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OwnedDataModelType {
     /// The `bool` Serde Data Model Type
     Bool,
@@ -210,7 +209,7 @@ impl From<&DataModelType> for OwnedDataModelType {
 // ---
 
 /// The owned version of [`Data`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OwnedData {
     /// The "Unit Struct" or "Unit Variant" Serde Data Model Type
     Unit,
@@ -267,7 +266,7 @@ impl From<&Data> for OwnedData {
 // ---
 
 /// The owned version of [`NamedField`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedNamedField {
     /// The name of this field
     pub name: Box<str>,
@@ -287,7 +286,7 @@ impl From<&NamedField> for OwnedNamedField {
 // ---
 
 /// The owned version of [`Variant`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedVariant {
     /// The name of this variant
     pub name: Box<str>,
