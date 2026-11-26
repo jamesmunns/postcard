@@ -65,7 +65,7 @@ mod model {
         Schema(Type<N, M>),
     }
 
-    /// The variants are in the order of their tags, `0x00` to `0x14`
+    /// The variants are in the order of their tags, `0x00` to `0x13`
     #[derive(Serialize, Debug)]
     pub enum Type<N, M> {
         Bool,
@@ -88,7 +88,6 @@ mod model {
         Sequence(M, Box<Type<N, M>>),
         Aggregate(Vec<Element<N, M>>),
         TaggedUnion(Vec<Element<N, M>>),
-        Schema,
     }
 
     #[derive(Serialize, Debug)]
@@ -333,7 +332,6 @@ fn input_types() {
                 Type::Aggregate(vec![el(None, Type::U8), el(None, Type::Bool)]),
             ),
         ),
-        (key::<OwnedDataModelType>(), Type::Schema),
         (key::<UnitStruct>(), Type::Unit),
         (key::<Newtype>(), Type::U8),
         (
@@ -627,7 +625,6 @@ fn owned_matches_const() {
         C(u8, i64),
         D { x: Option<()>, y: (bool, char) },
         E(Wrap, Unit),
-        F(OwnedDataModelType),
     }
 
     let owned: OwnedDataModelType = Bar::SCHEMA.into();

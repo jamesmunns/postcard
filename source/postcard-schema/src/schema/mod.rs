@@ -2,9 +2,8 @@
 //!
 //! The types in this module are used to define the schema of a given data type.
 //!
-//! The **Postcard Data Model** is nearly identical to the **Serde Data Model**, however Postcard also
-//! allows for one additional type, `Schema`, which maps to the [`DataModelType`] type, allowing
-//! the schema of types to also be sent over the wire and implement the `Schema` trait.
+//! The **Postcard Data Model** is the **Serde Data Model**: a [`DataModelType`]
+//! records the serde calls that a type's `Serialize` implementation makes.
 //!
 //! ## Borrowed vs Owned
 //!
@@ -28,9 +27,6 @@ use serde::Serialize;
 
 /// This enum lists which of the Data Model Types apply to a given type. This describes how the
 /// type is encoded on the wire.
-///
-/// This enum contains all Serde Data Model types as well as a "Schema" Type,
-/// which corresponds to [`DataModelType`] itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum DataModelType {
     /// The `bool` Serde Data Model Type
@@ -129,9 +125,6 @@ pub enum DataModelType {
         /// The variants contained in this enum
         variants: &'static [&'static Variant],
     },
-
-    /// A [`DataModelType`]/[`OwnedDataModelType`]
-    Schema,
 }
 
 const fn arr_max_size(data_model_types: &[&DataModelType]) -> Option<usize> {
@@ -254,8 +247,6 @@ macro_rules! max_size_dmt {
                         }
                         max.checked_add(disc)
                     }
-                    // Schemas are unbounded
-                    Schema => None,
                 }
             }
         }

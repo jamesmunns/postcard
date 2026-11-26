@@ -53,7 +53,6 @@ binding of the [Postcard Wire Specification]:
 | `Map { key, val, .. }`                 | a sequence of aggregates of `key` and `val`         |
 | `Struct { name, data }`                | `data`, as below                                    |
 | `Enum { name, variants }`              | a tagged union, with each variant's `data` as below |
-| `Schema`                               | the encoding of a schema                            |
 
 The `data` of a struct or variant is one of:
 

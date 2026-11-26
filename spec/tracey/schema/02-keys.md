@@ -152,7 +152,6 @@ enum Type {
     Sequence(MaxLen, Box<Type>),  // 0x11
     Aggregate(Vec<Element>),      // 0x12
     TaggedUnion(Vec<Element>),    // 0x13
-    Schema,                       // 0x14
 }
 
 struct Element {

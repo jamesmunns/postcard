@@ -388,10 +388,10 @@ fn max_size() {
     }
 }
 
-/// `all_used_types` on the `Schema` leaf kind, inside an `Option`.
+/// `all_used_types` on a leaf kind, inside an `Option`.
 #[test]
 fn all_used_types_leaf_kinds() {
-    let leaf = OwnedDataModelType::Schema;
+    let leaf = OwnedDataModelType::Bool;
     let ty = OwnedDataModelType::Option(Box::new(leaf.clone()));
     let used = ty.all_used_types();
     assert_eq!(used, [ty, leaf].into_iter().collect());

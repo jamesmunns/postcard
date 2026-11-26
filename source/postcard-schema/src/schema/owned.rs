@@ -40,10 +40,6 @@ impl core::fmt::Display for OwnedDataModelType {
     }
 }
 
-impl crate::Schema for OwnedDataModelType {
-    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
-}
-
 // ---
 
 /// The owned version of [`DataModelType`]
@@ -145,9 +141,6 @@ pub enum OwnedDataModelType {
         /// The variants contained in this enum
         variants: Box<[OwnedVariant]>,
     },
-
-    /// A [`DataModelType`]/[`OwnedDataModelType`]
-    Schema,
 }
 
 const fn arr_max_size(data_model_types: &[OwnedDataModelType]) -> Option<usize> {
@@ -210,7 +203,6 @@ impl From<&DataModelType> for OwnedDataModelType {
                 name: (*name).into(),
                 variants: variants.iter().map(|i| (*i).into()).collect(),
             },
-            DataModelType::Schema => Self::Schema,
         }
     }
 }
