@@ -25,8 +25,6 @@
 //! schema is reached. For types that borrow, add the [`Recording`]s to a
 //! [`Coverage`] instead.
 //!
-//! NOTE: The `Schema` kind (the schema of a schema) is not yet supported.
-//!
 //! ```
 //! use postcard_schema::verify::{verify, verify_all};
 //!

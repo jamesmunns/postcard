@@ -37,6 +37,7 @@ specs (
     include (
       spec/tracey/schema/01-intro.md
       spec/tracey/schema/02-keys.md
+      spec/tracey/schema/03-tables.md
       spec/tracey/schema/99-glossary.md
     )
     impls (
@@ -44,9 +45,14 @@ specs (
         name postcard-schema
         include (
           source/postcard-schema/src/key/hash.rs
+          source/postcard-schema/src/table.rs
+          source/postcard-schema/src/table/decode.rs
+          source/postcard-schema/src/table/encode.rs
+          source/postcard-schema/src/table/owned.rs
         )
         test_include (
           source/postcard-schema/src/key/hash/tests.rs
+          source/postcard-schema/src/table/tests.rs
         )
       }
     )

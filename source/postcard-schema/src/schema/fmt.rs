@@ -169,7 +169,6 @@ pub(crate) fn fmt_owned_dmt_to_buf(dmt: &OwnedDataModelType, buf: &mut String, t
                 *buf += name;
             }
         }
-        OwnedDataModelType::Schema => *buf += "Schema",
     }
 }
 
@@ -243,6 +242,5 @@ pub(crate) fn discover_tys(
                 discover_tys_data(&variant.data, set);
             }
         }
-        OwnedDataModelType::Schema => {}
     };
 }

@@ -16,7 +16,6 @@ pub enum Error {
     SchemaMismatch,
     /// Limitations of using serde_json::Value for now
     ShouldSupportButDont,
-    Unsupported,
     /// A limit of the [`SerializeConfig`] was exceeded.
     LimitExceeded,
 }
@@ -32,7 +31,6 @@ impl Display for Error {
                 f,
                 "reached a limitation of using serde_json::Value as the encoding source"
             ),
-            Error::Unsupported => write!(f, "reached unsupported item"),
             Error::LimitExceeded => write!(f, "exceeded a configured limit"),
         }
     }
@@ -353,7 +351,6 @@ fn ser_named_type(
                 return Err(Error::SchemaMismatch);
             }
         }
-        OwnedDataModelType::Schema => return Err(Error::Unsupported),
     }
     Ok(())
 }

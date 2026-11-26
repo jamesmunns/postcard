@@ -49,7 +49,6 @@ mod tag {
     pub const SEQUENCE: u8 = 0x11;
     pub const AGGREGATE: u8 = 0x12;
     pub const TAGGED_UNION: u8 = 0x13;
-    pub const SCHEMA: u8 = 0x14;
 
     // schema[impl key.input.postcard]
     pub const NONE: u8 = 0x00;
@@ -292,7 +291,6 @@ macro_rules! key_hasher {
                     }
                     state
                 }
-                $dmt::Schema => state.byte(tag::SCHEMA),
             }
         }
 

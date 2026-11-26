@@ -325,3 +325,120 @@ fn derived_types() {
     r.check_all("Derived", &[derived(Some("x".into())), derived(None)]);
     r.finish();
 }
+
+/// The schema table types' hand-written `Schema` impls.
+#[test]
+fn schema_table() {
+    use postcard_schema::{
+        table::{
+            node::{
+                NameRef, OwnedTableData, OwnedTableNode, OwnedTableVariant, Span, TableData as D,
+                TableField, TableNode as N, TableVariant,
+            },
+            OwnedSchemaTable, RawOwnedSchemaTable, SchemaTableRef,
+        },
+        verify::Coverage,
+    };
+    let name = NameRef { offset: 0, len: 1 };
+    let span = Span { start: 0, len: 1 };
+    let nodes = [
+        N::Bool,
+        N::I8,
+        N::U8,
+        N::I16,
+        N::I32,
+        N::I64,
+        N::I128,
+        N::U16,
+        N::U32,
+        N::U64,
+        N::U128,
+        N::F32,
+        N::F64,
+        N::Char,
+        N::String { max_len: None },
+        N::String { max_len: Some(3) },
+        N::ByteArray { max_len: None },
+        N::Option(0),
+        N::Unit,
+        N::Seq {
+            element: 0,
+            max_len: None,
+        },
+        N::Tuple(span),
+        N::Map {
+            key: 0,
+            val: 1,
+            max_len: None,
+        },
+        N::Struct {
+            name,
+            data: D::Unit,
+        },
+        N::Struct {
+            name,
+            data: D::Newtype(0),
+        },
+        N::Struct {
+            name,
+            data: D::Tuple(span),
+        },
+        N::Enum {
+            name,
+            variants: span,
+        },
+        N::Array { element: 0, len: 4 },
+    ];
+    let variants = [TableVariant {
+        name,
+        data: D::Struct(span),
+    }];
+    let fields = [TableField { name, ty: 0 }];
+    let table = SchemaTableRef {
+        version: 1,
+        roots: &[0],
+        nodes: &nodes,
+        children: &[0],
+        variants: &variants,
+        fields: &fields,
+        names: "a",
+    };
+    let mut coverage = Coverage::new::<SchemaTableRef>();
+    coverage.add(&verify_serialize(&table).unwrap()).unwrap();
+    coverage.check().unwrap();
+
+    let mut r = Report::default();
+    let raw = RawOwnedSchemaTable::from(table);
+    r.check("RawOwnedSchemaTable", raw.clone());
+    // the table is valid, so it's also an `OwnedSchemaTable`
+    let owned: OwnedSchemaTable = raw.clone().validate().unwrap();
+    r.check("OwnedSchemaTable", owned);
+    // the parts of a table, on their own
+    r.check_all::<OwnedTableNode>("OwnedTableNode", &raw.nodes);
+    let datas: Vec<OwnedTableData> = raw
+        .nodes
+        .iter()
+        .filter_map(|n| match n {
+            OwnedTableNode::Struct { data, .. } => Some(data.clone()),
+            _ => None,
+        })
+        .chain([OwnedTableData::Struct(vec![TableField { name, ty: 0 }])])
+        .collect();
+    r.check_all("OwnedTableData", &datas);
+    let variants: Vec<OwnedTableVariant> = datas
+        .iter()
+        .map(|data| OwnedTableVariant {
+            name,
+            data: data.clone(),
+        })
+        .collect();
+    r.check_all("OwnedTableVariant", &variants);
+    r.check("NameRef", name);
+    r.check("TableField", TableField { name, ty: 3 });
+    // a const-built table serializes as a `SchemaTableRef`
+    r.check_ser(
+        "SchemaTable",
+        &postcard_schema::schema_table!(Option<u8>, (u8, bool)),
+    );
+    r.finish();
+}

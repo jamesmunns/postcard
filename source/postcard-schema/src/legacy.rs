@@ -1,4 +1,10 @@
-//! Schemas from older versions of postcard-schema
+//! Keys and schemas of older versions of postcard-schema
+//!
+//! These are for talking to peers built with an older version. The rest
+//! of this crate is the current version, which new code should use.
+//!
+//! [`key_v2`] computes the version 2 keys of postcard-schema 0.2, as used by
+//! postcard-rpc, and postcard-schema-ng 0.4, as used by temperance.
 //!
 //! These let a host built with this version read the schemas that a device
 //! built with an older version sends, such as the schema data that postcard-rpc
@@ -7,8 +13,30 @@
 //! [`v0_2`] covers postcard-schema 0.2, as used by postcard-rpc, and
 //! [`ng_v0_4`] covers postcard-schema-ng 0.4, as used by temperance.
 
-#[cfg(feature = "postcard-schema-v0_2")]
-#[cfg_attr(docsrs, doc(cfg(feature = "postcard-schema-v0_2")))]
+#[cfg(feature = "legacy-key-v2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-key-v2")))]
+pub mod key_v2;
+
+/// A legacy schema contains the `Schema` kind, which this version doesn't have
+///
+/// A schema is now encoded as a schema table, an ordinary type, so there is
+/// no kind meaning "a schema".
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SchemaKindUnsupported;
+
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
+impl core::fmt::Display for SchemaKindUnsupported {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("the `Schema` kind is not supported")
+    }
+}
+
+#[cfg(any(feature = "legacy-schema-v0_2", feature = "legacy-schema-ng-v0_4"))]
+impl std::error::Error for SchemaKindUnsupported {}
+
+#[cfg(feature = "legacy-schema-v0_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-schema-v0_2")))]
 pub mod v0_2 {
     //! The owned schema types of postcard-schema 0.2
     //!
@@ -21,26 +49,17 @@ pub mod v0_2 {
     //! covers postcard-rpc 0.11 to 0.12, and may cover 0.8 to 0.10. It will not
     //! work with postcard-rpc 0.2 to 0.7, which compute their keys differently.
     //!
-    //! To compute the key of a message that contains one of these types, use
-    //! [`Flavor::PostcardSchemaV0_2`](crate::key::v2::Flavor) with the `key-v2`
-    //! feature: [`OwnedNamedType`]'s schema is the `Schema` kind, as it was in
-    //! 0.2.
+    //! The key of a message that contains one of these types, such as the
+    //! `postcard-rpc/schema/data` topic, can't be computed with this version,
+    //! as it has no `Schema` kind; use the old key with
+    //! [`Key::from_bytes`](crate::key::Key::from_bytes).
     //!
     //! For example, a postcard-rpc 0.12 device sends `OwnedSchemaData`
     //! messages, whose `Type` variant holds this same [`OwnedNamedType`], so a
     //! host can convert the schemas it receives directly.
-    //!
-    //! The conversion keeps what the schema describes, including where 0.2
-    //! described a type differently from this version (such as `Result`, as
-    //! tuple variants of one field). Names that this version has no place
-    //! for, such as the names of primitive and sequence types, are dropped.
-    //! `Usize` and `Isize` become `U64` and `I64`, which have the same
-    //! encoding.
 
-    use crate::{
-        schema::{DataModelType, OwnedData, OwnedNamedField, OwnedVariant},
-        Schema,
-    };
+    use super::SchemaKindUnsupported as Unsupported;
+    use crate::schema::{OwnedData, OwnedNamedField, OwnedVariant};
 
     use crate::schema::OwnedDataModelType as Current;
 
@@ -49,16 +68,18 @@ pub mod v0_2 {
         OwnedNamedVariant,
     };
 
-    impl Schema for OwnedNamedType {
-        const SCHEMA: &'static DataModelType = &DataModelType::Schema;
-    }
+    impl TryFrom<&OwnedNamedType> for Current {
+        type Error = Unsupported;
 
-    impl From<&OwnedNamedType> for Current {
-        fn from(nt: &OwnedNamedType) -> Self {
+        fn try_from(nt: &OwnedNamedType) -> Result<Self, Unsupported> {
             let name = || nt.name.as_str().into();
-            let ty = |t: &OwnedNamedType| Box::new(Current::from(t));
-            let tys = |ts: &[OwnedNamedType]| ts.iter().map(Current::from).collect();
-            match &nt.ty {
+            let ty = |t: &OwnedNamedType| Current::try_from(t).map(Box::new);
+            let tys = |ts: &[OwnedNamedType]| {
+                ts.iter()
+                    .map(Current::try_from)
+                    .collect::<Result<Box<[_]>, _>>()
+            };
+            Ok(match &nt.ty {
                 OwnedDataModelType::Bool => Current::Bool,
                 OwnedDataModelType::I8 => Current::I8,
                 OwnedDataModelType::U8 => Current::U8,
@@ -77,7 +98,7 @@ pub mod v0_2 {
                 OwnedDataModelType::Char => Current::Char,
                 OwnedDataModelType::String => Current::String { max_len: None },
                 OwnedDataModelType::ByteArray => Current::ByteArray { max_len: None },
-                OwnedDataModelType::Option(t) => Current::Option(ty(t)),
+                OwnedDataModelType::Option(t) => Current::Option(ty(t)?),
                 OwnedDataModelType::Unit => Current::Unit,
                 OwnedDataModelType::UnitStruct => Current::Struct {
                     name: name(),
@@ -85,62 +106,64 @@ pub mod v0_2 {
                 },
                 OwnedDataModelType::NewtypeStruct(t) => Current::Struct {
                     name: name(),
-                    data: OwnedData::Newtype(ty(t)),
+                    data: OwnedData::Newtype(ty(t)?),
                 },
                 OwnedDataModelType::Seq(t) => Current::Seq {
-                    element: ty(t),
+                    element: ty(t)?,
                     max_len: None,
                 },
-                OwnedDataModelType::Tuple(ts) => Current::Tuple(tys(ts)),
+                OwnedDataModelType::Tuple(ts) => Current::Tuple(tys(ts)?),
                 OwnedDataModelType::TupleStruct(ts) => Current::Struct {
                     name: name(),
-                    data: OwnedData::Tuple(tys(ts)),
+                    data: OwnedData::Tuple(tys(ts)?),
                 },
                 OwnedDataModelType::Map { key, val } => Current::Map {
-                    key: ty(key),
-                    val: ty(val),
+                    key: ty(key)?,
+                    val: ty(val)?,
                     max_len: None,
                 },
                 OwnedDataModelType::Struct(fields) => Current::Struct {
                     name: name(),
-                    data: OwnedData::Struct(fields.iter().map(field).collect()),
+                    data: OwnedData::Struct(fields.iter().map(field).collect::<Result<_, _>>()?),
                 },
                 OwnedDataModelType::Enum(variants) => Current::Enum {
                     name: name(),
-                    variants: variants.iter().map(variant).collect(),
+                    variants: variants.iter().map(variant).collect::<Result<_, _>>()?,
                 },
-                OwnedDataModelType::Schema => Current::Schema,
-            }
+                OwnedDataModelType::Schema => return Err(Unsupported),
+            })
         }
     }
 
-    fn field(f: &OwnedNamedValue) -> OwnedNamedField {
-        OwnedNamedField {
+    fn field(f: &OwnedNamedValue) -> Result<OwnedNamedField, Unsupported> {
+        Ok(OwnedNamedField {
             name: f.name.as_str().into(),
-            ty: (&f.ty).into(),
-        }
+            ty: (&f.ty).try_into()?,
+        })
     }
 
-    fn variant(v: &OwnedNamedVariant) -> OwnedVariant {
+    fn variant(v: &OwnedNamedVariant) -> Result<OwnedVariant, Unsupported> {
         let data = match &v.ty {
             OwnedDataModelVariant::UnitVariant => OwnedData::Unit,
-            OwnedDataModelVariant::NewtypeVariant(t) => OwnedData::Newtype(Box::new((&**t).into())),
+            OwnedDataModelVariant::NewtypeVariant(t) => {
+                OwnedData::Newtype(Box::new((&**t).try_into()?))
+            }
             OwnedDataModelVariant::TupleVariant(ts) => {
-                OwnedData::Tuple(ts.iter().map(Current::from).collect())
+                OwnedData::Tuple(ts.iter().map(Current::try_from).collect::<Result<_, _>>()?)
             }
             OwnedDataModelVariant::StructVariant(fields) => {
-                OwnedData::Struct(fields.iter().map(field).collect())
+                OwnedData::Struct(fields.iter().map(field).collect::<Result<_, _>>()?)
             }
         };
-        OwnedVariant {
+        Ok(OwnedVariant {
             name: v.name.as_str().into(),
             data,
-        }
+        })
     }
 }
 
-#[cfg(feature = "postcard-schema-ng-v0_4")]
-#[cfg_attr(docsrs, doc(cfg(feature = "postcard-schema-ng-v0_4")))]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "legacy-schema-ng-v0_4")))]
 pub mod ng_v0_4 {
     //! The owned schema types of postcard-schema-ng 0.4
     //!
@@ -153,20 +176,13 @@ pub mod ng_v0_4 {
     //! covers nprpc 1.0 to 2.1 and temperance 2.1 to 2.2, which compute method
     //! keys with the maximum lengths option enabled.
     //!
-    //! The two are the same shape, except that this version has no `Usize` and
-    //! `Isize` kinds, which become `U64` and `I64`, with the same encoding. As
-    //! that shifts the variants after them, a schema encoded by
-    //! postcard-schema-ng 0.4 must be decoded as this module's type, not as
-    //! this version's.
-    //!
-    //! To compute the key of a message that contains one of these types, use
-    //! [`Flavor::PostcardSchemaNgV0_4`](crate::key::v2::Flavor) with the
-    //! `key-v2` feature: [`OwnedDataModelType`]'s schema is the `Schema` kind.
+    //! The two are mostly similar, except that this version has no `Usize` and
+    //! `Isize` kinds, which become `U64` and `I64`, with the same encoding.
+    //! A schema encoded by postcard-schema-ng 0.4 is decoded as this module's
+    //! type, then converted.
 
-    use crate::{
-        schema::{DataModelType, OwnedData as Data, OwnedNamedField as Field, OwnedVariant as Var},
-        Schema,
-    };
+    use super::SchemaKindUnsupported as Unsupported;
+    use crate::schema::{OwnedData as Data, OwnedNamedField as Field, OwnedVariant as Var};
 
     use crate::schema::OwnedDataModelType as Current;
 
@@ -174,15 +190,13 @@ pub mod ng_v0_4 {
         OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant,
     };
 
-    impl Schema for OwnedDataModelType {
-        const SCHEMA: &'static DataModelType = &DataModelType::Schema;
-    }
+    impl TryFrom<&OwnedDataModelType> for Current {
+        type Error = Unsupported;
 
-    impl From<&OwnedDataModelType> for Current {
-        fn from(ty: &OwnedDataModelType) -> Self {
+        fn try_from(ty: &OwnedDataModelType) -> Result<Self, Unsupported> {
             use OwnedDataModelType as Ng;
-            let b = |t: &OwnedDataModelType| Box::new(Current::from(t));
-            match ty {
+            let b = |t: &OwnedDataModelType| Current::try_from(t).map(Box::new);
+            Ok(match ty {
                 Ng::Bool => Current::Bool,
                 Ng::I8 => Current::I8,
                 Ng::U8 => Current::U8,
@@ -199,52 +213,62 @@ pub mod ng_v0_4 {
                 Ng::Char => Current::Char,
                 Ng::String { max_len } => Current::String { max_len: *max_len },
                 Ng::ByteArray { max_len } => Current::ByteArray { max_len: *max_len },
-                Ng::Option(t) => Current::Option(b(t)),
+                Ng::Option(t) => Current::Option(b(t)?),
                 Ng::Unit => Current::Unit,
                 Ng::Seq { element, max_len } => Current::Seq {
-                    element: b(element),
+                    element: b(element)?,
                     max_len: *max_len,
                 },
-                Ng::Tuple(ts) => Current::Tuple(ts.iter().map(Current::from).collect()),
+                Ng::Tuple(ts) => {
+                    Current::Tuple(ts.iter().map(Current::try_from).collect::<Result<_, _>>()?)
+                }
                 Ng::Map { key, val, max_len } => Current::Map {
-                    key: b(key),
-                    val: b(val),
+                    key: b(key)?,
+                    val: b(val)?,
                     max_len: *max_len,
                 },
                 Ng::Struct { name, data } => Current::Struct {
                     name: name.clone(),
-                    data: data.into(),
+                    data: data.try_into()?,
                 },
                 Ng::Enum { name, variants } => Current::Enum {
                     name: name.clone(),
                     variants: variants
                         .iter()
-                        .map(|v| Var {
-                            name: v.name.clone(),
-                            data: (&v.data).into(),
+                        .map(|v| {
+                            Ok(Var {
+                                name: v.name.clone(),
+                                data: (&v.data).try_into()?,
+                            })
                         })
-                        .collect(),
+                        .collect::<Result<_, Unsupported>>()?,
                 },
-                Ng::Schema => Current::Schema,
-            }
+                Ng::Schema => return Err(Unsupported),
+            })
         }
     }
 
-    impl From<&OwnedData> for Data {
-        fn from(data: &OwnedData) -> Self {
-            match data {
+    impl TryFrom<&OwnedData> for Data {
+        type Error = Unsupported;
+
+        fn try_from(data: &OwnedData) -> Result<Self, Unsupported> {
+            Ok(match data {
                 OwnedData::Unit => Data::Unit,
-                OwnedData::Newtype(t) => Data::Newtype(Box::new((&**t).into())),
-                OwnedData::Tuple(ts) => Data::Tuple(ts.iter().map(Current::from).collect()),
+                OwnedData::Newtype(t) => Data::Newtype(Box::new((&**t).try_into()?)),
+                OwnedData::Tuple(ts) => {
+                    Data::Tuple(ts.iter().map(Current::try_from).collect::<Result<_, _>>()?)
+                }
                 OwnedData::Struct(fs) => Data::Struct(
                     fs.iter()
-                        .map(|f| Field {
-                            name: f.name.clone(),
-                            ty: (&f.ty).into(),
+                        .map(|f| {
+                            Ok(Field {
+                                name: f.name.clone(),
+                                ty: (&f.ty).try_into()?,
+                            })
                         })
-                        .collect(),
+                        .collect::<Result<_, Unsupported>>()?,
                 ),
-            }
+            })
         }
     }
 }

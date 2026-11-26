@@ -13,8 +13,8 @@
 //!
 //! * `fixed` numbers, which both older crates described as their bits;
 //! * with [`Flavor::PostcardSchemaV0_2`], `Result`, which 0.2 described as
-//!   tuple variants of one field, and `ByteArray` and the `Schema` kind, which
-//!   have their own tags in 0.2.
+//!   tuple variants of one field, and `ByteArray`, which has its own tag in
+//!   0.2.
 //!
 //! Some keys can't be matched, as the schema no longer has what the old
 //! key was computed from:
@@ -25,7 +25,9 @@
 //! * derived types that use `#[serde(rename)]`, which postcard-derive before
 //!   0.2.2 and postcard-derive-ng ignored;
 //! * `usize` and `isize`, which postcard-schema 0.2 could describe with their
-//!   own kinds (no impl in 0.2 did).
+//!   own kinds (no impl in 0.2 did);
+//! * types containing a schema, which older crates described with the `Schema`
+//!   kind, such as postcard-rpc's `postcard-rpc/schema/data` topic.
 //!
 //! For those, use the old key directly with
 //! [`Key::from_bytes`](crate::key::Key::from_bytes).
@@ -35,7 +37,7 @@
 //! which had no maximum lengths. [`Options::names`] is always ignored:
 //! version 2 always includes field and variant names.
 
-use super::{Item, Options};
+use crate::key::{Item, Key, Options};
 use crate::schema::{Data, DataModelType, NamedField, Variant};
 
 /// Which crate's version 2 keys to match
@@ -48,6 +50,21 @@ pub enum Flavor {
 }
 
 impl Flavor {
+    /// The version 2 key of `items`, with `options`, as this flavor's crate
+    /// computes it
+    pub const fn key(self, options: &Options, items: &[Item<'_>]) -> Key {
+        Key::from_bytes(hasher(self, options, items))
+    }
+
+    /// The version 2 key of `items`, with `options`, for owned schemas
+    ///
+    /// This gives the same key as [`Flavor::key`] for the equivalent borrowed
+    /// items.
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub const fn key_owned(self, options: &Options, items: &[crate::key::OwnedItem<'_>]) -> Key {
+        Key::from_bytes(owned::hasher(self, options, items))
+    }
+
     const fn is_v0_2(self) -> bool {
         matches!(self, Flavor::PostcardSchemaV0_2)
     }
@@ -82,8 +99,6 @@ mod tag {
     pub const ENUM: u8 = 0xE9;
     pub const MAX_LEN: u8 = 0x2B;
 
-    pub const SCHEMA_NG: u8 = 0xE5;
-    pub const SCHEMA_V0_2: u8 = 0xB3;
     pub const BYTE_ARRAY_V0_2: u8 = 0x65;
 
     // The data of a struct
@@ -290,8 +305,6 @@ macro_rules! key_hasher_v2 {
                     }
                     state
                 }
-                $dmt::Schema if cfg.flavor.is_v0_2() => state.byte(tag::SCHEMA_V0_2),
-                $dmt::Schema => state.byte(tag::SCHEMA_NG),
             }
         }
 

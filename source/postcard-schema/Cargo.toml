@@ -211,11 +211,11 @@ std = ["serde/std"]
 alloc = ["serde/alloc"]
 derive = ["dep:postcard-derive"]
 # version 2 key hashing, for peers that still use it
-key-v2 = []
+legacy-key-v2 = []
 # postcard-schema 0.2's owned schema types, to read schemas from older devices
-postcard-schema-v0_2 = ["std", "dep:postcard-schema_v0_2"]
+legacy-schema-v0_2 = ["std", "dep:postcard-schema_v0_2"]
 # postcard-schema-ng 0.4's owned schema types, to read schemas from older devices
-postcard-schema-ng-v0_4 = ["std", "dep:postcard-schema-ng_v0_4"]
+legacy-schema-ng-v0_4 = ["std", "dep:postcard-schema-ng_v0_4"]
 
 chrono-v0_4 = ["dep:chrono_v0_4"]
 defmt-v1 = ["dep:defmt"]
@@ -240,4 +240,4 @@ required-features = ["derive", "std"]
 
 [[test]]
 name = "key_v2"
-required-features = ["derive", "std", "key-v2"]
+required-features = ["derive", "std", "legacy-key-v2"]

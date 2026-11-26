@@ -3,7 +3,6 @@
 use crate::schema::size_as_varint_usize;
 
 use super::{Data, DataModelType, NamedField, Variant};
-use serde::{Deserialize, Serialize};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
@@ -40,14 +39,10 @@ impl core::fmt::Display for OwnedDataModelType {
     }
 }
 
-impl crate::Schema for OwnedDataModelType {
-    const SCHEMA: &'static DataModelType = &DataModelType::Schema;
-}
-
 // ---
 
 /// The owned version of [`DataModelType`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OwnedDataModelType {
     /// The `bool` Serde Data Model Type
     Bool,
@@ -145,9 +140,6 @@ pub enum OwnedDataModelType {
         /// The variants contained in this enum
         variants: Box<[OwnedVariant]>,
     },
-
-    /// A [`DataModelType`]/[`OwnedDataModelType`]
-    Schema,
 }
 
 const fn arr_max_size(data_model_types: &[OwnedDataModelType]) -> Option<usize> {
@@ -210,7 +202,6 @@ impl From<&DataModelType> for OwnedDataModelType {
                 name: (*name).into(),
                 variants: variants.iter().map(|i| (*i).into()).collect(),
             },
-            DataModelType::Schema => Self::Schema,
         }
     }
 }
@@ -218,7 +209,7 @@ impl From<&DataModelType> for OwnedDataModelType {
 // ---
 
 /// The owned version of [`Data`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum OwnedData {
     /// The "Unit Struct" or "Unit Variant" Serde Data Model Type
     Unit,
@@ -275,7 +266,7 @@ impl From<&Data> for OwnedData {
 // ---
 
 /// The owned version of [`NamedField`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedNamedField {
     /// The name of this field
     pub name: Box<str>,
@@ -295,7 +286,7 @@ impl From<&NamedField> for OwnedNamedField {
 // ---
 
 /// The owned version of [`Variant`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct OwnedVariant {
     /// The name of this variant
     pub name: Box<str>,

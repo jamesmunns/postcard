@@ -19,7 +19,6 @@ pub enum Error {
     UnexpectedEndOfData,
     ShouldSupportButDont,
     SchemaMismatch,
-    Unsupported,
     /// A limit of the [`DeserializeConfig`] was exceeded.
     LimitExceeded,
 }
@@ -35,7 +34,6 @@ impl Display for Error {
             Error::SchemaMismatch => {
                 write!(f, "reached data that was not correct for the given schema")
             }
-            Error::Unsupported => write!(f, "reached unsupported item"),
             Error::LimitExceeded => write!(f, "exceeded a configured limit"),
         }
     }
@@ -343,7 +341,6 @@ fn deserialize_inner(
                 }
             }
         }
-        OwnedDataModelType::Schema => return Err(Error::Unsupported),
     };
     Ok(val)
 }
@@ -508,16 +505,6 @@ mod test {
 
         let de = from_slice_dyn(&Map1::SCHEMA.into(), &[1, 3, b'b', b'i', b'b', 3]).unwrap();
         assert_eq!(de, json!({"bib": -2}));
-    }
-
-    #[test]
-    fn schema_is_unsupported() {
-        use postcard_schema::schema::OwnedDataModelType;
-
-        let res = from_slice_dyn(&OwnedDataModelType::Schema, &[]);
-        assert_eq!(res, Err(Error::Unsupported));
-        let res = to_stdvec_dyn(&OwnedDataModelType::Schema, &json!(null));
-        assert_eq!(res, Err(crate::ser::Error::Unsupported));
     }
 
     #[test]

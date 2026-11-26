@@ -2,36 +2,30 @@
 //!
 //! The types in this module are used to define the schema of a given data type.
 //!
-//! The **Postcard Data Model** is nearly identical to the **Serde Data Model**, however Postcard also
-//! allows for one additional type, `Schema`, which maps to the [`DataModelType`] type, allowing
-//! the schema of types to also be sent over the wire and implement the `Schema` trait.
+//! The **Postcard Data Model** is the **Serde Data Model**: a [`DataModelType`]
+//! records the serde calls that a type's `Serialize` implementation makes.
 //!
 //! ## Borrowed vs Owned
 //!
-//! For reasons that have to do with allowing for arbitrarily sized and nested schemas that
-//! can be created at compile/const time, as well as being usable in `no-std` contexts, the
-//! schema types in this module are implemented using a LOT of `&'static` references.
+//! For reasons that have to do with allowing for arbitrarily sized and nested
+//! schemas that can be created at compile/const time, as well as being usable
+//! in `no-std` contexts, the schema types in this module are implemented using
+//! a LOT of `&'static` references.
 //!
-//! This is useful in those limited contexts, however it makes it difficult to do things
-//! like deserialize them, as you can't generally get static references at runtime without
-//! a lot of leaking.
+//! That suits const and `no-std` code, but a schema built at runtime, such as
+//! one received from a peer, can't be made of `&'static` references. The owned
+//! copies in this module, such as [`OwnedDataModelType`], hold those instead.
+//! Each converts `From` its borrowed counterpart.
 //!
-//! For cases like this, this module also has owned copies, such as [`OwnedDataModelType`], of all
-//! of the "borrowed" versions of the Data Model types. These owned types implement `From` for their
-//! borrowed counterpart, so if you need to deserialize something, you probably want the Owned
-//! variant!
+//! Neither form implements serde's `Serialize` or `Deserialize`: a schema is
+//! sent as a [schema table](crate::table) instead.
 
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod fmt;
 
-use serde::Serialize;
-
 /// This enum lists which of the Data Model Types apply to a given type. This describes how the
 /// type is encoded on the wire.
-///
-/// This enum contains all Serde Data Model types as well as a "Schema" Type,
-/// which corresponds to [`DataModelType`] itself.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DataModelType {
     /// The `bool` Serde Data Model Type
     Bool,
@@ -129,9 +123,6 @@ pub enum DataModelType {
         /// The variants contained in this enum
         variants: &'static [&'static Variant],
     },
-
-    /// A [`DataModelType`]/[`OwnedDataModelType`]
-    Schema,
 }
 
 const fn arr_max_size(data_model_types: &[&DataModelType]) -> Option<usize> {
@@ -254,8 +245,6 @@ macro_rules! max_size_dmt {
                         }
                         max.checked_add(disc)
                     }
-                    // Schemas are unbounded
-                    Schema => None,
                 }
             }
         }
@@ -264,7 +253,7 @@ macro_rules! max_size_dmt {
 max_size_dmt!(DataModelType);
 
 /// The contents of a struct or enum variant.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Data {
     /// The "Unit Struct" or "Unit Variant" Serde Data Model Type
     Unit,
@@ -311,7 +300,7 @@ impl Data {
 ///
 /// For example, in `struct Ex { a: u32 }` the field `a` would be reflected as
 /// `NamedField { name: "a", ty: DataModelType::U32 }`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct NamedField {
     /// The name of this field
     pub name: &'static str,
@@ -320,7 +309,7 @@ pub struct NamedField {
 }
 
 /// An enum variant e.g. `T::Bar(...)`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
     /// The name of this variant
     pub name: &'static str,

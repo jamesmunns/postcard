@@ -3,7 +3,8 @@
 //! type deriving `Schema` with each crate.
 
 use postcard_schema::{
-    key::{v2::Flavor, Item, Key, Options, OwnedItem},
+    key::{Item, Options, OwnedItem},
+    legacy::key_v2::Flavor,
     schema::OwnedDataModelType,
     Schema,
 };
@@ -152,14 +153,12 @@ types! {
 /// hasher gives the same key
 #[track_caller]
 fn key_v2<T: Schema + ?Sized>(flavor: Flavor, path: &str) -> [u8; 8] {
-    let key = Key::new_v2(
-        flavor,
+    let key = flavor.key(
         &Options::DEFAULT,
         &[Item::String(path), Item::Schema(T::SCHEMA)],
     );
     let owned: OwnedDataModelType = T::SCHEMA.into();
-    let owned_key = Key::new_owned_v2(
-        flavor,
+    let owned_key = flavor.key_owned(
         &Options::DEFAULT,
         &[OwnedItem::String(path), OwnedItem::Schema(&owned)],
     );
@@ -239,21 +238,203 @@ fn matches_published_features() {
     check!("features", derived Feat);
 }
 
-/// The key of postcard-rpc 0.12's schema data topic, whose message holds a
-/// schema: an `OwnedNamedType` with postcard-schema 0.2, and an
-/// `OwnedDataModelType` with postcard-schema-ng 0.4.
-#[cfg(feature = "postcard-schema-v0_2")]
+/// postcard-rpc 0.12's schema data topic holds a schema, which the older crates
+/// described with the `Schema` kind. This version has no such kind, so
+/// converting it fails.
+///
+/// The `Schema` kind is found wherever it is, so converting any type that
+/// contains it fails.
+#[cfg(feature = "legacy-schema-v0_2")]
 #[test]
-fn postcard_rpc_schema_data() {
-    use postcard_schema::legacy::v0_2::OwnedNamedType;
-    let path = "postcard-rpc/schema/data";
+fn schema_kind_unsupported_v0_2() {
+    use postcard_schema::legacy::{
+        v0_2::{
+            OwnedDataModelType as Ty, OwnedDataModelVariant as Var, OwnedNamedType,
+            OwnedNamedValue, OwnedNamedVariant,
+        },
+        SchemaKindUnsupported,
+    };
+    type Data = self::v0_2::OwnedSchemaData<OwnedNamedType>;
+    let nt: OwnedNamedType = <Data as v0_2_crate::Schema>::SCHEMA.into();
     assert_eq!(
-        key_v2::<new::OwnedSchemaData<OwnedNamedType>>(V0_2, path),
-        key_v0_2::<v0_2::OwnedSchemaData<OwnedNamedType>>(path)
+        OwnedDataModelType::try_from(&nt),
+        Err(SchemaKindUnsupported)
+    );
+
+    let named = |ty| OwnedNamedType {
+        name: "t".into(),
+        ty,
+    };
+    let schema = || named(Ty::Schema);
+    let u8 = || named(Ty::U8);
+    let field = || OwnedNamedValue {
+        name: "f".into(),
+        ty: schema(),
+    };
+    let variant = |ty| {
+        Ty::Enum(vec![OwnedNamedVariant {
+            name: "v".into(),
+            ty,
+        }])
+    };
+    let positions = [
+        Ty::Schema,
+        Ty::Option(Box::new(schema())),
+        Ty::NewtypeStruct(Box::new(schema())),
+        Ty::Seq(Box::new(schema())),
+        Ty::Tuple(vec![u8(), schema()]),
+        Ty::TupleStruct(vec![u8(), schema()]),
+        Ty::Map {
+            key: Box::new(schema()),
+            val: Box::new(u8()),
+        },
+        Ty::Map {
+            key: Box::new(u8()),
+            val: Box::new(schema()),
+        },
+        Ty::Struct(vec![field()]),
+        variant(Var::NewtypeVariant(Box::new(schema()))),
+        variant(Var::TupleVariant(vec![u8(), schema()])),
+        variant(Var::StructVariant(vec![field()])),
+    ];
+    for ty in positions {
+        let nt = named(ty);
+        assert_eq!(
+            OwnedDataModelType::try_from(&nt),
+            Err(SchemaKindUnsupported),
+            "{nt:?}"
+        );
+    }
+}
+
+/// As [`schema_kind_unsupported_v0_2`], for postcard-schema-ng 0.4.
+#[cfg(feature = "legacy-schema-ng-v0_4")]
+#[test]
+fn schema_kind_unsupported_ng_v0_4() {
+    use postcard_schema::legacy::{
+        ng_v0_4::{OwnedData, OwnedDataModelType as Ty, OwnedNamedField, OwnedVariant},
+        SchemaKindUnsupported,
+    };
+    type Data = ng::OwnedSchemaData<Ty>;
+    let ty: Ty = <Data as ng_crate::Schema>::SCHEMA.into();
+    assert_eq!(
+        OwnedDataModelType::try_from(&ty),
+        Err(SchemaKindUnsupported)
+    );
+
+    let schema = || Box::new(Ty::Schema);
+    let fields = || {
+        OwnedData::Struct(Box::new([OwnedNamedField {
+            name: "f".into(),
+            ty: Ty::Schema,
+        }]))
+    };
+    let datas = || {
+        [
+            OwnedData::Newtype(schema()),
+            OwnedData::Tuple(Box::new([Ty::U8, Ty::Schema])),
+            fields(),
+        ]
+    };
+    let mut positions = vec![
+        Ty::Schema,
+        Ty::Option(schema()),
+        Ty::Seq {
+            element: schema(),
+            max_len: None,
+        },
+        Ty::Tuple(Box::new([Ty::U8, Ty::Schema])),
+        Ty::Map {
+            key: schema(),
+            val: Box::new(Ty::U8),
+            max_len: None,
+        },
+        Ty::Map {
+            key: Box::new(Ty::U8),
+            val: schema(),
+            max_len: None,
+        },
+    ];
+    for data in datas() {
+        positions.push(Ty::Struct {
+            name: "s".into(),
+            data,
+        });
+    }
+    for data in datas() {
+        positions.push(Ty::Enum {
+            name: "e".into(),
+            variants: Box::new([OwnedVariant {
+                name: "v".into(),
+                data,
+            }]),
+        });
+    }
+    for ty in positions {
+        assert_eq!(
+            OwnedDataModelType::try_from(&ty),
+            Err(SchemaKindUnsupported),
+            "{ty:?}"
+        );
+    }
+}
+
+/// The kinds that this version doesn't have become the kinds with the same
+/// encoding, and maximum lengths are kept where the older crate had them.
+#[cfg(feature = "legacy-schema-v0_2")]
+#[test]
+fn legacy_kinds_convert_v0_2() {
+    use postcard_schema::legacy::v0_2;
+    use OwnedDataModelType as T;
+    let v0_2 = |ty| {
+        let nt = v0_2::OwnedNamedType {
+            name: "t".into(),
+            ty,
+        };
+        OwnedDataModelType::try_from(&nt).unwrap()
+    };
+    assert_eq!(v0_2(v0_2::OwnedDataModelType::Usize), T::U64);
+    assert_eq!(v0_2(v0_2::OwnedDataModelType::Isize), T::I64);
+    assert_eq!(
+        v0_2(v0_2::OwnedDataModelType::ByteArray),
+        T::ByteArray { max_len: None }
+    );
+}
+
+/// As [`legacy_kinds_convert_v0_2`], for postcard-schema-ng 0.4.
+#[cfg(feature = "legacy-schema-ng-v0_4")]
+#[test]
+fn legacy_kinds_convert_ng_v0_4() {
+    use postcard_schema::legacy::ng_v0_4::OwnedDataModelType as Ng;
+    use OwnedDataModelType as T;
+    let ng = |ty: Ng| OwnedDataModelType::try_from(&ty).unwrap();
+    assert_eq!(ng(Ng::Usize), T::U64);
+    assert_eq!(ng(Ng::Isize), T::I64);
+    assert_eq!(
+        ng(Ng::ByteArray { max_len: Some(3) }),
+        T::ByteArray { max_len: Some(3) }
     );
     assert_eq!(
-        key_v2::<new::OwnedSchemaData<OwnedDataModelType>>(NG, path),
-        key_ng::<ng::OwnedSchemaData<ng_crate::schema::owned::OwnedDataModelType>>(path)
+        ng(Ng::Seq {
+            element: Box::new(Ng::U8),
+            max_len: Some(4)
+        }),
+        T::Seq {
+            element: Box::new(T::U8),
+            max_len: Some(4)
+        }
+    );
+    assert_eq!(
+        ng(Ng::Map {
+            key: Box::new(Ng::U8),
+            val: Box::new(Ng::Bool),
+            max_len: Some(5)
+        }),
+        T::Map {
+            key: Box::new(T::U8),
+            val: Box::new(T::Bool),
+            max_len: Some(5)
+        }
     );
 }
 
@@ -294,17 +475,14 @@ fn max_len_matches_ng() {
             HashItem::Schema(<(NgS, Vec<u8>, Option<NgS>) as ng_crate::Schema>::SCHEMA),
         ],
     );
-    assert_eq!(Key::new_v2(NG, &opt, &items).to_bytes(), ng);
-    assert_eq!(
-        Key::new_v2(V0_2, &opt, &items),
-        Key::new_v2(V0_2, &Options::DEFAULT, &items)
-    );
+    assert_eq!(NG.key(&opt, &items).to_bytes(), ng);
+    assert_eq!(V0_2.key(&opt, &items), V0_2.key(&Options::DEFAULT, &items));
 }
 
 /// A schema that a postcard-schema 0.2 device sends, once converted, gives the
 /// key that postcard-schema 0.2 computes, including for the types that this
 /// version describes differently.
-#[cfg(feature = "postcard-schema-v0_2")]
+#[cfg(feature = "legacy-schema-v0_2")]
 #[test]
 fn converted_v0_2_schemas_match() {
     use postcard_schema::legacy::v0_2::OwnedNamedType;
@@ -313,9 +491,8 @@ fn converted_v0_2_schemas_match() {
     #[track_caller]
     fn converts<T: v0_2_crate::Schema + ?Sized>(path: &str) {
         let nt: OwnedNamedType = T::SCHEMA.into();
-        let ty: OwnedDataModelType = (&nt).into();
-        let key = Key::new_owned_v2(
-            V0_2,
+        let ty = OwnedDataModelType::try_from(&nt).unwrap();
+        let key = V0_2.key_owned(
             &Options::DEFAULT,
             &[OwnedItem::String(path), OwnedItem::Schema(&ty)],
         );
@@ -338,7 +515,6 @@ fn converted_v0_2_schemas_match() {
     converts::<v0_2::Nested>("nested");
     converts::<v0_2::Empty>("empty");
     converts::<v0_2::Res>("result");
-    converts::<v0_2::OwnedSchemaData<OwnedNamedType>>("postcard-rpc/schema/data");
     converts::<Ipv4Addr>("ipv4");
     converts::<SocketAddr>("sockaddr");
 }
@@ -346,7 +522,7 @@ fn converted_v0_2_schemas_match() {
 /// A schema that a postcard-schema-ng 0.4 device sends, once converted,
 /// gives the key that postcard-schema-ng 0.4 computes, with and without
 /// maximum lengths (temperance hashes with them).
-#[cfg(feature = "postcard-schema-ng-v0_4")]
+#[cfg(feature = "legacy-schema-ng-v0_4")]
 #[test]
 fn converted_ng_v0_4_schemas_match() {
     use ng_crate::key::hash::{fnv1a64::hasher, HashItem, HashOptions};
@@ -355,7 +531,7 @@ fn converted_ng_v0_4_schemas_match() {
     #[track_caller]
     fn converts<T: ng_crate::Schema + ?Sized>(path: &str) {
         let ng: NgOwned = T::SCHEMA.into();
-        let ty: OwnedDataModelType = (&ng).into();
+        let ty = OwnedDataModelType::try_from(&ng).unwrap();
         for max_len in [false, true] {
             let mut ng_opt = HashOptions::DEFAULT;
             ng_opt.hash_max_size = max_len;
@@ -363,8 +539,7 @@ fn converted_ng_v0_4_schemas_match() {
                 &ng_opt,
                 &[HashItem::String(path), HashItem::Schema(T::SCHEMA)],
             );
-            let key = Key::new_owned_v2(
-                NG,
+            let key = NG.key_owned(
                 &Options::DEFAULT.with_max_len(max_len),
                 &[OwnedItem::String(path), OwnedItem::Schema(&ty)],
             );
@@ -389,21 +564,6 @@ fn converted_ng_v0_4_schemas_match() {
     converts::<ng::Nested>("nested");
     converts::<ng::Empty>("empty");
     converts::<ng::Res>("result");
-    converts::<ng::OwnedSchemaData<NgOwned>>("schema/data");
-}
-
-/// Without `Usize` and `Isize`, this version numbers the kinds after them
-/// differently, so a schema encoded by postcard-schema-ng 0.4 decodes as the
-/// wrong kind unless it is decoded as `legacy::ng_v0_4`'s type.
-#[cfg(feature = "postcard-schema-ng-v0_4")]
-#[test]
-fn ng_v0_4_encoding_differs() {
-    use postcard_schema::legacy::ng_v0_4::OwnedDataModelType as NgOwned;
-    let bytes = postcard::to_vec(&NgOwned::F32).unwrap();
-    let ng: NgOwned = postcard::from_bytes(&bytes).unwrap();
-    assert_eq!(OwnedDataModelType::from(&ng), OwnedDataModelType::F32);
-    let wrong: OwnedDataModelType = postcard::from_bytes(&bytes).unwrap();
-    assert_ne!(wrong, OwnedDataModelType::F32);
 }
 
 /// postcard-derive 0.2.2 and later honour `#[serde(rename)]`, as this crate's
