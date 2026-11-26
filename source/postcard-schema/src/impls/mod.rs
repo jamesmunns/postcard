@@ -65,6 +65,10 @@ pub mod num_complex_v0_4;
 #[cfg_attr(docsrs, doc(cfg(feature = "serde-big-array-v0_5")))]
 pub mod serde_big_array_v0_5;
 
+#[cfg(feature = "uom-v0_37")]
+#[cfg_attr(docsrs, doc(cfg(feature = "uom-v0_37")))]
+pub mod uom_v0_37;
+
 #[cfg(feature = "uuid-v1_0")]
 #[cfg_attr(docsrs, doc(cfg(feature = "uuid-v1_0")))]
 pub mod uuid_v1_0;
