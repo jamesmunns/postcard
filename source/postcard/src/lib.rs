@@ -7,7 +7,6 @@ mod de;
 
 pub mod fixint;
 mod ser;
-// todo: keep public?
 pub use postcard_core::varint;
 
 pub use de::deserializer::{Deserializer, DeserializerError};

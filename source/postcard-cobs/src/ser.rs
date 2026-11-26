@@ -121,6 +121,7 @@ impl<B: Patch> Flavor for Cobs<B> {
 
 /// The error returned when finalizing a [`Cobs`] flavor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FinalizeError<PushErr, FinErr> {
     /// The inner flavor failed to push the terminating `0x00`.
     Push(PushErr),
