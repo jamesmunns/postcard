@@ -245,6 +245,16 @@ fn feature_types() {
         "heapless 0.9 String",
         heapless_v0_9::String::<4>::try_from("hi").unwrap(),
     );
+    #[cfg(feature = "indexmap-v2_0")]
+    r.check(
+        "IndexMap",
+        indexmap_v2_0::IndexMap::<String, u32>::from([("a".to_string(), 2), ("b".to_string(), 3)]),
+    );
+    #[cfg(feature = "indexmap-v2_0")]
+    r.check(
+        "IndexSet",
+        indexmap_v2_0::IndexSet::<u32>::from([1, 2, 3, 4]),
+    );
     #[cfg(feature = "nalgebra-v0_33")]
     {
         use nalgebra_v0_33 as na;
