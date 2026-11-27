@@ -24,7 +24,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-postcard = { version = "2.0.0-rc.0", path = "../postcard", default-features = false }
+postcard = { version = "2.0.0-rc.1", path = "../postcard", default-features = false }
 serde_core = { version = "1.0.228", default-features = false }
 
 [dependencies.postcard-schema]
