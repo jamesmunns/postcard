@@ -137,7 +137,7 @@ Don't forget to disable default features on both, and enable only the features y
 
 ```toml
 [dependencies]
-postcard = { version = "2.0.0-rc.0", default-features = false }
+postcard = { version = "2.0.0-rc.1", default-features = false }
 
 # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
 # disabling default-features fixes this. Enable `derive`, or use `serde_derive` directly.

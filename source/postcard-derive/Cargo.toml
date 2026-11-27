@@ -1,6 +1,6 @@
 [package]
 name = "postcard-derive"
-version = "0.4.0-rc.0"
+version = "0.4.0-rc.1"
 authors = [
     "Lachlan Sneff <lachlan.sneff@gmail.com>",
     "James Munns <james@onevariable.com>",

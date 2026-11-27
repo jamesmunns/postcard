@@ -1,6 +1,6 @@
 [package]
 name = "postcard-core"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
 rust-version = "1.85"

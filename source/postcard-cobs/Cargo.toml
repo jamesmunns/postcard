@@ -1,6 +1,6 @@
 [package]
 name = "postcard-cobs"
-version = "0.3.0-rc.0"
+version = "0.3.0-rc.1"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -24,11 +24,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-postcard = { version = "2.0.0-rc.0", path = "../postcard", default-features = false }
+postcard = { version = "2.0.0-rc.1", path = "../postcard", default-features = false }
 serde_core = { version = "1.0.228", default-features = false }
 
 [dependencies.postcard-schema]
-version = "0.5.0-rc.0"
+version = "0.5.0-rc.1"
 path = "../postcard-schema"
 optional = true
 default-features = false
@@ -38,5 +38,5 @@ alloc = ["postcard/alloc"]
 postcard-schema-v0_5 = ["dep:postcard-schema"]
 
 [dev-dependencies]
-postcard-schema = { version = "0.5.0-rc.0", path = "../postcard-schema", features = ["derive"] }
+postcard-schema = { version = "0.5.0-rc.1", path = "../postcard-schema", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
