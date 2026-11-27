@@ -1,6 +1,6 @@
 [package]
 name = "postcard-heapless"
-version = "0.3.0"
+version = "0.3.0-rc.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
 rust-version = "1.88"
@@ -22,7 +22,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-postcard = { version = "2.0.0", path = "../postcard", default-features = false, optional = true }
+postcard = { version = "2.0.0-rc.0", path = "../postcard", default-features = false, optional = true }
 serde_core = { version = "1.0.228", default-features = false, optional = true }
 
 [dependencies.heapless_v0_9]
