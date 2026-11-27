@@ -5,10 +5,24 @@ pub mod flavors;
 
 pub use api::{BufferFull, Flavor, Patch};
 
-use crate::varint::{
-    varint_max, varint_u16, varint_u32, varint_u64, varint_u128, varint_usize, zig_zag_i16,
-    zig_zag_i32, zig_zag_i64, zig_zag_i128,
-};
+use crate::varint::{VarintUnsigned, zig_zag_i16, zig_zag_i32, zig_zag_i64, zig_zag_i128};
+
+/// Push `n` as a varint, one byte at a time.
+///
+/// This pushes each byte directly instead of encoding into a stack buffer
+/// and calling `try_extend`, which avoids a variable length memcpy.
+// postcard[impl atom.varint.encoding.continuation]
+// postcard[impl atom.varint.encoding.little-endian]
+// postcard[impl atom.varint.encode.canonical]
+#[inline]
+fn try_push_varint<F: Flavor, T: VarintUnsigned>(f: &mut F, n: T) -> Result<(), F::PushError> {
+    let mut value = n;
+    while !value.is_last_byte() {
+        f.try_push(value.least_significant_byte() | 0x80)?;
+        value = value.shift_right_7();
+    }
+    f.try_push(value.least_significant_byte())
+}
 
 /// Attempt to push a `()`
 ///
@@ -38,36 +52,28 @@ pub fn try_push_u8<F: Flavor>(f: &mut F, u: u8) -> Result<(), F::PushError> {
 // postcard[impl atom.varint.types]
 #[inline]
 pub fn try_push_u16<F: Flavor>(f: &mut F, u: u16) -> Result<(), F::PushError> {
-    let mut buf = [0u8; varint_max::<u16>()];
-    let used_buf = varint_u16(u, &mut buf);
-    f.try_extend(used_buf)
+    try_push_varint(f, u)
 }
 
 /// Attempt to push a [u32]
 // postcard[impl atom.varint.types]
 #[inline]
 pub fn try_push_u32<F: Flavor>(f: &mut F, u: u32) -> Result<(), F::PushError> {
-    let mut buf = [0u8; varint_max::<u32>()];
-    let used_buf = varint_u32(u, &mut buf);
-    f.try_extend(used_buf)
+    try_push_varint(f, u)
 }
 
 /// Attempt to push a [u64]
 // postcard[impl atom.varint.types]
 #[inline]
 pub fn try_push_u64<F: Flavor>(f: &mut F, u: u64) -> Result<(), F::PushError> {
-    let mut buf = [0u8; varint_max::<u64>()];
-    let used_buf = varint_u64(u, &mut buf);
-    f.try_extend(used_buf)
+    try_push_varint(f, u)
 }
 
 /// Attempt to push a [u128]
 // postcard[impl atom.varint.types]
 #[inline]
 pub fn try_push_u128<F: Flavor>(f: &mut F, u: u128) -> Result<(), F::PushError> {
-    let mut buf = [0u8; varint_max::<u128>()];
-    let used_buf = varint_u128(u, &mut buf);
-    f.try_extend(used_buf)
+    try_push_varint(f, u)
 }
 
 /// Attempt to push a [usize]
@@ -76,9 +82,7 @@ pub fn try_push_u128<F: Flavor>(f: &mut F, u: u128) -> Result<(), F::PushError> 
 // postcard[impl atom.usize.encoding]
 #[inline]
 pub fn try_push_usize<F: Flavor>(f: &mut F, u: usize) -> Result<(), F::PushError> {
-    let mut buf = [0u8; varint_max::<usize>()];
-    let used_buf = varint_usize(u, &mut buf);
-    f.try_extend(used_buf)
+    try_push_varint(f, u)
 }
 
 /// Attempt to push a [i8]
