@@ -156,6 +156,10 @@ fn std_types() {
     r.check("Box", Box::new(5u8));
     r.check("Rc", Rc::new(5u8));
     r.check("Arc", Arc::new(5u8));
+    r.check("Box<str>", Box::<str>::from("a"));
+    r.check_all("Box<[T]>", &[Box::<[u16]>::from([1, 2]), Box::from([])]);
+    r.check("Rc<str>", Rc::<str>::from("a"));
+    r.check("Arc<[T]>", Arc::<[u8]>::from([1, 2]));
     r.check("Cow<str>", Cow::<str>::Owned("a".into()));
     r.finish();
 }
@@ -423,6 +427,48 @@ fn derived_types() {
         g: TupleStruct(7, -8),
     };
     r.check_all("Derived", &[derived(Some("x".into())), derived(None)]);
+    r.finish();
+}
+
+#[derive(Schema, Serialize, Deserialize)]
+struct SerdeBytes {
+    #[serde(with = "serde_bytes")]
+    vec: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    array: [u8; 4],
+    #[serde(with = "serde_bytes")]
+    boxed: Box<[u8]>,
+    #[serde(with = "serde_bytes")]
+    option: Option<Vec<u8>>,
+}
+
+#[derive(Schema, Serialize)]
+struct SerdeBytesBorrowed<'a> {
+    #[serde(with = "serde_bytes")]
+    slice: &'a [u8],
+    #[serde(with = "serde_bytes")]
+    cow: Cow<'a, [u8]>,
+}
+
+#[derive(Schema, Serialize, Deserialize)]
+struct SerdeBytesNewtype(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[test]
+fn serde_bytes_fields() {
+    let mut r = Report::default();
+    let value = |option| SerdeBytes {
+        vec: vec![1, 2],
+        array: [3; 4],
+        boxed: Box::from([4u8, 5]),
+        option,
+    };
+    r.check_all("SerdeBytes", &[value(Some(vec![7])), value(None)]);
+    r.check("SerdeBytesNewtype", SerdeBytesNewtype(vec![1, 2, 3]));
+    let borrowed = SerdeBytesBorrowed {
+        slice: &[1, 2],
+        cow: Cow::Borrowed(&[3]),
+    };
+    r.check_ser("SerdeBytesBorrowed", &borrowed);
     r.finish();
 }
 

@@ -1,10 +1,10 @@
 use std::fmt::{Debug, Display};
 
 use postcard_core::de::{
-    flavors::Slice, try_take_bool, try_take_bytes, try_take_char, try_take_discriminant,
-    try_take_f32, try_take_f64, try_take_i128, try_take_i16, try_take_i32, try_take_i64,
-    try_take_i8, try_take_length, try_take_option_discrim, try_take_str, try_take_u128,
-    try_take_u16, try_take_u32, try_take_u64, try_take_u8, DecodeError, Flavor, UnexpectedEnd,
+    DecodeError, Flavor, UnexpectedEnd, flavors::Slice, try_take_bool, try_take_bytes,
+    try_take_char, try_take_discriminant, try_take_f32, try_take_f64, try_take_i8, try_take_i16,
+    try_take_i32, try_take_i64, try_take_i128, try_take_length, try_take_option_discrim,
+    try_take_str, try_take_u8, try_take_u16, try_take_u32, try_take_u64, try_take_u128,
 };
 use postcard_schema::schema::{OwnedData, OwnedDataModelType};
 use serde_json::{Map, Number, Value};
@@ -382,12 +382,12 @@ fn de_map_key(
 mod test {
     use std::collections::{BTreeMap, HashMap};
 
-    use postcard_schema::{schema::OwnedDataModelType, Schema};
+    use postcard_schema::{Schema, schema::OwnedDataModelType};
     use serde::{Deserialize, Serialize};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use super::Error;
-    use super::{from_slice_dyn_with_config, DeserializeConfig};
+    use super::{DeserializeConfig, from_slice_dyn_with_config};
     use crate::{from_slice_dyn, to_stdvec_dyn};
 
     #[derive(Serialize, Deserialize, Schema)]
@@ -715,7 +715,7 @@ mod test {
 
     #[test]
     fn max_depth() {
-        use crate::{to_stdvec_dyn_with_config, SerializeConfig};
+        use crate::{SerializeConfig, to_stdvec_dyn_with_config};
         use postcard_schema::schema::{
             OwnedData, OwnedDataModelType, OwnedNamedField, OwnedVariant,
         };

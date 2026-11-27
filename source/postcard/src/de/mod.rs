@@ -1,7 +1,7 @@
 use core::convert::Infallible;
 
 use flavors::UnexpectedEnd;
-use serde_core::Deserialize;
+use serde_core_v1::Deserialize;
 
 pub(crate) mod deserializer;
 pub mod flavors;

@@ -1,4 +1,4 @@
-use serde_core::{Serialize, ser};
+use serde_core_v1::{Serialize, ser};
 
 use crate::ser::flavors::Flavor;
 use postcard_core::ser as pcser;
@@ -86,7 +86,7 @@ mod custom {
         }
     }
 
-    impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
+    impl<PopErr, FinErr> serde_core_v1::ser::Error for super::SerializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
         FinErr: core::error::Error + 'static,
@@ -124,7 +124,7 @@ mod custom {
         }
     }
 
-    impl<PopErr, FinErr> serde_core::ser::Error for super::SerializerError<PopErr, FinErr>
+    impl<PopErr, FinErr> serde_core_v1::ser::Error for super::SerializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
         FinErr: core::error::Error + 'static,
@@ -545,7 +545,7 @@ where
         } else if fw.ct != len {
             // Failed sanity check: the two passes produced a different count
             // of values.
-            Err(serde_core::ser::Error::custom(
+            Err(serde_core_v1::ser::Error::custom(
                 "collect_str: value formatted differently on each pass",
             ))
         } else {

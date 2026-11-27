@@ -242,6 +242,9 @@ version = "0.38.0"
 default-features = false
 features = ["si", "serde", "f32", "f64", "u8"]
 
+[dev-dependencies.serde_bytes]
+version = "0.11.17"
+
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]
 package = "postcard-schema"

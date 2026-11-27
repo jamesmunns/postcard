@@ -28,24 +28,11 @@ empty [Aggregate], so a short message can contain a sequence of many such
 elements. A decoder SHOULD limit the number of elements it decodes from an
 untrusted message.
 
-<!--
-    TODO: postcard caps preallocation at the bytes remaining
-    (`SeqAccess::size_hint`), but decoding a `Vec<()>` with a length near
-    `u64::MAX` loops that many times, from about ten bytes of input. Decide
-    whether postcard should limit this, e.g. with an element budget in the
-    deserializer.
--->
-
 ### Nesting
 
 A schema that contains itself, such as a tree, can nest without limit. A decoder
 that recurses for each level of nesting can overflow its stack. A decoder SHOULD
 limit how deeply it nests when decoding untrusted messages.
-
-<!--
-    TODO: postcard has no nesting limit, and serde decoders recurse. Decide
-    whether postcard should add one (and what the default would be).
--->
 
 ### Malformed Messages
 

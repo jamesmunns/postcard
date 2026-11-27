@@ -2,7 +2,7 @@ use core::convert::Infallible;
 
 use crate::ser::flavors::{Flavor, Slice};
 use flavors::BufferFull;
-use serde_core::Serialize;
+use serde_core_v1::Serialize;
 use serializer::SerializerError;
 
 #[cfg(any(feature = "alloc", feature = "std"))]

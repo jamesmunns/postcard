@@ -5,8 +5,9 @@ authors = [
     "Lachlan Sneff <lachlan.sneff@gmail.com>",
     "James Munns <james@onevariable.com>",
 ]
-edition = "2021"
-readme = "../../README.md"
+edition = "2024"
+rust-version = "1.88"
+readme = "README.md"
 repository = "https://github.com/jamesmunns/postcard"
 description = "A no_std + serde compatible message library for Rust - Derive Crate"
 license = "MIT OR Apache-2.0"
@@ -16,8 +17,9 @@ categories = [
 ]
 keywords = [
     "serde",
-    "cobs",
-    "framing",
+    "postcard",
+    "schema",
+    "derive",
 ]
 documentation = "https://docs.rs/postcard-derive/"
 

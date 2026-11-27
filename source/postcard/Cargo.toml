@@ -27,8 +27,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 version = "0.2.0"
 path = "../postcard-core"
 
-# todo: make this versioned, optional?
-[dependencies.serde_core]
+[dependencies.serde_core_v1]
+package = "serde_core"
 version = "1.0.228"
 default-features = false
 

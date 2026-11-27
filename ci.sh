@@ -55,7 +55,8 @@ for manifest in source/*/Cargo.toml; do
   rustup target add --toolchain "$msrv" thumbv7em-none-eabi
   cargo +"$msrv" check --manifest-path "$manifest" --all-targets
   cargo +"$msrv" test --manifest-path "$manifest"
-  cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi
+  # postcard-dyn is std-only.
+  [ "$pkg" = "postcard-dyn" ] || cargo +"$msrv" check --manifest-path "$manifest" --target=thumbv7em-none-eabi
   [ "$pkg" = "postcard-core" ] || continue
   cargo +"$msrv" check --manifest-path "$manifest" --all-targets --all-features
   cargo +"$msrv" test --manifest-path "$manifest" --all-features
@@ -65,7 +66,4 @@ done
 cargo fmt --all -- --check
 
 # Check docs.rs build
-#
-# TODO: We SHOULDN'T exclude postcard-dyn but it does weird things with feature unification and
-# makes the embedded-io stuff break
-env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features --exclude postcard-dyn
+env RUSTDOCFLAGS='--cfg=docsrs --deny=warnings' cargo +nightly doc --all --no-deps --all-features

@@ -9,8 +9,8 @@
 
 ## Version and Stability
 
-This document is version 1.1 of the Postcard Wire Specification, which describes
-the postcard wire format.
+This document is a pre-release of version 1.1 of the Postcard Wire
+Specification, which describes the postcard wire format. It is not yet final.
 
 Version 1.1 of the specification makes no changes to the postcard wire format
 itself. This specification version splits the wire format definition into

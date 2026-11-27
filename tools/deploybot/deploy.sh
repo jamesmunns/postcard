@@ -119,7 +119,7 @@ EOF
 <body>
   <h1>postcard specifications</h1>
   <ul>
-    <li><a href="/wire/1.1/">The Postcard Wire Specification</a>, version 1.1
+    <li><a href="/wire/1.1/">The Postcard Wire Specification</a>, version 1.1 (pre-release)
       (<a href="/wire/1.0/">1.0</a>)</li>
     <li><a href="/schema/0.1/">The Postcard Schema Specification</a>, version 0.1 (draft)</li>
   </ul>

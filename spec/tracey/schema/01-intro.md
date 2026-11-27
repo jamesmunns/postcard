@@ -29,8 +29,6 @@ This version of the specification only covers [Keys]: the 8-byte hash of a list
 of strings and schemas, chosen by an application; and [Schema Tables]: how
 schemas are sent.
 
-TODO: define the schema data model
-
 ## Schemas
 
 A schema in `postcard-schema` describes a type in the terms of the

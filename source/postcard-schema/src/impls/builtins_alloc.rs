@@ -43,7 +43,7 @@ impl<T: Schema> Schema for alloc::collections::VecDeque<T> {
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
-impl<T: Schema> Schema for alloc::boxed::Box<T> {
+impl<T: ?Sized + Schema> Schema for alloc::boxed::Box<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }
 
@@ -53,6 +53,6 @@ impl<T: ?Sized + Schema + alloc::borrow::ToOwned> Schema for alloc::borrow::Cow<
 }
 
 #[cfg_attr(docsrs, doc(cfg(any(feature = "alloc", feature = "std"))))]
-impl<T: Schema> Schema for alloc::rc::Rc<T> {
+impl<T: ?Sized + Schema> Schema for alloc::rc::Rc<T> {
     const SCHEMA: &'static DataModelType = T::SCHEMA;
 }

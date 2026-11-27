@@ -1,4 +1,4 @@
-use serde_core::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
+use serde_core_v1::de::{self, DeserializeSeed, IntoDeserializer, Visitor};
 
 use crate::de::flavors::{Flavor, Slice};
 use core::marker::PhantomData;
@@ -51,7 +51,7 @@ mod custom {
         }
     }
 
-    impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
+    impl<PopErr, FinErr> serde_core_v1::de::Error for super::DeserializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
         FinErr: core::error::Error + 'static,
@@ -89,7 +89,7 @@ mod custom {
         }
     }
 
-    impl<PopErr, FinErr> serde_core::de::Error for super::DeserializerError<PopErr, FinErr>
+    impl<PopErr, FinErr> serde_core_v1::de::Error for super::DeserializerError<PopErr, FinErr>
     where
         PopErr: core::error::Error + 'static,
         FinErr: core::error::Error + 'static,
@@ -196,7 +196,7 @@ struct SeqAccess<'a, 'b, F: Flavor<'b>> {
     len: usize,
 }
 
-impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde_core_v1::de::SeqAccess<'b> for SeqAccess<'a, 'b, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
     // This yields at most `self.len` elements.
@@ -236,7 +236,7 @@ struct MapAccess<'a, 'b, F: Flavor<'b>> {
     len: usize,
 }
 
-impl<'a, 'b: 'a, F: Flavor<'b>> serde_core::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
+impl<'a, 'b: 'a, F: Flavor<'b>> serde_core_v1::de::MapAccess<'b> for MapAccess<'a, 'b, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
     // This yields at most `self.len` elements.
@@ -720,7 +720,7 @@ impl<'de, F: Flavor<'de>> de::Deserializer<'de> for &mut Deserializer<'de, F> {
     }
 }
 
-impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde_core_v1::de::VariantAccess<'de> for &mut Deserializer<'de, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
 
     // postcard[impl serde.type.unit-variant]
@@ -746,7 +746,7 @@ impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializ
         len: usize,
         visitor: V,
     ) -> Result<V::Value, DeserializerError<F::PopError, F::FinalizeError>> {
-        serde_core::de::Deserializer::deserialize_tuple(self, len, visitor)
+        serde_core_v1::de::Deserializer::deserialize_tuple(self, len, visitor)
     }
 
     // postcard[impl serde.type.struct-variant]
@@ -758,11 +758,11 @@ impl<'de, F: Flavor<'de>> serde_core::de::VariantAccess<'de> for &mut Deserializ
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, DeserializerError<F::PopError, F::FinalizeError>> {
-        serde_core::de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
+        serde_core_v1::de::Deserializer::deserialize_tuple(self, fields.len(), visitor)
     }
 }
 
-impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<'de, F> {
+impl<'de, F: Flavor<'de>> serde_core_v1::de::EnumAccess<'de> for &mut Deserializer<'de, F> {
     type Error = DeserializerError<F::PopError, F::FinalizeError>;
     type Variant = Self;
 
@@ -779,7 +779,7 @@ impl<'de, F: Flavor<'de>> serde_core::de::EnumAccess<'de> for &mut Deserializer<
         seed: V,
     ) -> Result<(V::Value, Self), DeserializerError<F::PopError, F::FinalizeError>> {
         let varint = pcde::try_take_discriminant(&mut self.flavor)?;
-        let de: serde_core::de::value::U32Deserializer<Self::Error> = varint.into_deserializer();
+        let de: serde_core_v1::de::value::U32Deserializer<Self::Error> = varint.into_deserializer();
         let v = DeserializeSeed::deserialize(seed, de)?;
         Ok((v, self))
     }

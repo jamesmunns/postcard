@@ -13,7 +13,7 @@
 //! in either little or big endian form, which may be useful for zero-copy
 //! applications.
 
-use serde_core::{Deserialize, Serialize, Serializer};
+use serde_core_v1::{Deserialize, Serialize, Serializer};
 
 /// Use with the `#[serde(with = "postcard::fixint::le")]` field attribute.
 ///
@@ -30,7 +30,7 @@ use serde_core::{Deserialize, Serialize, Serializer};
 /// }
 /// ```
 pub mod le {
-    use serde_core::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde_core_v1::{Deserialize, Deserializer, Serialize, Serializer};
 
     use super::LE;
 
@@ -69,7 +69,7 @@ pub mod le {
 /// }
 /// ```
 pub mod be {
-    use serde_core::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde_core_v1::{Deserialize, Deserializer, Serialize, Serializer};
 
     use super::BE;
 
@@ -116,7 +116,7 @@ macro_rules! impl_fixint {
                 #[inline]
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
-                    D: serde_core::Deserializer<'de>,
+                    D: serde_core_v1::Deserializer<'de>,
                 {
                     <_ as Deserialize>::deserialize(deserializer)
                         .map(<$int>::from_le_bytes)
@@ -138,7 +138,7 @@ macro_rules! impl_fixint {
                 #[inline]
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
-                    D: serde_core::Deserializer<'de>,
+                    D: serde_core_v1::Deserializer<'de>,
                 {
                     <_ as Deserialize>::deserialize(deserializer)
                         .map(<$int>::from_be_bytes)
