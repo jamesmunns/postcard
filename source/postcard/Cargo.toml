@@ -1,6 +1,6 @@
 [package]
 name = "postcard"
-version = "2.0.0"
+version = "2.0.0-rc.0"
 authors = ["James Munns <james@onevariable.com>"]
 edition = "2024"
 rust-version = "1.85"
@@ -24,11 +24,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 
 [dependencies.postcard-core]
-version = "0.2.0"
+version = "1.0.0-rc.0"
 path = "../postcard-core"
 
-# todo: make this versioned, optional?
-[dependencies.serde_core]
+[dependencies.serde_core_v1]
+package = "serde_core"
 version = "1.0.228"
 default-features = false
 

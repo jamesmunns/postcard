@@ -2,9 +2,9 @@ use std::{convert::Infallible, fmt::Display, num::TryFromIntError};
 
 use postcard_core::ser::{
     try_push_bool, try_push_bytes, try_push_char, try_push_discriminant, try_push_f32,
-    try_push_f64, try_push_i128, try_push_i16, try_push_i32, try_push_i64, try_push_i8,
-    try_push_length, try_push_option_none, try_push_option_some, try_push_str, try_push_u128,
-    try_push_u16, try_push_u32, try_push_u64, try_push_u8,
+    try_push_f64, try_push_i8, try_push_i16, try_push_i32, try_push_i64, try_push_i128,
+    try_push_length, try_push_option_none, try_push_option_some, try_push_str, try_push_u8,
+    try_push_u16, try_push_u32, try_push_u64, try_push_u128,
 };
 use postcard_schema::schema::{OwnedData, OwnedDataModelType};
 use serde_json::{Number, Value};

@@ -1,6 +1,6 @@
 [package]
 name = "postcard-schema"
-version = "0.5.0"
+version = "0.5.0-rc.0"
 authors = ["James Munns <me@jamesmunns.com>"]
 edition = "2021"
 rust-version = "1.88"
@@ -24,7 +24,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 
 [dependencies.postcard-core]
-version = "0.2.0"
+version = "1.0.0-rc.0"
 path = "../postcard-core"
 
 [dependencies.serde]
@@ -121,7 +121,7 @@ features = ["si", "f32", "f64"]
 
 [dependencies.postcard-derive]
 path = "../postcard-derive"
-version = "0.4.0"
+version = "0.4.0-rc.0"
 optional = true
 
 [dependencies.defmt]
@@ -159,7 +159,7 @@ features = ["rc"]
 
 [dev-dependencies.postcard]
 path = "../postcard"
-version = "2.0.0"
+version = "2.0.0-rc.0"
 features = ["alloc"]
 
 [dev-dependencies.nalgebra_v0_33]
@@ -241,6 +241,9 @@ package = "uom"
 version = "0.38.0"
 default-features = false
 features = ["si", "serde", "f32", "f64", "u8"]
+
+[dev-dependencies.serde_bytes]
+version = "0.11.17"
 
 # The crates that version 2 keys must match, for tests/key_v2.rs
 [dev-dependencies.postcard-schema_v0_2]

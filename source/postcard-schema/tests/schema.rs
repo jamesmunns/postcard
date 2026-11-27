@@ -483,3 +483,28 @@ fn max_size_overflow() {
     };
     assert_eq!(units.max_size(), Some((usize::BITS as usize).div_ceil(7)));
 }
+
+#[allow(unused)]
+#[derive(Schema)]
+struct RenameAfterOthers {
+    #[serde(default, rename = "a'")]
+    a: u8,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "b'")]
+    b: Option<u8>,
+    #[serde(rename(serialize = "x"), rename = "c'")]
+    c: u8,
+}
+
+/// `rename` is found after attributes the derive doesn't read.
+#[test]
+fn rename_after_other_serde_attrs() {
+    let DataModelType::Struct {
+        data: Data::Struct(fields),
+        ..
+    } = RenameAfterOthers::SCHEMA
+    else {
+        panic!("not a struct");
+    };
+    let names: Vec<_> = fields.iter().map(|f| f.name).collect();
+    assert_eq!(names, ["a'", "b'", "c'"]);
+}

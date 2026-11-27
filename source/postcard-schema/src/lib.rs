@@ -156,6 +156,13 @@ pub mod max_len {
 /// attributes. Note that this does not include variants like `#[serde(rename(serialize = "ser_name"))]`
 /// or `#[serde(rename_all = "...")]`.
 ///
+/// ## `#[serde(with = "serde_bytes")]`
+///
+/// Fields marked `#[serde(with = "serde_bytes")]` have a
+/// [`ByteArray`](schema::DataModelType::ByteArray) schema, as `serde_bytes`
+/// serializes them as bytes. This works for `[u8]`, `[u8; N]`, `Vec<u8>`, and
+/// references, `Box`es, `Cow`s and `Option`s of these.
+///
 /// ## `#[postcard(crate = ...)]`
 ///
 /// The `#[postcard(crate = ...)]` attribute can be used to specify a path to the `postcard_schema`
@@ -198,6 +205,63 @@ pub mod max_len {
 /// ```
 #[cfg(feature = "derive")]
 pub use postcard_derive::Schema;
+
+/// Not public API: used by `#[derive(Schema)]`
+#[doc(hidden)]
+pub mod __private {
+    use crate::schema::DataModelType;
+
+    /// The schema of a field marked `#[serde(with = "serde_bytes")]`
+    ///
+    /// Implemented for the types `serde_bytes` serializes as bytes.
+    pub trait SerdeBytes {
+        const SCHEMA: &'static DataModelType;
+    }
+
+    impl SerdeBytes for [u8] {
+        const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: None };
+    }
+
+    impl<const N: usize> SerdeBytes for [u8; N] {
+        const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: Some(N) };
+    }
+
+    impl<T: SerdeBytes + ?Sized> SerdeBytes for &T {
+        const SCHEMA: &'static DataModelType = T::SCHEMA;
+    }
+
+    impl<T: SerdeBytes + ?Sized> SerdeBytes for &mut T {
+        const SCHEMA: &'static DataModelType = T::SCHEMA;
+    }
+
+    impl<T: SerdeBytes> SerdeBytes for Option<T> {
+        const SCHEMA: &'static DataModelType = &DataModelType::Option(T::SCHEMA);
+    }
+
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    mod alloc_impls {
+        extern crate alloc;
+        use super::SerdeBytes;
+        use crate::schema::DataModelType;
+        use alloc::{
+            borrow::{Cow, ToOwned},
+            boxed::Box,
+            vec::Vec,
+        };
+
+        impl SerdeBytes for Vec<u8> {
+            const SCHEMA: &'static DataModelType = &DataModelType::ByteArray { max_len: None };
+        }
+
+        impl<T: SerdeBytes + ?Sized> SerdeBytes for Box<T> {
+            const SCHEMA: &'static DataModelType = T::SCHEMA;
+        }
+
+        impl<T: SerdeBytes + ToOwned + ?Sized> SerdeBytes for Cow<'_, T> {
+            const SCHEMA: &'static DataModelType = T::SCHEMA;
+        }
+    }
+}
 
 /// A trait that represents a compile time calculated schema
 pub trait Schema {

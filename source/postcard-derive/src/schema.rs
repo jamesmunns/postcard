@@ -1,8 +1,8 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{
-    parse_quote, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Fields, GenericParam,
-    Generics, Path, Token,
+    Data, DeriveInput, Fields, GenericParam, Generics, Path, Token, parse_quote,
+    punctuated::Punctuated, spanned::Spanned,
 };
 
 pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
@@ -22,19 +22,7 @@ pub fn do_derive_schema(input: DeriveInput) -> syn::Result<TokenStream> {
     };
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    let mut rename = None;
-    for attr in &input.attrs {
-        if attr.path().is_ident("serde") {
-            // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
-            let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
-                // #[serde(rename = "name")]
-                if meta.path.is_ident("rename") {
-                    rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
-                }
-                Ok(())
-            });
-        }
-    }
+    let rename = SerdeAttrs::parse(&input.attrs).rename;
     let ty = generator.generate_type(
         &input.data,
         span,
@@ -110,19 +98,7 @@ impl Generator {
             }
             Data::Enum(data) => {
                 let variants = data.variants.iter().map(|v| {
-                    let mut rename = None;
-                    for attr in &v.attrs {
-                        if attr.path().is_ident("serde") {
-                            // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
-                            let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
-                                // #[serde(rename = "name")]
-                                if meta.path.is_ident("rename") {
-                                    rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
-                                }
-                                Ok(())
-                            });
-                        }
-                    }
+                    let rename = SerdeAttrs::parse(&v.attrs).rename;
                     let name = rename.unwrap_or_else(|| v.ident.to_string());
                     let data = self.generate_variants(&v.fields);
                     quote! { #postcard_schema::schema::Variant { name: #name, data: #data } }
@@ -201,24 +177,17 @@ impl Generator {
     fn generate_field(&self, field: &syn::Field) -> TokenStream {
         let postcard_schema = &self.postcard_schema;
         let ty = &field.ty;
+        let attrs = SerdeAttrs::parse(&field.attrs);
+        let schema = if attrs.with.as_deref() == Some("serde_bytes") {
+            quote_spanned!(field.span()=> <#ty as #postcard_schema::__private::SerdeBytes>::SCHEMA)
+        } else {
+            quote_spanned!(field.span()=> <#ty as #postcard_schema::Schema>::SCHEMA)
+        };
         match &field.ident {
-            None => quote_spanned!(field.span()=> <#ty as #postcard_schema::Schema>::SCHEMA),
+            None => schema,
             Some(name) => {
-                let mut rename = None;
-                for attr in &field.attrs {
-                    if attr.path().is_ident("serde") {
-                        // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
-                        let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
-                            // #[serde(rename = "name")]
-                            if meta.path.is_ident("rename") {
-                                rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
-                            }
-                            Ok(())
-                        });
-                    }
-                }
-                let name = rename.unwrap_or_else(|| name.to_string());
-                quote_spanned!(field.span()=> &#postcard_schema::schema::NamedField { name: #name, ty: <#ty as #postcard_schema::Schema>::SCHEMA })
+                let name = attrs.rename.unwrap_or_else(|| name.to_string());
+                quote_spanned!(field.span()=> &#postcard_schema::schema::NamedField { name: #name, ty: #schema })
             }
         }
     }
@@ -235,4 +204,46 @@ impl Generator {
         }
         generics
     }
+}
+
+/// The parts of `#[serde(...)]` attributes that change a derived schema
+#[derive(Default)]
+struct SerdeAttrs {
+    rename: Option<String>,
+    with: Option<String>,
+}
+
+impl SerdeAttrs {
+    fn parse(attrs: &[syn::Attribute]) -> Self {
+        let mut out = Self::default();
+        for attr in attrs.iter().filter(|a| a.path().is_ident("serde")) {
+            // Parsing a serde attribute should not fail; if it does, we don't care about the attribute
+            let _: syn::Result<()> = attr.parse_nested_meta(|meta| {
+                // #[serde(rename = "name")]
+                if meta.path.is_ident("rename") && meta.input.peek(Token![=]) {
+                    out.rename = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                    return Ok(());
+                }
+                // #[serde(with = "module")]
+                if meta.path.is_ident("with") && meta.input.peek(Token![=]) {
+                    out.with = Some(meta.value()?.parse::<syn::LitStr>()?.value());
+                    return Ok(());
+                }
+                // Skip anything else, so the attributes after it are still read.
+                skip_meta(&meta)
+            });
+        }
+        out
+    }
+}
+
+/// Consume an attribute's `= value` or `(...)`, if it has one
+fn skip_meta(meta: &syn::meta::ParseNestedMeta) -> syn::Result<()> {
+    if meta.input.peek(Token![=]) {
+        meta.value()?.parse::<syn::Expr>()?;
+    } else if meta.input.peek(syn::token::Paren) {
+        let _content;
+        syn::parenthesized!(_content in meta.input);
+    }
+    Ok(())
 }

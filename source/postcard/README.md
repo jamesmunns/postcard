@@ -124,7 +124,7 @@ Don't forget to add [the `no-std` subset](https://serde.rs/no-std.html) of `serd
 
 ```toml
 [dependencies]
-postcard = "2.0"
+postcard = "2.0.0-rc.0"
 
 # By default, `serde` has the `std` feature enabled, which makes it unsuitable for embedded targets
 # disabling default-features fixes this
