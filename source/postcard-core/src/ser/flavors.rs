@@ -1,28 +1,19 @@
 //! Basic serialization flavors without deps outside of `core`/`alloc`/`std`.
 
-use core::marker::PhantomData;
-
 use super::{BufferFull, Flavor, Patch};
 
 /// The `Slice` flavor is a storage flavor, storing the serialized (or otherwise modified) bytes into a plain
 /// `[u8]` slice. The `Slice` flavor resolves into a sub-slice of the original slice buffer.
 pub struct Slice<'a> {
-    start: *mut u8,
-    cursor: *mut u8,
-    end: *mut u8,
-    _pl: PhantomData<&'a [u8]>,
+    buf: &'a mut [u8],
+    // Safety Invariant: We must always ensure `pos <= buf.len()`.
+    pos: usize,
 }
 
 impl<'a> Slice<'a> {
     /// Create a new `Slice` flavor from a given backing buffer
     pub fn new(buf: &'a mut [u8]) -> Self {
-        let ptr = buf.as_mut_ptr_range();
-        Slice {
-            start: ptr.start,
-            cursor: ptr.start,
-            end: ptr.end,
-            _pl: PhantomData,
-        }
+        Slice { buf, pos: 0 }
     }
 }
 
@@ -33,52 +24,59 @@ impl<'a> Flavor for Slice<'a> {
 
     #[inline(always)]
     fn try_push(&mut self, b: u8) -> Result<(), BufferFull> {
-        if self.cursor == self.end {
-            Err(BufferFull)
-        } else {
-            // SAFETY: `self.cursor` is in-bounds and won't be incremented past `self.end` as we
-            // have checked above.
-            unsafe {
-                self.cursor.write(b);
-                self.cursor = self.cursor.add(1);
+        // SAFETY: We always check that self.pos is inbounds of buf. Perf
+        // testing has shown that a slice + assert_unchecked optimizes better
+        // than raw ptr math, because LLVM gains the knowledge that the buffer
+        // is not aliased. This still requires the unsafe assert, but is a
+        // reduction in the total unsafe code to audit.
+        unsafe { core::hint::assert_unchecked(self.pos <= self.buf.len()) };
+        match self.buf.get_mut(self.pos) {
+            Some(slot) => {
+                *slot = b;
+                self.pos += 1;
+                Ok(())
             }
-            Ok(())
+            None => Err(BufferFull),
         }
     }
 
     #[inline(always)]
     fn try_extend(&mut self, b: &[u8]) -> Result<(), BufferFull> {
-        let remain = (self.end as usize) - (self.cursor as usize);
-        let blen = b.len();
-        if blen > remain {
-            Err(BufferFull)
-        } else {
-            // SAFETY: `self.cursor` is in-bounds for `blen` elements and won't be incremented past
-            // `self.end` as we have checked above.
-            unsafe {
-                core::ptr::copy_nonoverlapping(b.as_ptr(), self.cursor, blen);
-                self.cursor = self.cursor.add(blen);
+        // SAFETY: We always check that self.pos is inbounds of buf. See
+        // `try_push` for more details.
+        unsafe { core::hint::assert_unchecked(self.pos <= self.buf.len()) };
+        // Perf note: slicing `pos..` then `..len` avoids an overflow check on
+        // `pos + len`.
+        let dst = self
+            .buf
+            .get_mut(self.pos..)
+            .and_then(|r| r.get_mut(..b.len()));
+        match dst {
+            Some(dst) => {
+                dst.copy_from_slice(b);
+                self.pos += b.len();
+                Ok(())
             }
-            Ok(())
+            None => Err(BufferFull),
         }
     }
 
     fn finalize(self) -> Result<Self::Output, core::convert::Infallible> {
-        let used = (self.cursor as usize) - (self.start as usize);
-        // SAFETY: `self.cursor` is in-bounds for `used` elements
-        let sli = unsafe { core::slice::from_raw_parts_mut(self.start, used) };
-        Ok(sli)
+        let Slice { buf, pos } = self;
+        // SAFETY: We always check that self.pos is inbounds of buf. See
+        // `try_push` for more details.
+        unsafe { core::hint::assert_unchecked(pos <= buf.len()) };
+        Ok(&mut buf[..pos])
     }
 }
 
 impl Patch for Slice<'_> {
     #[inline]
     fn written_mut(&mut self) -> &mut [u8] {
-        let used = (self.cursor as usize) - (self.start as usize);
-        // SAFETY: `start..cursor` is within the buffer given to `new`, which
-        // this flavor borrows mutably for `'a`, and the returned slice borrows
-        // `self` mutably, so nothing else can access those bytes while it lives.
-        unsafe { core::slice::from_raw_parts_mut(self.start, used) }
+        // SAFETY: We always check that self.pos is inbounds of buf. See
+        // `try_push` for more details.
+        unsafe { core::hint::assert_unchecked(self.pos <= self.buf.len()) };
+        &mut self.buf[..self.pos]
     }
 }
 
