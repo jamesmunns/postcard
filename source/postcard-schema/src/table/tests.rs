@@ -1393,3 +1393,52 @@ fn discriminants() {
         assert_eq!(node(N::Struct { name: none, data })[..4], [0x15, 0, 0, d]);
     }
 }
+
+#[test]
+fn indexed_inputs() {
+    use crate::schema::DataModelType;
+
+    // Repeats share an index, and roots are still deduped.
+    struct Repeats;
+    impl_schema_table!(Repeats, u8, Option<bool>, u8);
+    assert_eq!(Repeats::SCHEMA_INPUTS[0], Repeats::SCHEMA_INPUTS[2]);
+    assert_eq!(Repeats::SCHEMA_TABLE.roots.len(), 2);
+    assert_eq!(Repeats::SCHEMA_TABLE, schema_table!(u8, Option<bool>));
+
+    // An input nested in another points at the inner node.
+    struct Nested;
+    impl_schema_table!(Nested, Option<u8>, u8);
+    assert_eq!(Nested::SCHEMA_TABLE.nodes, [N::U8, N::Option(0)]);
+    assert_eq!(Nested::SCHEMA_INPUTS, [1, 0]);
+    assert_eq!(Nested::SCHEMA_TABLE.roots, [1, 0]);
+
+    // A schema slice built from other consts matches the types form.
+    const A: &DataModelType = <u8 as Schema>::SCHEMA;
+    const S: &[&DataModelType] = &[A, <Option<u8> as Schema>::SCHEMA, A];
+    struct FromSlice;
+    impl_schema_table!(FromSlice, schemas = S);
+    struct FromTypes;
+    impl_schema_table!(FromTypes, u8, Option<u8>, u8);
+    assert_eq!(FromSlice::SCHEMA_TABLE, FromTypes::SCHEMA_TABLE);
+    assert_eq!(FromSlice::SCHEMA_INPUTS, [0, 1, 0]);
+    assert_eq!(FromSlice::SCHEMA_INPUTS, FromTypes::SCHEMA_INPUTS);
+
+    // The type can be named, including in another module.
+    mod other {
+        pub(super) struct Public;
+        impl_schema_table!(pub(super) Public, u8, Option<u8>);
+    }
+    const T: schema_table_type!(FromSlice) = FromSlice::SCHEMA_TABLE;
+    const U: crate::schema_table_type!(other::Public) = other::Public::SCHEMA_TABLE;
+    assert_eq!(T, U);
+
+    // The plain macros accept `schemas =` too.
+    assert_eq!(
+        schema_table!(schemas = S),
+        schema_table!(u8, Option<u8>, u8)
+    );
+    assert_eq!(
+        schema_table_bytes!(schemas = S),
+        schema_table_bytes!(u8, Option<u8>, u8)
+    );
+}
