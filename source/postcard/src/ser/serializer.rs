@@ -21,7 +21,7 @@ where
 }
 
 /// The serialization error type
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt-v1", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum SerializerError<PushErr, FinErr> {
