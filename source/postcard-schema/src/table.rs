@@ -33,7 +33,28 @@
 //! the postcard format as a byte array at compile time, so it can be sent with
 //! no work at runtime.
 //!
+//! # Naming a table's type
+//!
+//! [`schema_table!`] evaluates to a table, so it can't name the table's type,
+//! which depends on the lengths of the table. A `static`, or a type that hold
+//! a table, needs the type written out. [`impl_schema_table!`] builds the table
+//! into associated consts of a type you give it, and [`schema_table_type!`]
+//! names the type of that table:
+//!
+//! ```
+//! use postcard_schema::{impl_schema_table, schema_table, schema_table_type};
+//!
+//! struct Helper;
+//! impl_schema_table!(Helper, u8, Option<u8>);
+//!
+//! static TABLE: schema_table_type!(Helper) = Helper::SCHEMA_TABLE;
+//!
+//! assert_eq!(TABLE, schema_table!(u8, Option<u8>));
+//! ```
+//!
 //! [`schema_table!`]: crate::schema_table
+//! [`impl_schema_table!`]: crate::impl_schema_table
+//! [`schema_table_type!`]: crate::schema_table_type
 //! [`schema_table_bytes!`]: crate::schema_table_bytes
 
 use crate::schema::{Data, DataModelType, NamedField, Variant};
@@ -58,8 +79,8 @@ pub const VERSION: u32 = 1;
 //    that size, and `TableScratch::lengths()` reports how much of it was used.
 // 3. `SchemaTable::new()` copies the used part into right-sized arrays.
 //
-// The macros do all three; the items for steps one and two, and
-// `SchemaTable::new`, are hidden from the docs.
+// The macros do all three. The steps are public for the macros, but hidden from
+// the docs; `impl_schema_table!` is the API for naming a table's type.
 
 // ---- Step one: upper bounds ----
 
@@ -132,24 +153,56 @@ impl Counter {
 }
 
 /// The array lengths of a [`TableScratch`] or [`SchemaTable`]
+///
+/// [`scratch_lengths()`] gives an upper bound, to size a [`TableScratch`].
+/// [`TableScratch::lengths()`] gives the exact lengths, to size a
+/// [`SchemaTable`]. The fields are in the order of the const parameters of both.
 #[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(missing_docs)]
 pub struct TableLengths {
+    /// The number of roots, which is the number of inputs
     pub roots: usize,
+    /// The number of nodes
     pub nodes: usize,
+    /// The number of entries in the children array
     pub children: usize,
+    /// The number of entries in the variants array
     pub variants: usize,
+    /// The number of entries in the fields array
     pub fields: usize,
+    /// The number of bytes of interned names
     pub names: usize,
 }
 
-/// The scratch space needed to build a table of `roots`
-#[doc(hidden)]
+impl TableLengths {
+    /// The `STATES` argument of [`TableScratch::new()`], for these lengths.
+    ///
+    /// Call this on the lengths from [`scratch_lengths()`]; only `names` is
+    /// used.
+    pub const fn interner_states(&self) -> usize {
+        intern::states_for(self.names)
+    }
+
+    /// The `EDGES` argument of [`TableScratch::new()`], for these lengths.
+    ///
+    /// Call this on the lengths from [`scratch_lengths()`]; only `names` is
+    /// used.
+    pub const fn interner_edges(&self) -> usize {
+        intern::edges_for(self.names)
+    }
+}
+
+/// The scratch space needed to build a table of `roots`: step one of building
+/// a table.
 ///
 /// This is an upper bound, assuming nothing can be deduplicated. The space for
 /// each list is doubled, as a list being collected is kept on a stack at the
-/// end while it's copied to the start.
+/// end while it's copied to the start. Use it for the const parameters of
+/// [`TableScratch`], and for [`TableLengths::interner_states()`] and
+/// [`TableLengths::interner_edges()`].
+///
+/// The cost is linear in the size of the types, with no deduplication.
+#[doc(hidden)]
 pub const fn scratch_lengths(roots: &[&DataModelType]) -> TableLengths {
     let mut c = Counter {
         nodes: 0,
@@ -426,12 +479,14 @@ const EMPTY_FIELD: TableField = TableField {
     ty: 0,
 };
 
-/// A deduplicated table, built into scratch space
-#[doc(hidden)]
+/// A deduplicated table, built into scratch space: step two of building a
+/// table.
 ///
 /// The const parameters are the scratch space, from [`scratch_lengths()`]:
 /// roots, nodes, children, variants, fields and name bytes. Only the start of
-/// each array is used; see [`TableScratch::lengths()`].
+/// each array is used; see [`TableScratch::lengths()`]. A scratch is not meant
+/// to be kept; copy it into a [`SchemaTable`].
+#[doc(hidden)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TableScratch<
     const ROOTS: usize,
@@ -443,6 +498,8 @@ pub struct TableScratch<
 > {
     roots: [u32; ROOTS],
     n_roots: usize,
+    // The node index of each input, 1:1 with the inputs given (so `ROOTS` long).
+    inputs: [u32; ROOTS],
     nodes: [TableNode; NODES],
     n_nodes: usize,
     children: [u32; CHILDREN],
@@ -466,13 +523,19 @@ impl<
 {
     /// Flattens and deduplicates `roots` into scratch space.
     ///
-    /// `STATES` and `EDGES` are the space for interning names, which depends on
-    /// `NAME_BYTES`. It's only used while building, and isn't kept. Use
-    /// [`schema_table!`] rather than calling this directly.
+    /// `STATES` and `EDGES` are the space for interning names, which depends
+    /// on `NAME_BYTES`. It's only used while building, and isn't kept. Pass
+    /// [`TableLengths::interner_states()`] and
+    /// [`TableLengths::interner_edges()`] of the [`scratch_lengths()`] result.
     ///
     /// Fails (at compile time, in const context) if `roots` isn't `ROOTS` long,
     /// if the other const parameters are smaller than [`scratch_lengths()`]
-    /// gives, or if `STATES` and `EDGES` are too small for `NAME_BYTES`.
+    /// gives, or if `STATES` and `EDGES` are too small for `NAME_BYTES`. The only
+    /// valid inputs are the results of the previous step, for the same `roots`.
+    ///
+    /// The time taken grows with the square of the table's size, and deeply
+    /// nested types can exceed rustc's limits; see [`schema_table!`] for the
+    /// `long_running_const_eval` and `recursion_limit` notes.
     ///
     /// [`schema_table!`]: crate::schema_table
     pub const fn new<const STATES: usize, const EDGES: usize>(roots: &[&DataModelType]) -> Self {
@@ -482,6 +545,7 @@ impl<
         let mut out = Self {
             roots: [0; ROOTS],
             n_roots: 0,
+            inputs: [0; ROOTS],
             nodes: [TableNode::Unit; NODES],
             n_nodes: 0,
             children: [0; CHILDREN],
@@ -510,10 +574,12 @@ impl<
         // Each distinct type is a root once, in the order first given.
         // Searching the roots so far is quadratic.
         let mut idx = [0; ROOTS];
+        let mut inputs = [0; ROOTS];
         let mut n_roots = 0;
         let mut i = 0;
         while i < ROOTS {
             let node = w.ty(roots[i]);
+            inputs[i] = node;
             let mut k = 0;
             while k < n_roots && idx[k] != node {
                 k += 1;
@@ -525,6 +591,7 @@ impl<
             i += 1;
         }
         out.roots = idx;
+        out.inputs = inputs;
         out.n_roots = n_roots;
         out.n_nodes = w.n_nodes;
         out.n_children = w.n_children;
@@ -534,7 +601,8 @@ impl<
         out
     }
 
-    /// The exact array lengths needed to hold this table
+    /// The exact array lengths needed to hold this table, to be used as the
+    /// const parameters of [`SchemaTable`]: step three.
     pub const fn lengths(&self) -> TableLengths {
         TableLengths {
             roots: self.n_roots,
@@ -544,6 +612,21 @@ impl<
             fields: self.n_fields,
             names: self.n_names,
         }
+    }
+
+    /// The node index of each of the `roots` given to [`TableScratch::new()`],
+    /// in the order given, including repeats.
+    ///
+    /// Fails (at compile time, in const context) if `INPUTS` isn't `ROOTS`.
+    pub const fn inputs<const INPUTS: usize>(&self) -> [u32; INPUTS] {
+        assert!(INPUTS == ROOTS, "wrong input count");
+        let mut out = [0; INPUTS];
+        let mut i = 0;
+        while i < INPUTS {
+            out[i] = self.inputs[i];
+            i += 1;
+        }
+        out
     }
 }
 
@@ -556,11 +639,16 @@ impl<
 /// directly; the type only needs writing out to keep a table in a
 /// `static`.
 ///
+/// [`impl_schema_table!`] builds a table whose type can be named, with
+/// [`schema_table_type!`].
+///
 /// The fields are public, so a table can be built by hand. Reading, serializing
 /// or converting a table panics if its spans, names or indices are out of
 /// bounds, which can't happen for one built by this crate.
 ///
 /// [`schema_table!`]: crate::schema_table
+/// [`impl_schema_table!`]: crate::impl_schema_table
+/// [`schema_table_type!`]: crate::schema_table_type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SchemaTable<
     const ROOTS: usize,
@@ -609,10 +697,11 @@ impl<
         const NAME_BYTES: usize,
     > SchemaTable<ROOTS, NODES, CHILDREN, VARIANTS, FIELDS, NAME_BYTES>
 {
-    /// Copies a table out of scratch space.
+    /// Copies a table out of scratch space: step three of building a table.
     ///
     /// Fails (at compile time, in const context) if the const parameters don't
-    /// match [`TableScratch::lengths()`].
+    /// match [`TableScratch::lengths()`] of `scratch`. The only valid inputs
+    /// are the lengths of the scratch passed in.
     #[doc(hidden)]
     pub const fn new<
         const SCRATCH_ROOTS: usize,
@@ -892,6 +981,18 @@ impl Serialize for VariantSer<'_, '_> {
 /// assert_eq!(table.roots, [0, 1]);
 /// ```
 ///
+/// Instead of types, `schemas = EXPR` takes a const expression of type
+/// `&[&DataModelType]`. It must be const-evaluable and can't use the generic
+/// parameters of an enclosing item.
+///
+/// ```
+/// use postcard_schema::{schema::DataModelType, schema_table, Schema};
+///
+/// const A: &DataModelType = <u8 as Schema>::SCHEMA;
+/// const S: &[&DataModelType] = &[A, <Option<u8> as Schema>::SCHEMA];
+/// assert_eq!(schema_table!(schemas = S), schema_table!(u8, Option<u8>));
+/// ```
+///
 /// A large table can exceed rustc's limit on const evaluation, which fails with
 /// "constant evaluation is taking a long time". Allowing
 /// `long_running_const_eval` on the statement or item that uses the macro
@@ -928,9 +1029,13 @@ impl Serialize for VariantSer<'_, '_> {
 /// [`TableLimits`]: crate::table::TableLimits
 #[macro_export]
 macro_rules! schema_table {
+    (schemas = $schemas:expr $(,)?) => {{
+        $crate::__schema_table_consts!(schemas = $schemas);
+        __SchemaTable::SCHEMA_TABLE
+    }};
     ($($ty:ty),+ $(,)?) => {{
         $crate::__schema_table_consts!($($ty),+);
-        __TABLE
+        __SchemaTable::SCHEMA_TABLE
     }};
 }
 
@@ -940,6 +1045,8 @@ macro_rules! schema_table {
 /// This is the same as serializing [`schema_table!`]'s table with postcard,
 /// with no work at runtime. The types can't use the generic parameters of an
 /// enclosing item.
+///
+/// `schemas = EXPR` is accepted as in [`schema_table!`].
 ///
 /// ```
 /// use postcard_schema::schema_table_bytes;
@@ -963,42 +1070,150 @@ macro_rules! schema_table {
 /// [`schema_table!`]: crate::schema_table
 #[macro_export]
 macro_rules! schema_table_bytes {
+    (schemas = $schemas:expr $(,)?) => {{
+        $crate::__schema_table_consts!(schemas = $schemas);
+        const __BYTES: [u8; __SchemaTable::SCHEMA_TABLE.encoded_len()] =
+            __SchemaTable::SCHEMA_TABLE.to_bytes();
+        __BYTES
+    }};
     ($($ty:ty),+ $(,)?) => {{
         $crate::__schema_table_consts!($($ty),+);
-        const __BYTES: [u8; __TABLE.encoded_len()] = __TABLE.to_bytes();
+        const __BYTES: [u8; __SchemaTable::SCHEMA_TABLE.encoded_len()] =
+            __SchemaTable::SCHEMA_TABLE.to_bytes();
         __BYTES
     }};
 }
 
+/// Builds a [`SchemaTable`] into associated consts of a type, in const context,
+/// so that the table's type can be named with [`schema_table_type!`].
+///
+/// `impl_schema_table!(Type, A, B, ..)` adds an `impl Type` block with:
+///
+/// * `SCHEMA_TABLE`: the table of the schemas of `A, B, ..`, as built by
+///   [`schema_table!`]. Its type is `schema_table_type!(Type)`.
+/// * `SCHEMA_INPUTS`: a `[u32; N]` of the node index of each of the `N` schemas
+///   given, in order, including repeats and schemas nested in other inputs.
+///
+/// `schemas = EXPR` is accepted as in [`schema_table!`], and the same notes on
+/// rustc's limits apply. A visibility before `Type`, such as
+/// `impl_schema_table!(pub Type, ..)`, is given to the consts. The block also
+/// holds hidden consts named `__PS_*`, so a type can only have one table, and
+/// its other associated items shouldn't use those names.
+///
+/// ```
+/// use postcard_schema::{impl_schema_table, schema_table_type, table::node::TableNode};
+///
+/// struct Helper;
+/// impl_schema_table!(Helper, Option<u8>, u8, Option<u8>);
+///
+/// static TABLE: schema_table_type!(Helper) = Helper::SCHEMA_TABLE;
+/// assert_eq!(TABLE.nodes, [TableNode::U8, TableNode::Option(0)]);
+/// assert_eq!(TABLE.roots, [1, 0]);
+/// assert_eq!(Helper::SCHEMA_INPUTS, [1, 0, 1]);
+/// ```
+///
+/// The consts can refer to the type's other associated consts, which
+/// can in turn use the table, so a macro can build a type holding a table:
+///
+/// ```
+/// use postcard_schema::{
+///     impl_schema_table, schema::DataModelType, schema_table_type, Schema,
+/// };
+///
+/// struct Helper;
+/// impl Helper {
+///     const SCHEMAS: [&'static DataModelType; 2] =
+///         [<u8 as Schema>::SCHEMA, <bool as Schema>::SCHEMA];
+///     const PAIR: (schema_table_type!(Helper), [u32; 2]) =
+///         (Helper::SCHEMA_TABLE, Helper::SCHEMA_INPUTS);
+/// }
+/// impl_schema_table!(Helper, schemas = &Helper::SCHEMAS);
+///
+/// assert_eq!(Helper::PAIR.1, [0, 1]);
+/// ```
+///
+/// [`SchemaTable`]: crate::table::SchemaTable
+/// [`schema_table!`]: crate::schema_table
+/// [`schema_table_type!`]: crate::schema_table_type
+#[macro_export]
+macro_rules! impl_schema_table {
+    // Each step is its own const, as each const generic argument is evaluated
+    // separately; naming a const evaluates it once. The consts use `$ty::`
+    // rather than `Self::`, which isn't allowed in const arguments.
+    ($vis:vis $ty:ident, schemas = $schemas:expr $(,)?) => {
+        #[allow(dead_code)]
+        impl $ty {
+            #[doc(hidden)]
+            $vis const __PS_ROOTS: &'static [&'static $crate::schema::DataModelType] = $schemas;
+            #[doc(hidden)]
+            $vis const __PS_MAX: $crate::table::TableLengths =
+                $crate::table::scratch_lengths($ty::__PS_ROOTS);
+            #[doc(hidden)]
+            $vis const __PS_SCRATCH: $crate::table::TableScratch<
+                { $ty::__PS_MAX.roots },
+                { $ty::__PS_MAX.nodes },
+                { $ty::__PS_MAX.children },
+                { $ty::__PS_MAX.variants },
+                { $ty::__PS_MAX.fields },
+                { $ty::__PS_MAX.names },
+            > = $crate::table::TableScratch::new::<
+                { $ty::__PS_MAX.interner_states() },
+                { $ty::__PS_MAX.interner_edges() },
+            >($ty::__PS_ROOTS);
+            #[doc(hidden)]
+            $vis const __PS_LEN: $crate::table::TableLengths = $ty::__PS_SCRATCH.lengths();
+            /// The table of the schemas given to `impl_schema_table!`
+            $vis const SCHEMA_TABLE: $crate::schema_table_type!($ty) =
+                $crate::table::SchemaTable::new(&$ty::__PS_SCRATCH);
+            /// The node index of each schema given to `impl_schema_table!`
+            $vis const SCHEMA_INPUTS: [u32; $ty::__PS_ROOTS.len()] =
+                $ty::__PS_SCRATCH.inputs();
+        }
+    };
+    ($vis:vis $ty:ident, $($t:ty),+ $(,)?) => {
+        $crate::impl_schema_table!(
+            $vis $ty, schemas = &[$(<$t as $crate::Schema>::SCHEMA),+]
+        );
+    };
+}
+
+/// The type of `Type::SCHEMA_TABLE`, built by [`impl_schema_table!`]
+///
+/// This is a [`SchemaTable`] with its const parameters filled in, and can be
+/// used wherever a type can, including as a generic argument. `Type` can be a
+/// path, such as `module::Type`, if the consts are visible there.
+///
+/// [`SchemaTable`]: crate::table::SchemaTable
+/// [`impl_schema_table!`]: crate::impl_schema_table
+#[macro_export]
+macro_rules! schema_table_type {
+    ($($seg:ident)::+) => {
+        $crate::table::SchemaTable<
+            { $($seg)::+::__PS_LEN.roots },
+            { $($seg)::+::__PS_LEN.nodes },
+            { $($seg)::+::__PS_LEN.children },
+            { $($seg)::+::__PS_LEN.variants },
+            { $($seg)::+::__PS_LEN.fields },
+            { $($seg)::+::__PS_LEN.names },
+        >
+    };
+}
+
 /// The const items that build a table, shared by [`schema_table!`] and
-/// [`schema_table_bytes!`]. The table is `__TABLE`.
+/// [`schema_table_bytes!`].
+///
+/// The table is `__SchemaTable::SCHEMA_TABLE`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __schema_table_consts {
+    (schemas = $schemas:expr) => {
+        struct __SchemaTable;
+        $crate::impl_schema_table!(__SchemaTable, schemas = $schemas);
+    };
     ($($ty:ty),+) => {
-        const __ROOTS: &[&$crate::schema::DataModelType] = &[$(<$ty as $crate::Schema>::SCHEMA),+];
-        const __MAX: $crate::table::TableLengths =
-            $crate::table::scratch_lengths(__ROOTS);
-        const __SCRATCH: $crate::table::TableScratch<
-            { __MAX.roots },
-            { __MAX.nodes },
-            { __MAX.children },
-            { __MAX.variants },
-            { __MAX.fields },
-            { __MAX.names },
-        > = $crate::table::TableScratch::new::<
-            { $crate::table::__states_for(__MAX.names) },
-            { $crate::table::__edges_for(__MAX.names) },
-        >(__ROOTS);
-        const __LEN: $crate::table::TableLengths = __SCRATCH.lengths();
-        const __TABLE: $crate::table::SchemaTable<
-            { __LEN.roots },
-            { __LEN.nodes },
-            { __LEN.children },
-            { __LEN.variants },
-            { __LEN.fields },
-            { __LEN.names },
-        > = $crate::table::SchemaTable::new(&__SCRATCH);
+        $crate::__schema_table_consts!(
+            schemas = &[$(<$ty as $crate::Schema>::SCHEMA),+]
+        );
     };
 }
 
@@ -1155,8 +1370,6 @@ mod decode;
 pub use decode::{TableError, TableLimits};
 mod encode;
 mod intern;
-#[doc(hidden)]
-pub use intern::{edges_for as __edges_for, states_for as __states_for};
 #[cfg(any(feature = "std", feature = "alloc"))]
 mod owned;
 #[cfg(any(feature = "std", feature = "alloc"))]
